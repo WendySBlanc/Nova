@@ -40,8 +40,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import tachiyomi.core.common.util.lang.launchIO
-import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -55,7 +53,7 @@ data object MoreTab : Tab {
             val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_more_enter)
             return TabOptions(
                 index = 4u,
-                title = stringResource(MR.strings.label_more),
+                title = "Moi",
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
         }
@@ -83,9 +81,7 @@ data object MoreTab : Tab {
             onClickDownloadQueue = { navigator.push(DownloadQueueScreen) },
             onClickCategories = { navigator.push(CategoryScreen()) },
             onClickStats = { navigator.push(StatsScreen()) },
-            onClickDataAndStorage = { navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage)) },
             onClickSettings = { navigator.push(SettingsScreen()) },
-            onClickAbout = { navigator.push(SettingsScreen(SettingsScreen.Destination.About)) },
             // SY -->
             onClickBatchAdd = { navigator.push(BatchAddScreen()) },
             onClickUpdates = { navigator.push(UpdatesTab) },

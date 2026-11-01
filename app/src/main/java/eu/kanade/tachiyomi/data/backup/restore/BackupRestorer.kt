@@ -17,6 +17,7 @@ import eu.kanade.tachiyomi.data.backup.restore.restorers.FeedRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.MangaRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.PreferenceRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.SavedSearchRestorer
+import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,8 @@ import kotlinx.coroutines.launch
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -40,6 +43,7 @@ class BackupRestorer(
     private val preferenceRestorer: PreferenceRestorer = PreferenceRestorer(context),
     private val extensionRepoRestorer: ExtensionRepoRestorer = ExtensionRepoRestorer(),
     private val mangaRestorer: MangaRestorer = MangaRestorer(isSync),
+    private val downloadCache: DownloadCache = Injekt.get(),
     // SY -->
     private val savedSearchRestorer: SavedSearchRestorer = SavedSearchRestorer(),
     // SY <--
@@ -132,6 +136,7 @@ class BackupRestorer(
 
             // TODO: optionally trigger online library + tracker update
         }
+        downloadCache.invalidateCache()
     }
 
     context(scope: CoroutineScope)

@@ -10,10 +10,12 @@ import eu.kanade.domain.extension.interactor.GetExtensionsByType
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.components.SEARCH_DEBOUNCE_MILLIS
 import eu.kanade.tachiyomi.extension.ExtensionManager
+import eu.kanade.tachiyomi.extension.InstalledExtensionsInventory
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.system.LocaleHelper
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,9 +42,14 @@ class ExtensionsScreenModel(
     basePreferences: BasePreferences = Injekt.get(),
     private val extensionManager: ExtensionManager = Injekt.get(),
     private val getExtensions: GetExtensionsByType = Injekt.get(),
+    private val installedExtensionsInventory: InstalledExtensionsInventory = Injekt.get(),
 ) : StateScreenModel<ExtensionsScreenModel.State>(State()) {
 
     private val currentDownloads = MutableStateFlow<Map<String, InstallStep>>(hashMapOf())
+    private var bulkInstallJob: Job? = null
+
+    @Volatile
+    private var bulkAvailableExtensions = emptyList<Extension.Available>()
 
     init {
         val context = Injekt.get<Application>()
@@ -74,55 +81,72 @@ class ExtensionsScreenModel(
                 currentDownloads,
                 getExtensions.subscribe(),
             ) { predicate, nsfwOnly, downloads, (_updates, _installed, _available, _untrusted) ->
-                buildMap {
-                    val updates = _updates.filter(predicate).map(extensionMapper(downloads))
-                        // KMK -->
-                        .filter { !nsfwOnly || it.extension.isNsfw }
-                    // KMK <--
-                    if (updates.isNotEmpty()) {
-                        put(ExtensionUiModel.Header.Resource(MR.strings.ext_updates_pending), updates)
-                    }
-
-                    val installed = _installed.filter(predicate).map(extensionMapper(downloads))
-                        // KMK -->
-                        .filter { !nsfwOnly || it.extension.isNsfw }
-                    // KMK <--
-                    val untrusted = _untrusted.filter(predicate).map(extensionMapper(downloads))
-                        // KMK -->
-                        .filter { !nsfwOnly || it.extension.isNsfw }
-                    // KMK <--
-                    if (installed.isNotEmpty() || untrusted.isNotEmpty()) {
-                        put(ExtensionUiModel.Header.Resource(MR.strings.ext_installed), installed + untrusted)
-                    }
-
-                    val languagesWithExtensions = _available
-                        .filter(predicate)
-                        // KMK -->
-                        .filter { !nsfwOnly || it.isNsfw }
-                        // KMK <--
-                        .groupBy { it.lang }
-                        .toSortedMap(LocaleHelper.comparator)
-                        .map { (lang, exts) ->
-                            ExtensionUiModel.Header.Text(LocaleHelper.getSourceDisplayName(lang, context)) to
-                                exts.map(extensionMapper(downloads))
-                        }
-                    if (languagesWithExtensions.isNotEmpty()) {
-                        putAll(languagesWithExtensions)
-                    }
-
-                    // KMK -->
-                    // Show "More..." header if no available extensions
-                    if (_available.isEmpty()) {
-                        put(ExtensionUiModel.Header.Resource(KMR.strings.extensions_page_more), emptyList())
-                    }
-                    // KMK <--
+                val availableForBulk = _available.distinctBy {
+                    "${it.repoUrl}\u0000${it.apkName}\u0000${it.signatureHash}"
                 }
+                val installedCount = (
+                    extensionManager.installedExtensionsFlow.value +
+                        extensionManager.untrustedExtensionsFlow.value
+                    )
+                    .distinctBy(Extension::pkgName)
+                    .size
+
+                ExtensionScreenData(
+                    items = buildMap {
+                        val updates = _updates.filter(predicate).map(extensionMapper(downloads))
+                            // KMK -->
+                            .filter { !nsfwOnly || it.extension.isNsfw }
+                        // KMK <--
+                        if (updates.isNotEmpty()) {
+                            put(ExtensionUiModel.Header.Resource(MR.strings.ext_updates_pending), updates)
+                        }
+
+                        val installed = _installed.filter(predicate).map(extensionMapper(downloads))
+                            // KMK -->
+                            .filter { !nsfwOnly || it.extension.isNsfw }
+                        // KMK <--
+                        val untrusted = _untrusted.filter(predicate).map(extensionMapper(downloads))
+                            // KMK -->
+                            .filter { !nsfwOnly || it.extension.isNsfw }
+                        // KMK <--
+                        if (installed.isNotEmpty() || untrusted.isNotEmpty()) {
+                            put(ExtensionUiModel.Header.Resource(MR.strings.ext_installed), installed + untrusted)
+                        }
+
+                        val languagesWithExtensions = _available
+                            .filter(predicate)
+                            // KMK -->
+                            .filter { !nsfwOnly || it.isNsfw }
+                            // KMK <--
+                            .groupBy { it.lang }
+                            .toSortedMap(LocaleHelper.comparator)
+                            .map { (lang, exts) ->
+                                ExtensionUiModel.Header.Text(LocaleHelper.getSourceDisplayName(lang, context)) to
+                                    exts.map(extensionMapper(downloads))
+                            }
+                        if (languagesWithExtensions.isNotEmpty()) {
+                            putAll(languagesWithExtensions)
+                        }
+
+                        // KMK -->
+                        // Show "More..." header if no available extensions
+                        if (_available.isEmpty()) {
+                            put(ExtensionUiModel.Header.Resource(KMR.strings.extensions_page_more), emptyList())
+                        }
+                        // KMK <--
+                    },
+                    availableForBulk = availableForBulk,
+                    installedCount = installedCount,
+                )
             }
-                .collectLatest { items ->
+                .collectLatest { data ->
+                    bulkAvailableExtensions = data.availableForBulk
                     mutableState.update { state ->
                         state.copy(
                             isLoading = false,
-                            items = items,
+                            items = data.items,
+                            availableCount = data.availableForBulk.size,
+                            installedCount = data.installedCount,
                         )
                     }
                 }
@@ -191,6 +215,59 @@ class ExtensionsScreenModel(
         }
     }
 
+    fun installAllExtensions() {
+        installExtensions(bulkAvailableExtensions)
+    }
+
+    fun installExtensions(extensions: Collection<Extension>) {
+        if (bulkInstallJob?.isActive == true) return
+
+        val installableExtensions = extensions
+            .distinctBy(Extension::selectionKey)
+            .filter {
+                it is Extension.Available ||
+                    (it is Extension.Installed && it.hasUpdate)
+            }
+        if (installableExtensions.isEmpty()) return
+
+        bulkInstallJob = screenModelScope.launchIO {
+            mutableState.update {
+                it.copy(
+                    isBulkInstalling = true,
+                    bulkInstallCompleted = 0,
+                    bulkInstallTotal = installableExtensions.size,
+                )
+            }
+            try {
+                installableExtensions.forEachIndexed { index, extension ->
+                    when (extension) {
+                        is Extension.Available -> {
+                            extensionManager.installExtension(extension).collectToInstallUpdate(extension)
+                        }
+                        is Extension.Installed -> {
+                            extensionManager.updateExtension(extension).collectToInstallUpdate(extension)
+                        }
+                        is Extension.Untrusted -> Unit
+                    }
+                    mutableState.update { it.copy(bulkInstallCompleted = index + 1) }
+                }
+            } finally {
+                mutableState.update {
+                    it.copy(
+                        isBulkInstalling = false,
+                        bulkInstallCompleted = 0,
+                        bulkInstallTotal = 0,
+                    )
+                }
+                bulkInstallJob = null
+            }
+        }
+    }
+
+    fun cancelInstallAllExtensions() {
+        bulkInstallJob?.cancel()
+    }
+
     fun updateExtension(extension: Extension.Installed) {
         screenModelScope.launchIO {
             extensionManager.updateExtension(extension).collectToInstallUpdate(extension)
@@ -235,6 +312,23 @@ class ExtensionsScreenModel(
         extensionManager.uninstallExtension(extension)
     }
 
+    fun uninstallAllExtensions() {
+        val extensions = (
+            extensionManager.installedExtensionsFlow.value +
+                extensionManager.untrustedExtensionsFlow.value
+            )
+            .distinctBy(Extension::pkgName)
+        uninstallExtensions(extensions)
+    }
+
+    fun uninstallExtensions(extensions: Collection<Extension>) {
+        extensionManager.uninstallExtensions(
+            extensions
+                .filterNot { it is Extension.Available }
+                .distinctBy(Extension::pkgName),
+        )
+    }
+
     fun findAvailableExtensions() {
         screenModelScope.launchIO {
             mutableState.update { it.copy(isRefreshing = true) }
@@ -245,6 +339,12 @@ class ExtensionsScreenModel(
             delay(1.seconds)
 
             mutableState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
+    fun shareInstalledExtensions() {
+        screenModelScope.launch {
+            installedExtensionsInventory.share()
         }
     }
 
@@ -270,6 +370,11 @@ class ExtensionsScreenModel(
         val updates: Int = 0,
         val installer: BasePreferences.ExtensionInstaller? = null,
         val searchQuery: String? = null,
+        val availableCount: Int = 0,
+        val installedCount: Int = 0,
+        val isBulkInstalling: Boolean = false,
+        val bulkInstallCompleted: Int = 0,
+        val bulkInstallTotal: Int = 0,
         // KMK -->
         val nsfwOnly: Boolean = false,
         // KMK <--
@@ -279,6 +384,17 @@ class ExtensionsScreenModel(
 }
 
 typealias ItemGroups = Map<ExtensionUiModel.Header, List<ExtensionUiModel.Item>>
+
+fun Extension.selectionKey(): String = when (this) {
+    is Extension.Available -> "available:$repoUrl:$apkName:$signatureHash"
+    is Extension.Installed, is Extension.Untrusted -> "installed:$pkgName"
+}
+
+private data class ExtensionScreenData(
+    val items: ItemGroups,
+    val availableForBulk: List<Extension.Available>,
+    val installedCount: Int,
+)
 
 object ExtensionUiModel {
     sealed interface Header {

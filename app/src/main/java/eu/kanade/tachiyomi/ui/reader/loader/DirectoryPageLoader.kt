@@ -19,7 +19,8 @@ internal class DirectoryPageLoader(val file: UniFile) : PageLoader() {
             ?.sortedWith { f1, f2 -> f1.name.orEmpty().compareToCaseInsensitiveNaturalOrder(f2.name.orEmpty()) }
             ?.mapIndexed { i, file ->
                 val streamFn = { file.openInputStream() }
-                ReaderPage(i).apply {
+                ReaderPage(i, file.uri.toString()).apply {
+                    uri = file.uri
                     stream = streamFn
                     status = Page.State.Ready
                 }

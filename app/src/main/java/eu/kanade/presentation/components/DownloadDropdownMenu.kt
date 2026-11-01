@@ -18,6 +18,7 @@ fun DownloadDropdownMenu(
     onDownloadClicked: (DownloadAction) -> Unit,
     modifier: Modifier = Modifier,
     offset: DpOffset = /* KMK --> */ DefaultDropdownMenuOffset, /* KMK <-- */
+    actionCounts: Map<DownloadAction, Int> = emptyMap(),
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -28,6 +29,7 @@ fun DownloadDropdownMenu(
             DownloadDropdownMenuItems(
                 onDismissRequest = onDismissRequest,
                 onDownloadClicked = onDownloadClicked,
+                actionCounts = actionCounts,
             )
         },
     )
@@ -37,18 +39,28 @@ fun DownloadDropdownMenu(
 private fun DownloadDropdownMenuItems(
     onDismissRequest: () -> Unit,
     onDownloadClicked: (DownloadAction) -> Unit,
+    actionCounts: Map<DownloadAction, Int>,
 ) {
     val options = persistentListOf(
         DownloadAction.NEXT_1_CHAPTER to pluralStringResource(MR.plurals.download_amount, 1, 1),
         DownloadAction.NEXT_5_CHAPTERS to pluralStringResource(MR.plurals.download_amount, 5, 5),
-        DownloadAction.NEXT_10_CHAPTERS to pluralStringResource(MR.plurals.download_amount, 10, 10),
-        DownloadAction.NEXT_25_CHAPTERS to pluralStringResource(MR.plurals.download_amount, 25, 25),
         DownloadAction.UNREAD_CHAPTERS to stringResource(MR.strings.download_unread),
+        DownloadAction.ALL_CHAPTERS to stringResource(MR.strings.download_all),
     )
 
     options.forEach { (downloadAction, string) ->
+        val count = actionCounts[downloadAction]
         DropdownMenuItem(
             text = { Text(text = string) },
+            trailingIcon = count?.let {
+                {
+                    Text(
+                        text = it.toString(),
+                        maxLines = 1,
+                    )
+                }
+            },
+            enabled = count == null || count > 0,
             onClick = {
                 onDownloadClicked(downloadAction)
                 onDismissRequest()

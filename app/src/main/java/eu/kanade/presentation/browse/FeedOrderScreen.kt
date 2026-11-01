@@ -1,8 +1,10 @@
 package eu.kanade.presentation.browse
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -11,8 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import eu.kanade.presentation.browse.components.FeedOrderListItem
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.ui.browse.feed.FeedScreenState
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -54,23 +58,30 @@ fun FeedOrderScreen(
                 }
             }
 
-            LazyColumn(
+            Box(
                 modifier = Modifier.fillMaxSize(),
-                state = lazyListState,
-                contentPadding = topSmallPaddingValues +
-                    PaddingValues(horizontal = MaterialTheme.padding.medium),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                items(
-                    items = feedsState,
-                    key = { it.feed.key },
-                ) { feed ->
-                    ReorderableItem(reorderableState, feed.feed.key) {
-                        FeedOrderListItem(
-                            modifier = Modifier.animateItem(),
-                            title = feed.title,
-                            onDelete = { onClickDelete(feed.feed) },
-                        )
+                LazyColumn(
+                    modifier = Modifier
+                        .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                        .fillMaxSize(),
+                    state = lazyListState,
+                    contentPadding = topSmallPaddingValues +
+                        PaddingValues(horizontal = MaterialTheme.padding.medium),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                ) {
+                    items(
+                        items = feedsState,
+                        key = { it.feed.key },
+                    ) { feed ->
+                        ReorderableItem(reorderableState, feed.feed.key) {
+                            FeedOrderListItem(
+                                modifier = Modifier.animateItem(),
+                                title = feed.title,
+                                onDelete = { onClickDelete(feed.feed) },
+                            )
+                        }
                     }
                 }
             }

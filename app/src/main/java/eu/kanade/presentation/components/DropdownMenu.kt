@@ -46,7 +46,7 @@ fun DropdownMenu(
     ComposeDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
-        modifier = modifier.sizeIn(minWidth = 196.dp, maxWidth = 196.dp),
+        modifier = modifier.sizeIn(minWidth = 196.dp, maxWidth = 320.dp),
         offset = offset,
         scrollState = scrollState,
         properties = properties,

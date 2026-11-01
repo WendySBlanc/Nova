@@ -160,7 +160,7 @@ class LibraryScreenModel(
     // KMK -->
     private val smartSearchMerge: SmartSearchMerge = Injekt.get(),
     // KMK <--
-) : StateScreenModel<LibraryScreenModel.State>(State()) {
+) : StateScreenModel<LibraryScreenModel.State>(NovaLibraryMemoryCache.get() ?: State()) {
 
     // SY -->
     val favoritesSync = FavoritesSyncHelper(preferences.context)
@@ -169,7 +169,17 @@ class LibraryScreenModel(
     private var recommendationSearchJob: Job? = null
     // SY <--
 
+    private val nextUnreadChapterCache = object : LinkedHashMap<Long, NextUnreadChapterCacheEntry>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, NextUnreadChapterCacheEntry>?): Boolean {
+            return size > NEXT_UNREAD_CACHE_LIMIT
+        }
+    }
+
     init {
+        state
+            .onEach(NovaLibraryMemoryCache::put)
+            .launchIn(screenModelScope)
+
         mutableState.update { state ->
             state.copy(activeCategoryIndex = libraryPreferences.lastUsedCategory().get())
         }
@@ -876,16 +886,66 @@ class LibraryScreenModel(
             .reduce { set1, set2 -> set1.intersect(set2) }
     }
 
-    suspend fun getNextUnreadChapter(manga: Manga): Chapter? {
+    suspend fun getNextUnreadChapter(item: LibraryItem): Chapter? {
+        val libraryManga = item.libraryManga
+        val cacheKey = NextUnreadChapterCacheKey(
+            mangaVersion = libraryManga.manga.version,
+            chapterFlags = libraryManga.manga.chapterFlags,
+            totalChapters = libraryManga.totalChapters,
+            readCount = libraryManga.readCount,
+            bookmarkCount = libraryManga.bookmarkCount,
+            bookmarkReadCount = libraryManga.bookmarkReadCount,
+            unreadCount = item.unreadCount,
+            downloadCount = item.downloadCount,
+            chapterFetchedAt = libraryManga.chapterFetchedAt,
+            lastRead = libraryManga.lastRead,
+        )
+
+        val cached = synchronized(nextUnreadChapterCache) {
+            nextUnreadChapterCache[libraryManga.id]?.takeIf { it.key == cacheKey }
+        }
+        if (cached != null) return cached.chapter
+
+        val chapter = getNextUnreadChapter(libraryManga.manga)
+        synchronized(nextUnreadChapterCache) {
+            nextUnreadChapterCache[libraryManga.id] = NextUnreadChapterCacheEntry(cacheKey, chapter)
+        }
+        return chapter
+    }
+
+    suspend fun getNextUnreadChapter(manga: Manga): Chapter? = withIOContext {
         // SY -->
-        val mergedManga = getMergedMangaById.await(manga.id).associateBy { it.id }
-        return if (manga.id == MERGED_SOURCE_ID) {
+        val isMergedSource = manga.source == MERGED_SOURCE_ID
+        val mergedManga = if (isMergedSource) {
+            getMergedMangaById.await(manga.id).associateBy { it.id }
+        } else {
+            emptyMap<Long, Manga>()
+        }
+        return@withIOContext if (isMergedSource) {
             getMergedChaptersByMangaId.await(manga.id, applyFilter = true)
         } else {
             getChaptersByMangaId.await(manga.id, applyFilter = true)
         }.getNextUnread(manga, downloadManager, mergedManga)
         // SY <--
     }
+
+    private data class NextUnreadChapterCacheKey(
+        val mangaVersion: Long,
+        val chapterFlags: Long,
+        val totalChapters: Long,
+        val readCount: Long,
+        val bookmarkCount: Long,
+        val bookmarkReadCount: Long,
+        val unreadCount: Long,
+        val downloadCount: Long,
+        val chapterFetchedAt: Long,
+        val lastRead: Long,
+    )
+
+    private data class NextUnreadChapterCacheEntry(
+        val key: NextUnreadChapterCacheKey,
+        val chapter: Chapter?,
+    )
 
     /**
      * Returns the mix (non-common) categories for the given list of manga.
@@ -910,6 +970,7 @@ class LibraryScreenModel(
             DownloadAction.NEXT_10_CHAPTERS -> 10
             DownloadAction.NEXT_25_CHAPTERS -> 25
             DownloadAction.UNREAD_CHAPTERS -> null
+            DownloadAction.ALL_CHAPTERS -> null
         }
         clearSelection()
         screenModelScope.launchNonCancellable {
@@ -918,7 +979,12 @@ class LibraryScreenModel(
                 if (manga.source == MERGED_SOURCE_ID) {
                     val mergedMangas = getMergedMangaById.await(manga.id)
                         .associateBy { it.id }
-                    getNextChapters.await(manga.id)
+                    val chapters = if (action == DownloadAction.ALL_CHAPTERS) {
+                        getMergedChaptersByMangaId.await(manga.id, applyFilter = false)
+                    } else {
+                        getNextChapters.await(manga.id)
+                    }
+                    chapters
                         .let { if (amount != null) it.take(amount) else it }
                         .groupBy { it.mangaId }
                         .forEach ab@{ (mangaId, chapters) ->
@@ -941,7 +1007,11 @@ class LibraryScreenModel(
                 }
 
                 // SY <--
-                val chapters = getNextChapters.await(manga.id)
+                val chapters = if (action == DownloadAction.ALL_CHAPTERS) {
+                    getChaptersByMangaId.await(manga.id, applyFilter = false)
+                } else {
+                    getNextChapters.await(manga.id)
+                }
                     .fastFilterNot { chapter ->
                         downloadManager.getQueuedDownloadOrNull(chapter.id) != null ||
                             downloadManager.isChapterDownloaded(
@@ -1768,6 +1838,8 @@ class LibraryScreenModel(
 
     // KMK -->
     companion object {
+        private const val NEXT_UNREAD_CACHE_LIMIT = 80
+
         /** List of MangaDex UUIDs subject to DMCA takedowns */
         @Volatile
         private var mangaDexDmcaUuids = hashSetOf<String>()
@@ -1794,4 +1866,29 @@ class LibraryScreenModel(
         }
     }
     // KMK <--
+}
+
+private object NovaLibraryMemoryCache {
+    @Volatile
+    private var latestState: LibraryScreenModel.State? = null
+
+    @Synchronized
+    fun get(): LibraryScreenModel.State? {
+        return latestState?.copy(
+            isLoading = false,
+            selection = emptySet(),
+            dialog = null,
+        )
+    }
+
+    @Synchronized
+    fun put(state: LibraryScreenModel.State) {
+        if (!state.libraryData.isInitialized || !state.searchQuery.isNullOrBlank()) return
+
+        latestState = state.copy(
+            isLoading = false,
+            selection = emptySet(),
+            dialog = null,
+        )
+    }
 }

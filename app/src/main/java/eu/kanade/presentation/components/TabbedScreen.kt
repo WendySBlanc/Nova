@@ -1,15 +1,19 @@
 package eu.kanade.presentation.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -24,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.zIndex
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.ui.browse.BulkFavoriteScreenModel
 import eu.kanade.tachiyomi.ui.browse.feed.FeedScreenModel
 import kotlinx.collections.immutable.ImmutableList
@@ -79,6 +85,8 @@ fun TabbedScreen(
                         }
                     },
                 )
+            } else if (tab.topBar != null) {
+                tab.topBar.invoke()
             } else {
                 // KMK <--
                 SearchToolbar(
@@ -93,25 +101,43 @@ fun TabbedScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { contentPadding ->
         Column(
-            modifier = Modifier.padding(
-                top = contentPadding.calculateTopPadding(),
-                start = contentPadding.calculateStartPadding(LocalLayoutDirection.current),
-                end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
-            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(NovaVikiColors.Background)
+                .padding(
+                    top = contentPadding.calculateTopPadding(),
+                    start = contentPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
+                ),
         ) {
-            PrimaryTabRow(
-                selectedTabIndex = state.currentPage,
-                modifier = Modifier.zIndex(1f),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(NovaVikiColors.Background)
+                    .zIndex(1f),
+                contentAlignment = Alignment.Center,
             ) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = state.currentPage == index,
-                        onClick = { scope.launch { state.animateScrollToPage(index) } },
-                        text = { TabText(text = stringResource(tab.titleRes), badgeCount = tab.badgeNumber) },
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurface,
-                    )
+                PrimaryTabRow(
+                    selectedTabIndex = state.currentPage,
+                    modifier = Modifier
+                        .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                        .fillMaxWidth(),
+                    containerColor = NovaVikiColors.Background,
+                    contentColor = NovaVikiColors.TextPrimary,
+                    divider = {},
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = state.currentPage == index,
+                            onClick = { scope.launch { state.animateScrollToPage(index) } },
+                            text = { TabText(text = stringResource(tab.titleRes), badgeCount = tab.badgeNumber) },
+                            selectedContentColor = NovaVikiColors.Accent,
+                            unselectedContentColor = NovaVikiColors.TextSecondary,
+                        )
+                    }
                 }
             }
+            HorizontalDivider(color = NovaVikiColors.Outline)
 
             HorizontalPager(
                 modifier = Modifier.fillMaxSize(),
@@ -132,5 +158,6 @@ data class TabContent(
     val badgeNumber: Int? = null,
     val searchEnabled: Boolean = false,
     val actions: ImmutableList<AppBar.AppBarAction> = persistentListOf(),
+    val topBar: (@Composable () -> Unit)? = null,
     val content: @Composable (contentPadding: PaddingValues, snackbarHostState: SnackbarHostState) -> Unit,
 )

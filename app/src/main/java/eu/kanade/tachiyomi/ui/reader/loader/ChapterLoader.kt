@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.loader
 
 import android.content.Context
+import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.source.Source
@@ -92,16 +93,8 @@ class ChapterLoader(
      */
     private fun getPageLoader(chapter: ReaderChapter): PageLoader {
         val dbChapter = chapter.chapter
-        val isDownloaded = downloadManager.isChapterDownloaded(
-            chapterName = dbChapter.name,
-            chapterScanlator = dbChapter.scanlator,
-            chapterUrl = dbChapter.url,
-            // SY -->
-            mangaTitle = manga.ogTitle,
-            // SY <--
-            sourceId = manga.source,
-            skipCache = true,
-        )
+        val domainChapter = dbChapter.toDomainChapter()!!
+        val isDownloaded = downloadManager.isChapterDownloaded(domainChapter, manga, skipCache = true)
         return when {
             // SY -->
             source is MergedSource -> {
@@ -112,11 +105,8 @@ class ChapterLoader(
                     ?: error("Source ${mangaReference.mangaSourceId} was null")
                 val manga = mergedManga?.get(chapter.chapter.manga_id) ?: error("Manga for merged chapter was null")
                 val isMergedMangaDownloaded = downloadManager.isChapterDownloaded(
-                    chapterName = chapter.chapter.name,
-                    chapterScanlator = chapter.chapter.scanlator,
-                    chapterUrl = chapter.chapter.url,
-                    mangaTitle = manga.ogTitle,
-                    sourceId = manga.source,
+                    chapter = chapter.chapter.toDomainChapter()!!,
+                    manga = manga,
                     skipCache = true,
                 )
                 when {

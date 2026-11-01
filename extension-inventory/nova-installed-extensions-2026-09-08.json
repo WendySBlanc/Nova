@@ -1,0 +1,1755 @@
+{
+    "formatVersion": 1,
+    "generatedAt": "2026-09-08T21:13:24.392459+02:00",
+    "appVersionName": "1.14.0-nova-fast-data-1",
+    "appVersionCode": 101,
+    "extensionRepository": "https://raw.githubusercontent.com/WendySBlanc/extensions/repo",
+    "installedCount": 102,
+    "updatesAvailable": 0,
+    "extensions": [
+        {
+            "name": "Alandal",
+            "packageName": "eu.kanade.tachiyomi.extension.en.alandal",
+            "language": "en",
+            "installedVersionName": "1.4.2",
+            "installedVersionCode": 104002,
+            "availableVersionName": "1.4.2",
+            "availableVersionCode": 104002,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Alandal"
+            ]
+        },
+        {
+            "name": "AnimeSama",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.animesama",
+            "language": "fr",
+            "installedVersionName": "1.4.17",
+            "installedVersionCode": 104017,
+            "availableVersionName": "1.4.17",
+            "availableVersionCode": 104017,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "AnimeSama"
+            ]
+        },
+        {
+            "name": "AralosBD",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.aralosbd",
+            "language": "fr",
+            "installedVersionName": "1.4.6",
+            "installedVersionCode": 104006,
+            "availableVersionName": "1.4.6",
+            "availableVersionCode": 104006,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "AralosBD"
+            ]
+        },
+        {
+            "name": "Arven Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.arvencomics",
+            "language": "en",
+            "installedVersionName": "1.4.53",
+            "installedVersionCode": 53,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Arven Scans"
+            ]
+        },
+        {
+            "name": "Assorted Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.assortedscans",
+            "language": "en",
+            "installedVersionName": "1.4.18",
+            "installedVersionCode": 104018,
+            "availableVersionName": "1.4.18",
+            "availableVersionCode": 104018,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Assorted Scans"
+            ]
+        },
+        {
+            "name": "Astral-Manga",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.astralmanga",
+            "language": "fr",
+            "installedVersionName": "1.4.48",
+            "installedVersionCode": 104048,
+            "availableVersionName": "1.4.48",
+            "availableVersionCode": 104048,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "AstralManga"
+            ]
+        },
+        {
+            "name": "Asura Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.asurascans",
+            "language": "en",
+            "installedVersionName": "1.6.69",
+            "installedVersionCode": 106069,
+            "availableVersionName": "1.6.69",
+            "availableVersionCode": 106069,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Asura Scans"
+            ]
+        },
+        {
+            "name": "Asura Scans Free (unoriginal)",
+            "packageName": "eu.kanade.tachiyomi.extension.en.asurascansfree",
+            "language": "en",
+            "installedVersionName": "1.4.30",
+            "installedVersionCode": 30,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Asura Scans Free (unoriginal)"
+            ]
+        },
+        {
+            "name": "Asura Scans.us (unoriginal)",
+            "packageName": "eu.kanade.tachiyomi.extension.en.asurascansus",
+            "language": "en",
+            "installedVersionName": "1.4.41",
+            "installedVersionCode": 41,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Asura Scans.us (unoriginal)"
+            ]
+        },
+        {
+            "name": "BestManhua",
+            "packageName": "eu.kanade.tachiyomi.extension.en.bestmanhua",
+            "language": "en",
+            "installedVersionName": "1.4.40",
+            "installedVersionCode": 40,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "BestManhua"
+            ]
+        },
+        {
+            "name": "Comic Fans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.comicfans",
+            "language": "en",
+            "installedVersionName": "1.4.1",
+            "installedVersionCode": 1,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Comic Fans"
+            ]
+        },
+        {
+            "name": "ComicsKingdom",
+            "packageName": "eu.kanade.tachiyomi.extension.all.comicskingdom",
+            "language": "all",
+            "installedVersionName": "1.4.3",
+            "installedVersionCode": 104003,
+            "availableVersionName": "1.4.3",
+            "availableVersionCode": 104003,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Comics Kingdom"
+            ]
+        },
+        {
+            "name": "Commit Strip",
+            "packageName": "eu.kanade.tachiyomi.extension.all.commitstrip",
+            "language": "all",
+            "installedVersionName": "1.4.4",
+            "installedVersionCode": 104004,
+            "availableVersionName": "1.4.4",
+            "availableVersionCode": 104004,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Commit Strip"
+            ]
+        },
+        {
+            "name": "Cubari",
+            "packageName": "eu.kanade.tachiyomi.extension.all.cubari",
+            "language": "all",
+            "installedVersionName": "1.4.26",
+            "installedVersionCode": 104026,
+            "availableVersionName": "1.4.26",
+            "availableVersionCode": 104026,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Cubari"
+            ]
+        },
+        {
+            "name": "Cypher Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.cypherscans",
+            "language": "en",
+            "installedVersionName": "1.4.31",
+            "installedVersionCode": 31,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Cypher Scans"
+            ]
+        },
+        {
+            "name": "Dark-Scan.com",
+            "packageName": "eu.kanade.tachiyomi.extension.en.darkscancom",
+            "language": "en",
+            "installedVersionName": "1.4.39",
+            "installedVersionCode": 39,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Dark-Scan.com"
+            ]
+        },
+        {
+            "name": "ED Scanlation",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.edscanlation",
+            "language": "fr",
+            "installedVersionName": "1.4.18",
+            "installedVersionCode": 18,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "ED Scanlation"
+            ]
+        },
+        {
+            "name": "Etheral Radiance",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.etheralradiance",
+            "language": "fr",
+            "installedVersionName": "1.4.30",
+            "installedVersionCode": 30,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Etheral Radiance"
+            ]
+        },
+        {
+            "name": "Firescans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.firescans",
+            "language": "en",
+            "installedVersionName": "1.4.56",
+            "installedVersionCode": 104056,
+            "availableVersionName": "1.4.56",
+            "availableVersionCode": 104056,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Firescans"
+            ]
+        },
+        {
+            "name": "Flame Comics",
+            "packageName": "eu.kanade.tachiyomi.extension.en.flamecomics",
+            "language": "en",
+            "installedVersionName": "1.4.50",
+            "installedVersionCode": 104050,
+            "availableVersionName": "1.4.50",
+            "availableVersionCode": 104050,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Flame Comics"
+            ]
+        },
+        {
+            "name": "FMTEAM",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.fmteam",
+            "language": "fr",
+            "installedVersionName": "1.6.8",
+            "installedVersionCode": 106008,
+            "availableVersionName": "1.6.8",
+            "availableVersionCode": 106008,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "FMTEAM"
+            ]
+        },
+        {
+            "name": "FR Manga",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.frmanga",
+            "language": "fr",
+            "installedVersionName": "1.4.7",
+            "installedVersionCode": 7,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "FR Manga"
+            ]
+        },
+        {
+            "name": "FR-Scan",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.frdashscan",
+            "language": "fr",
+            "installedVersionName": "1.4.45",
+            "installedVersionCode": 45,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "FR-Scan"
+            ]
+        },
+        {
+            "name": "FuryoSquad",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.furyosquad",
+            "language": "fr",
+            "installedVersionName": "1.4.5",
+            "installedVersionCode": 104005,
+            "availableVersionName": "1.4.5",
+            "availableVersionCode": 104005,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "FuryoSquad"
+            ]
+        },
+        {
+            "name": "Galaxy",
+            "packageName": "eu.kanade.tachiyomi.extension.all.galaxy",
+            "language": "all",
+            "installedVersionName": "1.4.5",
+            "installedVersionCode": 5,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Galaxy Manga",
+                "Galaxy Webtoon"
+            ]
+        },
+        {
+            "name": "Hive Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.infernalvoidscans",
+            "language": "en",
+            "installedVersionName": "1.6.71",
+            "installedVersionCode": 106071,
+            "availableVersionName": "1.6.71",
+            "availableVersionCode": 106071,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Hive Scans"
+            ]
+        },
+        {
+            "name": "Iris Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.irisscans",
+            "language": "en",
+            "installedVersionName": "1.4.30",
+            "installedVersionCode": 30,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Iris Scans"
+            ]
+        },
+        {
+            "name": "izneo (webtoons)",
+            "packageName": "eu.kanade.tachiyomi.extension.all.izneo",
+            "language": "all",
+            "installedVersionName": "1.4.8",
+            "installedVersionCode": 104008,
+            "availableVersionName": "1.4.8",
+            "availableVersionCode": 104008,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "izneo"
+            ]
+        },
+        {
+            "name": "Japscan",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.japscan",
+            "language": "fr",
+            "installedVersionName": "1.4.70",
+            "installedVersionCode": 104070,
+            "availableVersionName": "1.4.70",
+            "availableVersionCode": 104070,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Japscan"
+            ]
+        },
+        {
+            "name": "Kagane",
+            "packageName": "eu.kanade.tachiyomi.extension.all.kagane",
+            "language": "all",
+            "installedVersionName": "1.6.31",
+            "installedVersionCode": 106031,
+            "availableVersionName": "1.6.31",
+            "availableVersionCode": 106031,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Kagane"
+            ]
+        },
+        {
+            "name": "Kewn Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.kewnscans",
+            "language": "en",
+            "installedVersionName": "1.6.22",
+            "installedVersionCode": 106022,
+            "availableVersionName": "1.6.22",
+            "availableVersionCode": 106022,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Kewn Scans"
+            ]
+        },
+        {
+            "name": "King of Shojo",
+            "packageName": "eu.kanade.tachiyomi.extension.en.kingofshojo",
+            "language": "en",
+            "installedVersionName": "1.4.32",
+            "installedVersionCode": 104032,
+            "availableVersionName": "1.4.32",
+            "availableVersionCode": 104032,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "King of Shojo"
+            ]
+        },
+        {
+            "name": "Kuma Scans (Kuma Translation)",
+            "packageName": "eu.kanade.tachiyomi.extension.en.kumascans",
+            "language": "en",
+            "installedVersionName": "1.4.31",
+            "installedVersionCode": 31,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Kuma Scans (Kuma Translation)"
+            ]
+        },
+        {
+            "name": "Kun Manga",
+            "packageName": "eu.kanade.tachiyomi.extension.en.kunmanga",
+            "language": "en",
+            "installedVersionName": "1.4.51",
+            "installedVersionCode": 51,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Kun Manga"
+            ]
+        },
+        {
+            "name": "Lagoon Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.lagoonscans",
+            "language": "en",
+            "installedVersionName": "1.4.32",
+            "installedVersionCode": 104032,
+            "availableVersionName": "1.4.32",
+            "availableVersionCode": 104032,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Lagoon Scans"
+            ]
+        },
+        {
+            "name": "Legacy Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.flamescansfr",
+            "language": "fr",
+            "installedVersionName": "1.4.31",
+            "installedVersionCode": 31,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Legacy Scans"
+            ]
+        },
+        {
+            "name": "Lelmanga",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.lelmanga",
+            "language": "fr",
+            "installedVersionName": "1.4.33",
+            "installedVersionCode": 104033,
+            "availableVersionName": "1.4.33",
+            "availableVersionCode": 104033,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Lelmanga"
+            ]
+        },
+        {
+            "name": "Lelscan-VF",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.lelscanvf",
+            "language": "fr",
+            "installedVersionName": "1.4.15",
+            "installedVersionCode": 104015,
+            "availableVersionName": "1.4.15",
+            "availableVersionCode": 104015,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Lelscan-VF"
+            ]
+        },
+        {
+            "name": "Leviatan Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.leviatanscans",
+            "language": "en",
+            "installedVersionName": "1.4.53",
+            "installedVersionCode": 53,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Leviatan Scans"
+            ]
+        },
+        {
+            "name": "Little Garden",
+            "packageName": "eu.kanade.tachiyomi.extension.all.littlegarden",
+            "language": "all",
+            "installedVersionName": "1.4.3",
+            "installedVersionCode": 3,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Little Garden"
+            ]
+        },
+        {
+            "name": "Lua Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.luascans",
+            "language": "en",
+            "installedVersionName": "1.6.52",
+            "installedVersionCode": 106052,
+            "availableVersionName": "1.6.52",
+            "availableVersionCode": 106052,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Lua Scans"
+            ]
+        },
+        {
+            "name": "Mahua USS",
+            "packageName": "eu.kanade.tachiyomi.extension.en.mahuauss",
+            "language": "en",
+            "installedVersionName": "1.4.37",
+            "installedVersionCode": 37,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Mahua USS"
+            ]
+        },
+        {
+            "name": "Manga Demon",
+            "packageName": "eu.kanade.tachiyomi.extension.en.mangademon",
+            "language": "en",
+            "installedVersionName": "1.4.20",
+            "installedVersionCode": 104020,
+            "availableVersionName": "1.4.20",
+            "availableVersionCode": 104020,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manga Demon"
+            ]
+        },
+        {
+            "name": "Manga Galaxy",
+            "packageName": "eu.kanade.tachiyomi.extension.en.mangagalaxy",
+            "language": "en",
+            "installedVersionName": "1.4.46",
+            "installedVersionCode": 46,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manga Galaxy"
+            ]
+        },
+        {
+            "name": "MANGA Plus by SHUEISHA",
+            "packageName": "eu.kanade.tachiyomi.extension.all.mangaplus",
+            "language": "all",
+            "installedVersionName": "1.6.65",
+            "installedVersionCode": 106065,
+            "availableVersionName": "1.6.65",
+            "availableVersionCode": 106065,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "MANGA Plus by SHUEISHA"
+            ]
+        },
+        {
+            "name": "Manga-1001.com",
+            "packageName": "eu.kanade.tachiyomi.extension.en.mangadash1001com",
+            "language": "en",
+            "installedVersionName": "1.4.37",
+            "installedVersionCode": 37,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manga-1001.com"
+            ]
+        },
+        {
+            "name": "Manga-Scan",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.mangascan",
+            "language": "fr",
+            "installedVersionName": "1.4.17",
+            "installedVersionCode": 17,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manga-Scan"
+            ]
+        },
+        {
+            "name": "Manga3S",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manga3s",
+            "language": "en",
+            "installedVersionName": "1.4.49",
+            "installedVersionCode": 49,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manga3S"
+            ]
+        },
+        {
+            "name": "MangaNova",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.manganova",
+            "language": "fr",
+            "installedVersionName": "1.4.2",
+            "installedVersionCode": 104002,
+            "availableVersionName": "1.4.2",
+            "availableVersionCode": 104002,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "MangaNova"
+            ]
+        },
+        {
+            "name": "Mangas Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.mangasscans",
+            "language": "fr",
+            "installedVersionName": "1.4.33",
+            "installedVersionCode": 104033,
+            "availableVersionName": "1.4.33",
+            "availableVersionCode": 104033,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Mangas Scans"
+            ]
+        },
+        {
+            "name": "Mangas-Origines.fr",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.mangasoriginesfr",
+            "language": "fr",
+            "installedVersionName": "1.6.60",
+            "installedVersionCode": 106060,
+            "availableVersionName": "1.6.60",
+            "availableVersionCode": 106060,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Mangas-Origines.fr"
+            ]
+        },
+        {
+            "name": "MangaToon (Limited)",
+            "packageName": "eu.kanade.tachiyomi.extension.all.mangatoon",
+            "language": "all",
+            "installedVersionName": "1.4.8",
+            "installedVersionCode": 104008,
+            "availableVersionName": "1.4.8",
+            "availableVersionCode": 104008,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "MangaToon (Limited)"
+            ]
+        },
+        {
+            "name": "MangaUS",
+            "packageName": "eu.kanade.tachiyomi.extension.en.mangaus",
+            "language": "en",
+            "installedVersionName": "1.4.43",
+            "installedVersionCode": 43,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "MangaUS"
+            ]
+        },
+        {
+            "name": "Manhua Plus",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manhuaplus",
+            "language": "en",
+            "installedVersionName": "1.6.61",
+            "installedVersionCode": 106061,
+            "availableVersionName": "1.6.61",
+            "availableVersionCode": 106061,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manhua Plus"
+            ]
+        },
+        {
+            "name": "ManhuaUS",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manhuaus",
+            "language": "en",
+            "installedVersionName": "1.6.59",
+            "installedVersionCode": 106059,
+            "availableVersionName": "1.6.59",
+            "availableVersionCode": 106059,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "ManhuaUS"
+            ]
+        },
+        {
+            "name": "ManhuaZone",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manhuazone",
+            "language": "en",
+            "installedVersionName": "1.4.42",
+            "installedVersionCode": 42,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "ManhuaZone"
+            ]
+        },
+        {
+            "name": "ManhwaClan",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manhwaclan",
+            "language": "en",
+            "installedVersionName": "1.4.52",
+            "installedVersionCode": 52,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "ManhwaClan"
+            ]
+        },
+        {
+            "name": "Manta Comics",
+            "packageName": "eu.kanade.tachiyomi.extension.en.manta",
+            "language": "en",
+            "installedVersionName": "1.4.6",
+            "installedVersionCode": 6,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Manta"
+            ]
+        },
+        {
+            "name": "Monochrome Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.monochromescans",
+            "language": "en",
+            "installedVersionName": "1.4.5",
+            "installedVersionCode": 104005,
+            "availableVersionName": "1.4.5",
+            "availableVersionCode": 104005,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Monochrome Scans"
+            ]
+        },
+        {
+            "name": "Naver Comic",
+            "packageName": "eu.kanade.tachiyomi.extension.ko.navercomic",
+            "language": "ko",
+            "installedVersionName": "1.4.9",
+            "installedVersionCode": 104009,
+            "availableVersionName": "1.4.9",
+            "availableVersionCode": 104009,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Naver Webtoon",
+                "Naver Webtoon Best Challenge",
+                "Naver Webtoon Challenge"
+            ]
+        },
+        {
+            "name": "Necro Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.necroscans",
+            "language": "en",
+            "installedVersionName": "1.4.20",
+            "installedVersionCode": 20,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Necro Scans"
+            ]
+        },
+        {
+            "name": "NineManga",
+            "packageName": "eu.kanade.tachiyomi.extension.all.ninemanga",
+            "language": "all",
+            "installedVersionName": "1.4.26",
+            "installedVersionCode": 26,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "NineMangaBr",
+                "NineMangaDe",
+                "NineMangaEn",
+                "NineMangaEs",
+                "NineMangaFr",
+                "NineMangaIt",
+                "NineMangaRu"
+            ]
+        },
+        {
+            "name": "Nitro Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.nitroscans",
+            "language": "en",
+            "installedVersionName": "1.4.47",
+            "installedVersionCode": 47,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Nitro Scans"
+            ]
+        },
+        {
+            "name": "NovelFrance",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.novelfrance",
+            "language": "fr",
+            "installedVersionName": "1.4.1",
+            "installedVersionCode": 1,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": null,
+            "signatureSha256": "fca3da0c67bc958f0aaea33f0c6204a5a9e7800dbe8c7650cadd363cec305644",
+            "sources": [
+                "NovelFrance"
+            ]
+        },
+        {
+            "name": "NovelMic",
+            "packageName": "eu.kanade.tachiyomi.extension.en.novelmic",
+            "language": "en",
+            "installedVersionName": "1.4.46",
+            "installedVersionCode": 46,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "NovelMic"
+            ]
+        },
+        {
+            "name": "Nux Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.nuxscans",
+            "language": "en",
+            "installedVersionName": "1.4.2",
+            "installedVersionCode": 104002,
+            "availableVersionName": "1.4.2",
+            "availableVersionCode": 104002,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Nux Scans"
+            ]
+        },
+        {
+            "name": "Nyrax Manga",
+            "packageName": "eu.kanade.tachiyomi.extension.en.nyraxmanga",
+            "language": "en",
+            "installedVersionName": "1.4.30",
+            "installedVersionCode": 30,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Nyrax Manga"
+            ]
+        },
+        {
+            "name": "PhenixScans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.phenixscans",
+            "language": "fr",
+            "installedVersionName": "1.4.35",
+            "installedVersionCode": 35,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Phenix Scans"
+            ]
+        },
+        {
+            "name": "Philia Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.philiascans",
+            "language": "en",
+            "installedVersionName": "1.4.59",
+            "installedVersionCode": 104059,
+            "availableVersionName": "1.4.59",
+            "availableVersionCode": 104059,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Philia Scans"
+            ]
+        },
+        {
+            "name": "Poseidon Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.poseidonscans",
+            "language": "fr",
+            "installedVersionName": "1.4.51",
+            "installedVersionCode": 104051,
+            "availableVersionName": "1.4.51",
+            "availableVersionCode": 104051,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Poseidon Scans"
+            ]
+        },
+        {
+            "name": "Project Suki",
+            "packageName": "eu.kanade.tachiyomi.extension.all.projectsuki",
+            "language": "all",
+            "installedVersionName": "1.4.9",
+            "installedVersionCode": 104009,
+            "availableVersionName": "1.4.9",
+            "availableVersionCode": 104009,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Project Suki"
+            ]
+        },
+        {
+            "name": "Quantum Toon",
+            "packageName": "eu.kanade.tachiyomi.extension.en.quantumscans",
+            "language": "en",
+            "installedVersionName": "1.4.39",
+            "installedVersionCode": 39,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Quantum Toon"
+            ]
+        },
+        {
+            "name": "Raijin Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.raijinscans",
+            "language": "fr",
+            "installedVersionName": "1.4.68",
+            "installedVersionCode": 104068,
+            "availableVersionName": "1.4.68",
+            "availableVersionCode": 104068,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Raijin Scans"
+            ]
+        },
+        {
+            "name": "Raven Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.ravenscans",
+            "language": "en",
+            "installedVersionName": "1.4.37",
+            "installedVersionCode": 104037,
+            "availableVersionName": "1.4.37",
+            "availableVersionCode": 104037,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Raven Scans"
+            ]
+        },
+        {
+            "name": "Read Comics Online",
+            "packageName": "eu.kanade.tachiyomi.extension.en.readcomicsonline",
+            "language": "en",
+            "installedVersionName": "1.4.15",
+            "installedVersionCode": 104015,
+            "availableVersionName": "1.4.15",
+            "availableVersionCode": 104015,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Read Comics Online"
+            ]
+        },
+        {
+            "name": "Real Life Comics",
+            "packageName": "eu.kanade.tachiyomi.extension.en.reallifecomics",
+            "language": "en",
+            "installedVersionName": "1.4.3",
+            "installedVersionCode": 104003,
+            "availableVersionName": "1.4.3",
+            "availableVersionCode": 104003,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Real Life Comics"
+            ]
+        },
+        {
+            "name": "Reaper Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.reaperscans",
+            "language": "fr",
+            "installedVersionName": "1.4.22",
+            "installedVersionCode": 22,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Reaper Scans"
+            ]
+        },
+        {
+            "name": "Reaper Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.reaperscans",
+            "language": "en",
+            "installedVersionName": "1.4.58",
+            "installedVersionCode": 58,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Reaper Scans"
+            ]
+        },
+        {
+            "name": "Reaper Scans (unoriginal)",
+            "packageName": "eu.kanade.tachiyomi.extension.en.reaperscansunoriginal",
+            "language": "en",
+            "installedVersionName": "1.4.33",
+            "installedVersionCode": 33,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Reaper Scans (unoriginal)"
+            ]
+        },
+        {
+            "name": "Reset Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.resetscans",
+            "language": "en",
+            "installedVersionName": "1.4.65",
+            "installedVersionCode": 65,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Reset Scans"
+            ]
+        },
+        {
+            "name": "Rezo Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.rezoscans",
+            "language": "en",
+            "installedVersionName": "1.4.23",
+            "installedVersionCode": 23,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Rezo Scans"
+            ]
+        },
+        {
+            "name": "Rimu Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.rimuscans",
+            "language": "fr",
+            "installedVersionName": "1.4.35",
+            "installedVersionCode": 104035,
+            "availableVersionName": "1.4.35",
+            "availableVersionCode": 104035,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Rimu Scans"
+            ]
+        },
+        {
+            "name": "Rolia Scan",
+            "packageName": "eu.kanade.tachiyomi.extension.en.roliascan",
+            "language": "en",
+            "installedVersionName": "1.4.9",
+            "installedVersionCode": 104009,
+            "availableVersionName": "1.4.9",
+            "availableVersionCode": 104009,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Rolia Scan"
+            ]
+        },
+        {
+            "name": "Scan VF",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.scanvf",
+            "language": "fr",
+            "installedVersionName": "1.4.15",
+            "installedVersionCode": 104015,
+            "availableVersionName": "1.4.15",
+            "availableVersionCode": 104015,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Scan VF"
+            ]
+        },
+        {
+            "name": "Scantrad Union",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.scantradunion",
+            "language": "fr",
+            "installedVersionName": "1.4.3",
+            "installedVersionCode": 104003,
+            "availableVersionName": "1.4.3",
+            "availableVersionCode": 104003,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Scantrad Union"
+            ]
+        },
+        {
+            "name": "scanvf.org",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.scanvforg",
+            "language": "fr",
+            "installedVersionName": "1.4.1",
+            "installedVersionCode": 1,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "scanvf.org"
+            ]
+        },
+        {
+            "name": "Scylla Comics",
+            "packageName": "eu.kanade.tachiyomi.extension.en.scyllascans",
+            "language": "en",
+            "installedVersionName": "1.4.12",
+            "installedVersionCode": 12,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Scylla Comics"
+            ]
+        },
+        {
+            "name": "Scythe Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.erosscans",
+            "language": "en",
+            "installedVersionName": "1.4.40",
+            "installedVersionCode": 104040,
+            "availableVersionName": "1.4.40",
+            "availableVersionCode": 104040,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Scythe Scans"
+            ]
+        },
+        {
+            "name": "SectScans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.sectscans",
+            "language": "en",
+            "installedVersionName": "1.4.45",
+            "installedVersionCode": 45,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "SectScans"
+            ]
+        },
+        {
+            "name": "Setsu Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.setsuscans",
+            "language": "en",
+            "installedVersionName": "1.4.55",
+            "installedVersionCode": 104055,
+            "availableVersionName": "1.4.55",
+            "availableVersionCode": 104055,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Setsu Scans"
+            ]
+        },
+        {
+            "name": "Shadowtrad",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.shadowtrad",
+            "language": "fr",
+            "installedVersionName": "1.4.41",
+            "installedVersionCode": 41,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Shadowtrad"
+            ]
+        },
+        {
+            "name": "Siren Scans FR",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.sirenscansfr",
+            "language": "fr",
+            "installedVersionName": "1.6.21",
+            "installedVersionCode": 106021,
+            "availableVersionName": "1.6.21",
+            "availableVersionCode": 106021,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Siren Scans FR"
+            ]
+        },
+        {
+            "name": "Soft Epsilon Scan",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.softepsilonscan",
+            "language": "fr",
+            "installedVersionName": "1.4.55",
+            "installedVersionCode": 104055,
+            "availableVersionName": "1.4.55",
+            "availableVersionCode": 104055,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Soft Epsilon Scan"
+            ]
+        },
+        {
+            "name": "Sushi-Scan",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.sushiscan",
+            "language": "fr",
+            "installedVersionName": "1.4.49",
+            "installedVersionCode": 104049,
+            "availableVersionName": "1.4.49",
+            "availableVersionCode": 104049,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Sushi-Scan"
+            ]
+        },
+        {
+            "name": "Sushiscan.fr",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.sushiscanfr",
+            "language": "fr",
+            "installedVersionName": "1.4.35",
+            "installedVersionCode": 104035,
+            "availableVersionName": "1.4.35",
+            "availableVersionCode": 104035,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Sushiscan.fr"
+            ]
+        },
+        {
+            "name": "Tappytoon",
+            "packageName": "eu.kanade.tachiyomi.extension.all.tappytoon",
+            "language": "all",
+            "installedVersionName": "1.4.10",
+            "installedVersionCode": 104010,
+            "availableVersionName": "1.4.10",
+            "availableVersionCode": 104010,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Tappytoon"
+            ]
+        },
+        {
+            "name": "The Library of Ohara",
+            "packageName": "eu.kanade.tachiyomi.extension.all.thelibraryofohara",
+            "language": "all",
+            "installedVersionName": "1.4.2",
+            "installedVersionCode": 104002,
+            "availableVersionName": "1.4.2",
+            "availableVersionCode": 104002,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "The Library of Ohara"
+            ]
+        },
+        {
+            "name": "Thunder Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.all.thunderscans",
+            "language": "all",
+            "installedVersionName": "1.4.45",
+            "installedVersionCode": 45,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Lava Scans",
+                "Thunder Scans"
+            ]
+        },
+        {
+            "name": "Toon FR",
+            "packageName": "eu.kanade.tachiyomi.extension.fr.toonfr",
+            "language": "fr",
+            "installedVersionName": "1.6.54",
+            "installedVersionCode": 106054,
+            "availableVersionName": "1.6.54",
+            "availableVersionCode": 106054,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Toon FR"
+            ]
+        },
+        {
+            "name": "Valir Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.valirscans",
+            "language": "en",
+            "installedVersionName": "1.6.24",
+            "installedVersionCode": 106024,
+            "availableVersionName": "1.6.24",
+            "availableVersionCode": 106024,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Valir Scans"
+            ]
+        },
+        {
+            "name": "Vortex Scans",
+            "packageName": "eu.kanade.tachiyomi.extension.en.arvenscans",
+            "language": "en",
+            "installedVersionName": "1.6.89",
+            "installedVersionCode": 106089,
+            "availableVersionName": "1.6.89",
+            "availableVersionCode": 106089,
+            "extensionLibVersion": 1.6,
+            "hasUpdate": false,
+            "isObsolete": false,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Vortex Scans"
+            ]
+        },
+        {
+            "name": "Webcomics",
+            "packageName": "eu.kanade.tachiyomi.extension.en.webcomics",
+            "language": "en",
+            "installedVersionName": "1.4.10",
+            "installedVersionCode": 10,
+            "availableVersionName": null,
+            "availableVersionCode": null,
+            "extensionLibVersion": 1.4,
+            "hasUpdate": false,
+            "isObsolete": true,
+            "repositoryName": "Keiyoushi",
+            "signatureSha256": "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2",
+            "sources": [
+                "Webcomics"
+            ]
+        }
+    ]
+}

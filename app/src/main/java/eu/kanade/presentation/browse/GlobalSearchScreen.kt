@@ -1,11 +1,15 @@
 package eu.kanade.presentation.browse
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import eu.kanade.domain.source.model.installedExtension
 import eu.kanade.presentation.browse.components.GlobalSearchCardRow
@@ -14,6 +18,7 @@ import eu.kanade.presentation.browse.components.GlobalSearchLoadingResultItem
 import eu.kanade.presentation.browse.components.GlobalSearchResultItem
 import eu.kanade.presentation.browse.components.GlobalSearchToolbar
 import eu.kanade.presentation.components.BulkSelectionToolbar
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.ui.browse.BulkFavoriteScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
@@ -119,55 +124,60 @@ internal fun GlobalSearchContent(
     selection: List<Manga>,
     // KMK <--
 ) {
-    LazyColumn(
-        contentPadding = contentPadding,
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        items.forEach { (source, result) ->
-            item(key = "global-search-${source.id}") {
-                // KMK -->
-                val domainSource = DomainSource(
-                    source.id,
-                    "",
-                    "",
-                    supportsLatest = false,
-                    isStub = false,
-                )
-                // KMK <--
-
-                GlobalSearchResultItem(
-                    title = (
-                        fromSourceId?.let {
-                            "▶ ${source.name}".takeIf { source.id == fromSourceId }
-                        } ?: source.name
-                        ) +
-                        // KMK -->
-                        (
-                            domainSource.installedExtension?.let { extension ->
-                                " (${extension.name})".takeIf { extension.name != source.name }
-                            } ?: ""
-                            ),
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
+                .fillMaxSize(),
+            contentPadding = contentPadding,
+        ) {
+            items.forEach { (source, result) ->
+                item(key = "global-search-${source.id}") {
+                    // KMK -->
+                    val domainSource = DomainSource(
+                        source.id,
+                        "",
+                        "",
+                        supportsLatest = false,
+                        isStub = false,
+                    )
                     // KMK <--
-                    subtitle = LocaleHelper.getLocalizedDisplayName(source.lang),
-                    onClick = { onClickSource(source) },
-                    modifier = Modifier.animateItem(),
-                ) {
-                    when (result) {
-                        SearchItemResult.Loading -> {
-                            GlobalSearchLoadingResultItem()
-                        }
-                        is SearchItemResult.Success -> {
-                            GlobalSearchCardRow(
-                                titles = result.result,
-                                getManga = getManga,
-                                onClick = onClickItem,
-                                onLongClick = onLongClickItem,
-                                // KMK -->
-                                selection = selection,
-                                // KMK <--
-                            )
-                        }
-                        is SearchItemResult.Error -> {
-                            GlobalSearchErrorResultItem(message = result.throwable.message)
+
+                    GlobalSearchResultItem(
+                        title = source.name +
+                            // KMK -->
+                            (
+                                domainSource.installedExtension?.let { extension ->
+                                    " (${extension.name})".takeIf { extension.name != source.name }
+                                } ?: ""
+                            ),
+                        // KMK <--
+                        subtitle = LocaleHelper.getLocalizedDisplayName(source.lang),
+                        highlighted = source.id == fromSourceId,
+                        onClick = { onClickSource(source) },
+                        modifier = Modifier.animateItem(),
+                    ) {
+                        when (result) {
+                            SearchItemResult.Loading -> {
+                                GlobalSearchLoadingResultItem()
+                            }
+                            is SearchItemResult.Success -> {
+                                GlobalSearchCardRow(
+                                    titles = result.result,
+                                    getManga = getManga,
+                                    onClick = onClickItem,
+                                    onLongClick = onLongClickItem,
+                                    // KMK -->
+                                    selection = selection,
+                                    // KMK <--
+                                )
+                            }
+                            is SearchItemResult.Error -> {
+                                GlobalSearchErrorResultItem(message = result.throwable.message)
+                            }
                         }
                     }
                 }

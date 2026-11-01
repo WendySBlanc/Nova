@@ -52,7 +52,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionOnScreen
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -101,7 +100,6 @@ import eu.kanade.tachiyomi.ui.manga.ChapterList
 import eu.kanade.tachiyomi.ui.manga.MangaScreenModel
 import eu.kanade.tachiyomi.ui.manga.MergedMangaData
 import eu.kanade.tachiyomi.ui.manga.PagePreviewState
-import eu.kanade.tachiyomi.util.system.copyToClipboard
 import exh.metadata.MetadataUtil
 import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
@@ -214,138 +212,27 @@ fun MangaScreen(
     hazeState: HazeState,
     // KMK <--
 ) {
-    val context = LocalContext.current
-    val onCopyTagToClipboard: (tag: String) -> Unit = {
-        if (it.isNotEmpty()) {
-            context.copyToClipboard(it, it)
-        }
-    }
-
-    if (!isTabletUi) {
-        MangaScreenSmallImpl(
-            state = state,
-            snackbarHostState = snackbarHostState,
-            nextUpdate = nextUpdate,
-            chapterSwipeStartAction = chapterSwipeStartAction,
-            chapterSwipeEndAction = chapterSwipeEndAction,
-            navigateUp = navigateUp,
-            onChapterClicked = onChapterClicked,
-            onDownloadChapter = onDownloadChapter,
-            onAddToLibraryClicked = onAddToLibraryClicked,
-            onWebViewClicked = onWebViewClicked,
-            onWebViewLongClicked = onWebViewLongClicked,
-            onTrackingClicked = onTrackingClicked,
-            onTagSearch = onTagSearch,
-            onCopyTagToClipboard = onCopyTagToClipboard,
-            onFilterClicked = onFilterButtonClicked,
-            onRefresh = onRefresh,
-            onContinueReading = onContinueReading,
-            onSearch = onSearch,
-            onCoverClicked = onCoverClicked,
-            onShareClicked = onShareClicked,
-            onDownloadActionClicked = onDownloadActionClicked,
-            onEditCategoryClicked = onEditCategoryClicked,
-            onEditIntervalClicked = onEditFetchIntervalClicked,
-            onMigrateClicked = onMigrateClicked,
-            onEditNotesClicked = onEditNotesClicked,
-            // SY -->
-            onMetadataViewerClicked = onMetadataViewerClicked,
-            onEditInfoClicked = onEditInfoClicked,
-            onRecommendClicked = onRecommendClicked,
-            onMergedSettingsClicked = onMergedSettingsClicked,
-            onMergeClicked = onMergeClicked,
-            onMergeWithAnotherClicked = onMergeWithAnotherClicked,
-            onOpenPagePreview = onOpenPagePreview,
-            onMorePreviewsClicked = onMorePreviewsClicked,
-            previewsRowCount = previewsRowCount,
-            // SY <--
-            onMultiBookmarkClicked = onMultiBookmarkClicked,
-            onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
-            onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
-            onMultiDeleteClicked = onMultiDeleteClicked,
-            onChapterSwipe = onChapterSwipe,
-            onChapterSelected = onChapterSelected,
-            onAllChapterSelected = onAllChapterSelected,
-            onInvertSelection = onInvertSelection,
-            // KMK -->
-            getMangaState = getMangaState,
-            onClickSourceSettingsClicked = onClickSourceSettingsClicked,
-            onClearManga = onClearManga,
-            onOpenMangaFolder = onOpenMangaFolder,
-            onRelatedMangasScreenClick = onRelatedMangasScreenClick,
-            onRelatedMangaClick = onRelatedMangaClick,
-            onRelatedMangaLongClick = onRelatedMangaLongClick,
-            librarySearch = librarySearch,
-            onSourceClick = onSourceClick,
-            onCoverLoaded = onCoverLoaded,
-            coverRatio = coverRatio,
-            onPaletteScreenClick = onPaletteScreenClick,
-            hazeState = hazeState,
-            // KMK <--
-        )
-    } else {
-        MangaScreenLargeImpl(
-            state = state,
-            snackbarHostState = snackbarHostState,
-            chapterSwipeStartAction = chapterSwipeStartAction,
-            chapterSwipeEndAction = chapterSwipeEndAction,
-            nextUpdate = nextUpdate,
-            navigateUp = navigateUp,
-            onChapterClicked = onChapterClicked,
-            onDownloadChapter = onDownloadChapter,
-            onAddToLibraryClicked = onAddToLibraryClicked,
-            onWebViewClicked = onWebViewClicked,
-            onWebViewLongClicked = onWebViewLongClicked,
-            onTrackingClicked = onTrackingClicked,
-            onTagSearch = onTagSearch,
-            onCopyTagToClipboard = onCopyTagToClipboard,
-            onFilterButtonClicked = onFilterButtonClicked,
-            onRefresh = onRefresh,
-            onContinueReading = onContinueReading,
-            onSearch = onSearch,
-            onCoverClicked = onCoverClicked,
-            onShareClicked = onShareClicked,
-            onDownloadActionClicked = onDownloadActionClicked,
-            onEditCategoryClicked = onEditCategoryClicked,
-            onEditIntervalClicked = onEditFetchIntervalClicked,
-            onMigrateClicked = onMigrateClicked,
-            onEditNotesClicked = onEditNotesClicked,
-            // SY -->
-            onMetadataViewerClicked = onMetadataViewerClicked,
-            onEditInfoClicked = onEditInfoClicked,
-            onRecommendClicked = onRecommendClicked,
-            onMergedSettingsClicked = onMergedSettingsClicked,
-            onMergeClicked = onMergeClicked,
-            onMergeWithAnotherClicked = onMergeWithAnotherClicked,
-            onOpenPagePreview = onOpenPagePreview,
-            onMorePreviewsClicked = onMorePreviewsClicked,
-            previewsRowCount = previewsRowCount,
-            // SY <--
-            onMultiBookmarkClicked = onMultiBookmarkClicked,
-            onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
-            onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
-            onMultiDeleteClicked = onMultiDeleteClicked,
-            onChapterSwipe = onChapterSwipe,
-            onChapterSelected = onChapterSelected,
-            onAllChapterSelected = onAllChapterSelected,
-            onInvertSelection = onInvertSelection,
-            // KMK -->
-            getMangaState = getMangaState,
-            onClickSourceSettingsClicked = onClickSourceSettingsClicked,
-            onClearManga = onClearManga,
-            onOpenMangaFolder = onOpenMangaFolder,
-            onRelatedMangasScreenClick = onRelatedMangasScreenClick,
-            onRelatedMangaClick = onRelatedMangaClick,
-            onRelatedMangaLongClick = onRelatedMangaLongClick,
-            librarySearch = librarySearch,
-            onSourceClick = onSourceClick,
-            onCoverLoaded = onCoverLoaded,
-            coverRatio = coverRatio,
-            onPaletteScreenClick = onPaletteScreenClick,
-            hazeState = hazeState,
-            // KMK <--
-        )
-    }
+    NovaVikiMangaScreen(
+        state = state,
+        snackbarHostState = snackbarHostState,
+        sourceName = remember(state.source, state.mergedData) {
+            state.source.getNameForMangaInfo(state.mergedData?.sources)
+        },
+        navigateUp = navigateUp,
+        onChapterClicked = onChapterClicked,
+        onContinueReading = onContinueReading,
+        onAddToLibraryClicked = onAddToLibraryClicked,
+        onRefresh = onRefresh,
+        onFilterClicked = onFilterButtonClicked,
+        onWebViewClicked = onWebViewClicked,
+        onShareClicked = onShareClicked,
+        onDownloadActionClicked = onDownloadActionClicked,
+        onDownloadChapter = onDownloadChapter,
+        onTitleSearch = { query -> onSearch(query, true) },
+        onSourceSearch = { query -> onSearch(query, true) },
+        onMarkChaptersRead = onMultiMarkAsReadClicked,
+        onMarkPreviousChaptersRead = onMarkPreviousAsReadClicked,
+    )
 }
 
 @Composable

@@ -1,10 +1,13 @@
 package eu.kanade.presentation.more.stats
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material.icons.Icons
@@ -14,11 +17,13 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import eu.kanade.presentation.more.stats.components.StatsItem
 import eu.kanade.presentation.more.stats.components.StatsOverviewItem
 import eu.kanade.presentation.more.stats.data.StatsData
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.toDurationString
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.SectionCard
@@ -33,21 +38,29 @@ fun StatsScreenContent(
     state: StatsScreenState.Success,
     paddingValues: PaddingValues,
 ) {
-    LazyColumn(
-        contentPadding = paddingValues,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        item {
-            OverviewSection(state.overview)
-        }
-        item {
-            TitlesStats(state.titles)
-        }
-        item {
-            ChapterStats(state.chapters)
-        }
-        item {
-            TrackerStats(state.trackers)
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize(),
+            contentPadding = paddingValues,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+        ) {
+            item {
+                OverviewSection(state.overview)
+            }
+            item {
+                TitlesStats(state.titles)
+            }
+            item {
+                ChapterStats(state.chapters)
+            }
+            item {
+                TrackerStats(state.trackers)
+            }
         }
     }
 }

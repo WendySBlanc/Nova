@@ -50,7 +50,11 @@ fun GlobalSearchCardRow(
         contentPadding = PaddingValues(MaterialTheme.padding.small),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
     ) {
-        items(titles) {
+        items(
+            items = titles,
+            key = { it.id },
+            contentType = { "global_search_result" },
+        ) {
             val title by getManga(it)
             MangaItem(
                 title = title.title,
@@ -85,7 +89,7 @@ internal fun MangaItem(
     Box(
         modifier = Modifier.width(
             // KMK -->
-            if (panoramaCover && coverRatio.floatValue <= RatioSwitchToPanorama) 205.dp else 96.dp,
+            if (panoramaCover && coverRatio.floatValue <= RatioSwitchToPanorama) 164.dp else 77.dp,
             // KMK <--
         ),
     ) {

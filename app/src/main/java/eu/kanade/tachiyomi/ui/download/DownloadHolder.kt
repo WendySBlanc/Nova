@@ -41,39 +41,52 @@ class DownloadHolder(private val view: View, val adapter: DownloadAdapter) :
         // Update the manga title
         binding.mangaFullTitle.text = download.manga.title
 
-        // Update the progress bar and the number of downloaded pages
-        val pages = download.pages
-        if (pages == null) {
-            binding.downloadProgress.progress = 0
-            binding.downloadProgress.max = 1
-            binding.downloadProgressText.text = ""
-        } else {
-            binding.downloadProgress.max = pages.size * 100
-            notifyProgress()
-            notifyDownloadedPages()
-        }
         // KMK -->
         binding.downloadProgress.setColors(adapter.colorScheme)
         // KMK <--
+        updateDownloadState()
     }
 
     /**
      * Updates the progress bar of the download.
      */
     fun notifyProgress() {
-        val pages = download.pages ?: return
-        if (binding.downloadProgress.max == 1) {
-            binding.downloadProgress.max = pages.size * 100
-        }
-        binding.downloadProgress.setProgressCompat(download.totalProgress, true)
+        updateDownloadState()
     }
 
     /**
      * Updates the text field of the number of downloaded pages.
      */
     fun notifyDownloadedPages() {
-        val pages = download.pages ?: return
-        binding.downloadProgressText.text = "${download.downloadedImages}/${pages.size}"
+        updateDownloadState()
+    }
+
+    fun notifyStatus() {
+        updateDownloadState()
+    }
+
+    fun isBoundTo(download: Download): Boolean {
+        return this::download.isInitialized && this.download.chapter.id == download.chapter.id
+    }
+
+    private fun updateDownloadState() {
+        val pages = download.pages
+        val maxProgress = pages?.size?.times(100)?.coerceAtLeast(1) ?: 100
+        binding.downloadProgress.max = maxProgress
+        binding.downloadProgress.setProgressCompat(download.totalProgress.coerceIn(0, maxProgress), true)
+
+        val pageProgress = pages?.let { "${download.downloadedImages}/${it.size}" }
+        binding.downloadProgressText.text = when (download.status) {
+            Download.State.QUEUE -> view.context.getString(R.string.download_state_queued)
+            Download.State.DOWNLOADING -> pageProgress
+                ?: view.context.getString(R.string.download_state_preparing)
+            Download.State.DOWNLOADED -> view.context.getString(R.string.download_state_complete)
+            Download.State.ERROR -> listOfNotNull(
+                view.context.getString(R.string.download_state_error),
+                pageProgress,
+            ).joinToString(" - ")
+            Download.State.NOT_DOWNLOADED -> ""
+        }
     }
 
     override fun onItemReleased(position: Int) {
@@ -96,6 +109,7 @@ class DownloadHolder(private val view: View, val adapter: DownloadAdapter) :
                 findItem(R.id.move_to_top).isVisible = bindingAdapterPosition > 1
                 findItem(R.id.move_to_bottom).isVisible =
                     bindingAdapterPosition != adapter.itemCount - 1
+                findItem(R.id.retry_download).isVisible = download.status == Download.State.ERROR
             },
             onMenuItemClick = {
                 adapter.downloadItemListener.onMenuItemClick(bindingAdapterPosition, this)

@@ -72,13 +72,8 @@ class DownloadManager(
      * Tells the downloader to begin downloads.
      */
     fun startDownloads() {
-        if (downloader.isRunning) return
-
-        if (DownloadJob.isRunning(context)) {
-            downloader.start()
-        } else {
-            DownloadJob.start(context)
-        }
+        if (downloader.isRunning || queueState.value.isEmpty()) return
+        DownloadJob.start(context)
     }
 
     /**
@@ -150,7 +145,7 @@ class DownloadManager(
             addAll(0, downloads)
             reorderQueue(this)
         }
-        if (!DownloadJob.isRunning(context)) startDownloads()
+        if (!downloader.isRunning) startDownloads()
     }
 
     /**
@@ -170,7 +165,21 @@ class DownloadManager(
             manga.ogTitle,
             // SY <--
             source,
-        )
+            manga.id,
+            chapter.id,
+        ) ?: manga.title
+            .takeUnless { it == manga.ogTitle }
+            ?.let { title ->
+                provider.findChapterDir(
+                    chapter.name,
+                    chapter.scanlator,
+                    chapter.url,
+                    title,
+                    source,
+                    manga.id,
+                    chapter.id,
+                )
+            }
         val files = chapterDir?.listFiles().orEmpty()
             .filter { it.isFile && ImageUtil.isImage(it.name) { it.openInputStream() } }
 
@@ -200,8 +209,77 @@ class DownloadManager(
         mangaTitle: String,
         sourceId: Long,
         skipCache: Boolean = false,
+        mangaId: Long? = null,
+        chapterId: Long? = null,
     ): Boolean {
-        return cache.isChapterDownloaded(chapterName, chapterScanlator, chapterUrl, mangaTitle, sourceId, skipCache)
+        return cache.isChapterDownloaded(
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            mangaTitle = mangaTitle,
+            sourceId = sourceId,
+            skipCache = skipCache,
+            mangaId = mangaId,
+            chapterId = chapterId,
+        )
+    }
+
+    fun isChapterDownloaded(
+        chapter: Chapter,
+        manga: Manga,
+        skipCache: Boolean = false,
+    ): Boolean {
+        return cache.isChapterDownloaded(
+            chapterName = chapter.name,
+            chapterScanlator = chapter.scanlator,
+            chapterUrl = chapter.url,
+            mangaTitle = manga.ogTitle,
+            sourceId = manga.source,
+            skipCache = skipCache,
+            mangaId = manga.id,
+            chapterId = chapter.id,
+        )
+    }
+
+    fun isChapterDownloadedCached(
+        chapterName: String,
+        chapterScanlator: String?,
+        chapterUrl: String,
+        mangaTitle: String,
+        sourceId: Long,
+        mangaId: Long? = null,
+        chapterId: Long? = null,
+    ): Boolean {
+        return cache.isChapterDownloadedCached(
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            mangaTitle = mangaTitle,
+            sourceId = sourceId,
+            mangaId = mangaId,
+            chapterId = chapterId,
+        )
+    }
+
+    fun isChapterDownloadedCached(chapter: Chapter, manga: Manga): Boolean {
+        return cache.isChapterDownloadedCached(
+            chapterName = chapter.name,
+            chapterScanlator = chapter.scanlator,
+            chapterUrl = chapter.url,
+            mangaTitle = manga.ogTitle,
+            sourceId = manga.source,
+            mangaId = manga.id,
+            chapterId = chapter.id,
+        )
+    }
+
+    fun getDownloadedChapterDirNames(
+        mangaTitles: Collection<String>,
+        source: Source,
+        mangaId: Long? = null,
+    ): Set<String> {
+        return cache.getDownloadedChapterDirNames(mangaTitles, source.id) +
+            provider.findDownloadedChapterDirNames(mangaTitles, source, mangaId)
     }
 
     /**

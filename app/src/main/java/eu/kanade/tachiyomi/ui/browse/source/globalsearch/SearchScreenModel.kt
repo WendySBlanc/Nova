@@ -14,6 +14,7 @@ import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toPersistentMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
@@ -35,6 +36,8 @@ import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.Executors
+import kotlin.math.max
+import kotlin.math.min
 
 abstract class SearchScreenModel(
     initialState: State = State(),
@@ -46,7 +49,7 @@ abstract class SearchScreenModel(
     private val preferences: SourcePreferences = Injekt.get(),
 ) : StateScreenModel<SearchScreenModel.State>(initialState) {
 
-    private val coroutineDispatcher = Executors.newFixedThreadPool(5).asCoroutineDispatcher()
+    private val coroutineDispatcher = Executors.newFixedThreadPool(SEARCH_PARALLELISM).asCoroutineDispatcher()
     private var searchJob: Job? = null
 
     private val enabledLanguages = sourcePreferences.enabledLanguages().get()
@@ -108,6 +111,7 @@ abstract class SearchScreenModel(
 
     fun shouldPinnedSourcesHidden() {
         if (!hasPinnedSources()) {
+            mutableState.update { it.copy(sourceFilter = SourceFilter.All) }
             preferences.globalSearchPinnedState().set(SourceFilter.All)
         }
     }
@@ -136,9 +140,12 @@ abstract class SearchScreenModel(
     }
 
     fun setSourceFilter(filter: SourceFilter) {
+        mutableState.update { it.copy(sourceFilter = filter) }
         preferences.globalSearchPinnedState().set(filter)
         search()
     }
+
+    protected open fun getSearchQueries(query: String): List<String> = listOf(query.sanitize())
 
     fun toggleFilterResults() {
         preferences.globalSearchFilterState().toggle()
@@ -159,6 +166,12 @@ abstract class SearchScreenModel(
         searchJob?.cancel()
 
         val sources = getSelectedSources()
+        val searchQueries = getSearchQueries(query)
+
+        if (sources.isEmpty()) {
+            updateItems(persistentMapOf())
+            return
+        }
 
         // Reuse previous results if possible
         if (sameQuery) {
@@ -185,7 +198,7 @@ abstract class SearchScreenModel(
 
                     try {
                         val page = withContext(coroutineDispatcher) {
-                            source.getSearchManga(1, query.sanitize(), source.getFilterList())
+                            searchSource(source, searchQueries)
                         }
 
                         val titles = page.mangas
@@ -205,6 +218,25 @@ abstract class SearchScreenModel(
             }
                 .awaitAll()
         }
+    }
+
+    private suspend fun searchSource(source: CatalogueSource, queries: List<String>) = run {
+        var firstEmptyResult: eu.kanade.tachiyomi.source.model.MangasPage? = null
+        var firstError: Exception? = null
+
+        for (query in queries) {
+            try {
+                val result = source.getSearchManga(1, query, source.getFilterList())
+                if (result.mangas.isNotEmpty()) return@run result
+                if (firstEmptyResult == null) firstEmptyResult = result
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (firstError == null) firstError = e
+            }
+        }
+
+        firstEmptyResult ?: throw firstError ?: IllegalStateException("No migration search query available")
     }
 
     private fun updateItems(items: PersistentMap<CatalogueSource, SearchItemResult>) {
@@ -254,6 +286,8 @@ abstract class SearchScreenModel(
         data class Migrate(val target: Manga, val current: Manga) : Dialog
     }
 }
+
+private val SEARCH_PARALLELISM = min(16, max(8, Runtime.getRuntime().availableProcessors() * 2))
 
 enum class SourceFilter {
     All,

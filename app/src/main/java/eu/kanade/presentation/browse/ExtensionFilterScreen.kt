@@ -1,10 +1,13 @@
 package eu.kanade.presentation.browse
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -20,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.domain.extension.interactor.GetExtensionLanguages.Companion.getLanguageIconID
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionFilterState
 import eu.kanade.tachiyomi.util.system.LocaleHelper
@@ -68,40 +72,47 @@ private fun ExtensionFilterContent(
     onClickLang: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    LazyColumn(
-        contentPadding = contentPadding,
-        // KMK -->
-        modifier = Modifier
-            .padding(start = MaterialTheme.padding.small),
-        // KMK <--
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        items(state.languages) { language ->
+        LazyColumn(
+            contentPadding = contentPadding,
             // KMK -->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val iconResId = getLanguageIconID(language) ?: R.drawable.globe
-                Icon(
-                    painter = painterResource(id = iconResId),
-                    tint = Color.Unspecified,
-                    contentDescription = language,
-                    modifier = Modifier
-                        .width(48.dp)
-                        .height(32.dp),
-                )
-                // KMK <--
-                SwitchPreferenceWidget(
-                    modifier = Modifier.animateItem(),
-                    title = LocaleHelper.getSourceDisplayName(language, context) +
-                        // KMK -->
-                        (
-                            " (${LocaleHelper.getDisplayName(language)})"
-                                .takeIf { language !in listOf("all", "other") } ?: ""
-                            ),
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize()
+                .padding(start = MaterialTheme.padding.small),
+            // KMK <--
+        ) {
+            items(state.languages) { language ->
+                // KMK -->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val iconResId = getLanguageIconID(language) ?: R.drawable.globe
+                    Icon(
+                        painter = painterResource(id = iconResId),
+                        tint = Color.Unspecified,
+                        contentDescription = language,
+                        modifier = Modifier
+                            .width(48.dp)
+                            .height(32.dp),
+                    )
                     // KMK <--
-                    checked = language in state.enabledLanguages,
-                    onCheckedChanged = { onClickLang(language) },
-                )
+                    SwitchPreferenceWidget(
+                        modifier = Modifier.animateItem(),
+                        title = LocaleHelper.getSourceDisplayName(language, context) +
+                            // KMK -->
+                            (
+                                " (${LocaleHelper.getDisplayName(language)})"
+                                    .takeIf { language !in listOf("all", "other") } ?: ""
+                                ),
+                        // KMK <--
+                        checked = language in state.enabledLanguages,
+                        onCheckedChanged = { onClickLang(language) },
+                    )
+                }
             }
         }
     }

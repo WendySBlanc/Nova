@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
 
 /**
  * A basic interface for creating a source. It could be an online source, a local source, stub source, etc.
@@ -49,6 +50,21 @@ interface Source {
      * @return the chapters for the manga.
      */
     suspend fun getChapterList(manga: SManga): List<SChapter>
+
+    /**
+     * Combined update API used by extension library 1.6. Older sources continue to use the
+     * individual detail and chapter methods above.
+     */
+    suspend fun getMangaUpdate(
+        manga: SManga,
+        chapters: List<SChapter>,
+        fetchDetails: Boolean,
+        fetchChapters: Boolean,
+    ): SMangaUpdate {
+        val updatedManga = if (fetchDetails) getMangaDetails(manga) else manga
+        val updatedChapters = if (fetchChapters) getChapterList(manga) else chapters
+        return SMangaUpdate(updatedManga, updatedChapters)
+    }
 
     /**
      * Get the list of pages a chapter has. Pages should be returned

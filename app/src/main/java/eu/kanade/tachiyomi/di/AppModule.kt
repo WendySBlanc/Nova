@@ -23,6 +23,7 @@ import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
+import eu.kanade.tachiyomi.extension.InstalledExtensionsInventory
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.AndroidSourceManager
@@ -39,11 +40,13 @@ import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.core.common.storage.AndroidStorageFolderProvider
 import tachiyomi.core.common.storage.UniFileTempFileManager
 import tachiyomi.data.AndroidDatabaseHandler
+import tachiyomi.data.Chapters
 import tachiyomi.data.Database
 import tachiyomi.data.DatabaseHandler
 import tachiyomi.data.DateColumnAdapter
 import tachiyomi.data.History
 import tachiyomi.data.Mangas
+import tachiyomi.data.MemoColumnAdapter
 import tachiyomi.data.StringListColumnAdapter
 import tachiyomi.data.UpdateStrategyColumnAdapter
 import tachiyomi.domain.manga.interactor.GetCustomMangaInfo
@@ -120,6 +123,9 @@ class AppModule(val app: Application) : InjektModule {
                     genreAdapter = StringListColumnAdapter,
                     update_strategyAdapter = UpdateStrategyColumnAdapter,
                 ),
+                chaptersAdapter = Chapters.Adapter(
+                    memoAdapter = MemoColumnAdapter,
+                ),
             )
         }
         addSingletonFactory<DatabaseHandler> { AndroidDatabaseHandler(get(), get()) }
@@ -155,6 +161,7 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }
+        addSingletonFactory { InstalledExtensionsInventory(app, get(), get()) }
 
         addSingletonFactory { DownloadProvider(app) }
         addSingletonFactory { DownloadManager(app) }

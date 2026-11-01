@@ -37,6 +37,7 @@ import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_HAS_U
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_NON_COMPLETED
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_NON_READ
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_OUTSIDE_RELEASE_PERIOD
+import tachiyomi.domain.library.service.LibraryPreferences.Companion.NOVA_AUTO_UPDATE_30_MINUTES
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MARK_DUPLICATE_CHAPTER_READ_EXISTING
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MARK_DUPLICATE_CHAPTER_READ_NEW
 import tachiyomi.i18n.MR
@@ -160,6 +161,7 @@ object SettingsLibraryScreen : SearchableSettings {
                     preference = autoUpdateIntervalPref,
                     entries = persistentMapOf(
                         0 to stringResource(MR.strings.update_never),
+                        NOVA_AUTO_UPDATE_30_MINUTES to "30 min",
                         12 to stringResource(MR.strings.update_12hour),
                         24 to stringResource(MR.strings.update_24hour),
                         48 to stringResource(MR.strings.update_48hour),

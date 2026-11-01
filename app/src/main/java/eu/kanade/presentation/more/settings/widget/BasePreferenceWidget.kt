@@ -1,10 +1,6 @@
 package eu.kanade.presentation.more.settings.widget
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
-import androidx.compose.animation.core.StartOffsetType
-import androidx.compose.animation.core.repeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,7 +10,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,35 +48,46 @@ internal fun BasePreferenceWidget(
             .highlightBackground(highlighted)
             .sizeIn(minHeight = minHeight)
             .clickable(enabled = onClick != null, onClick = { onClick?.invoke() })
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
             Box(
-                modifier = Modifier.padding(start = PrefsHorizontalPadding, end = 8.dp),
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = RoundedCornerShape(8.dp),
+                    ),
+                contentAlignment = Alignment.Center,
                 content = { icon() },
             )
         }
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(vertical = PrefsVerticalPadding),
+                .padding(
+                    start = if (icon != null) 12.dp else 4.dp,
+                    top = PrefsVerticalPadding,
+                    end = 12.dp,
+                    bottom = PrefsVerticalPadding,
+                ),
         ) {
             if (!title.isNullOrBlank()) {
                 Text(
-                    modifier = Modifier.padding(horizontal = PrefsHorizontalPadding),
                     text = title,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 2,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontSize = TitleFontSize,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
                 )
             }
             subcomponent?.invoke(this)
         }
         if (widget != null) {
             Box(
-                modifier = Modifier.padding(end = PrefsHorizontalPadding),
+                modifier = Modifier.padding(end = 4.dp),
                 content = { widget() },
             )
         }
@@ -91,7 +100,7 @@ internal fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
     LaunchedEffect(Unit) {
         if (highlighted) {
             highlightFlag = true
-            delay(3.seconds)
+            delay(1.6.seconds)
             highlightFlag = false
         }
     }
@@ -101,19 +110,7 @@ internal fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
         } else {
             Color.Transparent
         },
-        animationSpec = if (highlightFlag) {
-            repeatable(
-                iterations = 5,
-                animation = tween(durationMillis = 200),
-                repeatMode = RepeatMode.Reverse,
-                initialStartOffset = StartOffset(
-                    offsetMillis = 600,
-                    offsetType = StartOffsetType.Delay,
-                ),
-            )
-        } else {
-            tween(200)
-        },
+        animationSpec = tween(180),
         label = "highlight",
     )
     return this.background(color = highlight)
@@ -121,5 +118,5 @@ internal fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
 
 internal val TrailingWidgetBuffer = 16.dp
 internal val PrefsHorizontalPadding = 16.dp
-internal val PrefsVerticalPadding = 16.dp
+internal val PrefsVerticalPadding = 12.dp
 internal val TitleFontSize = 16.sp

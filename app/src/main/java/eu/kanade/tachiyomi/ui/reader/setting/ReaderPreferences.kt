@@ -37,6 +37,9 @@ class ReaderPreferences(
 
     fun showReadingMode() = preferenceStore.getBoolean("pref_show_reading_mode", true)
 
+    fun chapterPageCount(chapterId: Long) =
+        preferenceStore.getInt("reader_chapter_page_count_$chapterId", 0)
+
     fun fullscreen() = preferenceStore.getBoolean("fullscreen", true)
 
     fun drawUnderCutout() = preferenceStore.getBoolean("cutout_short", true)
@@ -71,6 +74,66 @@ class ReaderPreferences(
     fun zoomStart() = preferenceStore.getInt("pref_zoom_start_key", 1)
 
     fun readerTheme() = preferenceStore.getInt("pref_reader_theme_key", 1)
+
+    // Nova/LNReader-style text reader settings.
+    fun lnReaderTextSize() = preferenceStore.getInt("lnreader_text_size", 16)
+
+    fun lnReaderTextAlign() = preferenceStore.getString("lnreader_text_align", "left")
+
+    fun lnReaderLineHeight() = preferenceStore.getInt("lnreader_line_height_percent", 160)
+
+    fun lnReaderTextPadding() = preferenceStore.getInt("lnreader_text_padding_px", 16)
+
+    fun lnReaderFontFamily() = preferenceStore.getString("lnreader_font_family", "system")
+
+    fun lnReaderTheme() = preferenceStore.getString("lnreader_theme", "dark")
+
+    fun lnReaderCustomBackgroundColor() = preferenceStore.getString("lnreader_custom_background_color", "#292832")
+
+    fun lnReaderCustomTextColor() = preferenceStore.getString("lnreader_custom_text_color", "#CCCCCC")
+
+    fun lnReaderCustomCss() = preferenceStore.getString("lnreader_custom_css", "")
+
+    fun lnReaderCustomJs() = preferenceStore.getString("lnreader_custom_js", "")
+
+    fun lnReaderTtsEnabled() = preferenceStore.getBoolean("lnreader_tts_enabled", true)
+
+    fun lnReaderTtsRate() = preferenceStore.getInt("lnreader_tts_rate_percent", 100)
+
+    fun lnReaderTtsPitch() = preferenceStore.getInt("lnreader_tts_pitch_percent", 100)
+
+    fun lnReaderTtsVoiceName() = preferenceStore.getString("lnreader_tts_voice_name", "system")
+
+    fun lnReaderTtsAutoNext() = preferenceStore.getBoolean("lnreader_tts_auto_next", true)
+
+    fun lnReaderTtsScrollToTop() = preferenceStore.getBoolean("lnreader_tts_scroll_to_top", true)
+
+    fun lnReaderTtsHighlightSentence() = preferenceStore.getBoolean("lnreader_tts_highlight_sentence", true)
+
+    fun lnReaderShowBatteryAndTime() = preferenceStore.getBoolean("lnreader_show_battery_time", true)
+
+    fun lnReaderShowScrollPercentage() = preferenceStore.getBoolean("lnreader_show_scroll_percentage", true)
+
+    fun lnReaderAutoScroll() = preferenceStore.getBoolean("lnreader_auto_scroll", false)
+
+    fun lnReaderAutoScrollInterval() = preferenceStore.getInt("lnreader_auto_scroll_interval_seconds", 10)
+
+    fun lnReaderAutoScrollOffsetPercent() = preferenceStore.getInt("lnreader_auto_scroll_offset_percent", 100)
+
+    fun lnReaderVerticalSeekbar() = preferenceStore.getBoolean("lnreader_vertical_seekbar", true)
+
+    fun lnReaderSwipeGestures() = preferenceStore.getBoolean("lnreader_swipe_gestures", true)
+
+    fun lnReaderPageReader() = preferenceStore.getBoolean("lnreader_page_reader", false)
+
+    fun lnReaderRemoveExtraParagraphSpacing() = preferenceStore.getBoolean(
+        "lnreader_remove_extra_paragraph_spacing",
+        false,
+    )
+
+    fun lnReaderBionicReading() = preferenceStore.getBoolean("lnreader_bionic_reading", false)
+
+    fun lnReaderTapToScroll() = preferenceStore.getBoolean("lnreader_tap_to_scroll", false)
 
     fun alwaysShowChapterTransition() = preferenceStore.getBoolean("always_show_chapter_transition", true)
 

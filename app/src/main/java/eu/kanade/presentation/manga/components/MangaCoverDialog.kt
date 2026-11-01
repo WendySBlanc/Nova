@@ -44,6 +44,7 @@ import coil3.asDrawable
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.allowRgb565
 import coil3.size.Size
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
@@ -206,6 +207,7 @@ fun MangaCoverDialog(
                         val request = ImageRequest.Builder(view.context)
                             .data(manga)
                             .size(Size.ORIGINAL)
+                            .allowRgb565(false)
                             .memoryCachePolicy(CachePolicy.DISABLED)
                             .target { image ->
                                 val drawable = image.asDrawable(view.context.resources)

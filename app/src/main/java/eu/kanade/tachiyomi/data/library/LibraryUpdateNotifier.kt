@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import coil3.asDrawable
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.allowRgb565
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
@@ -315,6 +316,7 @@ class LibraryUpdateNotifier(
     private suspend fun getMangaIcon(manga: Manga): Bitmap? {
         val request = ImageRequest.Builder(context)
             .data(manga)
+            .allowRgb565(false)
             // KMK -->
             // .transformations(CircleCropTransformation())
             // .size(NOTIF_ICON_SIZE)

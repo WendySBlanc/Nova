@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +60,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import com.google.android.material.transition.platform.MaterialContainerTransform
 import com.hippo.unifile.UniFile
-import eu.kanade.core.util.ifSourcesLoaded
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.connections.service.ConnectionsPreferences
 import eu.kanade.domain.manga.model.readingMode
@@ -71,7 +69,6 @@ import eu.kanade.presentation.reader.DisplayRefreshHost
 import eu.kanade.presentation.reader.OrientationSelectDialog
 import eu.kanade.presentation.reader.ReaderContentOverlay
 import eu.kanade.presentation.reader.ReaderPageActionsDialog
-import eu.kanade.presentation.reader.ReaderPageIndicator
 import eu.kanade.presentation.reader.ReadingModeSelectDialog
 import eu.kanade.presentation.reader.appbars.NavBarType
 import eu.kanade.presentation.reader.appbars.ReaderAppBars
@@ -100,6 +97,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsScreenModel
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
+import eu.kanade.tachiyomi.ui.reader.viewer.lnreader.LnReaderWebViewViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerConfig
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.VerticalPagerViewer
@@ -289,7 +287,14 @@ class ReaderActivity : BaseActivity() {
             .onEach { event ->
                 when (event) {
                     ReaderViewModel.Event.ReloadViewerChapters -> {
-                        viewModel.state.value.viewerChapters?.let(::setChapters)
+                        viewModel.state.value.viewerChapters?.let { chapters ->
+                            val viewer = viewModel.state.value.viewer
+                            if (viewer is LnReaderWebViewViewer) {
+                                viewer.onAdjacentChaptersPreloaded(chapters)
+                            } else {
+                                setChapters(chapters)
+                            }
+                        }
                     }
                     ReaderViewModel.Event.PageChanged -> {
                         displayRefreshHost.flash()
@@ -325,7 +330,6 @@ class ReaderActivity : BaseActivity() {
             val context = LocalContext.current
             // KMK <--
             val state by viewModel.state.collectAsState()
-            val showPageNumber by readerPreferences.showPageNumber().collectAsState()
             val settingsScreenModel = remember {
                 ReaderSettingsScreenModel(
                     readerState = viewModel.state,
@@ -335,18 +339,6 @@ class ReaderActivity : BaseActivity() {
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                if (!state.menuVisible && showPageNumber) {
-                    ReaderPageIndicator(
-                        // SY -->
-                        currentPage = state.currentPageText,
-                        // SY <--
-                        totalPages = state.totalPages,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding(),
-                    )
-                }
-
                 ContentOverlay(state = state)
 
                 AppBars(state = state)
@@ -642,10 +634,6 @@ class ReaderActivity : BaseActivity() {
 
     @Composable
     fun AppBars(state: ReaderViewModel.State) {
-        if (!ifSourcesLoaded()) {
-            return
-        }
-
         val isHttpSource = viewModel.getSource() is HttpSource
 
         val cropBorderPaged by readerPreferences.cropBorders().collectAsState()
@@ -705,8 +693,14 @@ class ReaderActivity : BaseActivity() {
             totalPages = state.totalPages,
             onPageIndexChange = {
                 isScrollingThroughPages = true
-                moveToPageIndex(it)
+                val viewer = state.viewer
+                if (viewer is LnReaderWebViewViewer) {
+                    viewer.seekToProgress(it)
+                } else {
+                    moveToPageIndex(it)
+                }
             },
+            onClickScrollToTop = ::scrollToStart,
 
             readingMode = ReadingMode.fromPreference(
                 viewModel.getMangaReadingMode(resolveDefault = false),
@@ -928,10 +922,14 @@ class ReaderActivity : BaseActivity() {
      */
     private fun setMenuVisibility(visible: Boolean) {
         viewModel.showMenus(visible)
+        (viewModel.state.value.viewer as? LnReaderWebViewViewer)?.setChromeVisible(visible)
         if (visible) {
-            windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+            windowInsetsController.show(WindowInsetsCompat.Type.navigationBars())
+            windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
         } else if (readerPreferences.fullscreen().get()) {
             windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
         }
     }
 
@@ -940,13 +938,7 @@ class ReaderActivity : BaseActivity() {
      */
     private fun updateViewer() {
         val prevViewer = viewModel.state.value.viewer
-        val newViewer = ReadingMode.toViewer(
-            viewModel.getMangaReadingMode(),
-            this,
-            // KMK -->
-            seedColor = seedColorStatic()?.toArgb(),
-            // KMK <--
-        )
+        val newViewer = LnReaderWebViewViewer(this)
 
         if (window.sharedElementEnterTransition is MaterialContainerTransform) {
             // Wait until transition is complete to avoid crash on API 26
@@ -966,31 +958,6 @@ class ReaderActivity : BaseActivity() {
         updateViewerInset(readerPreferences.fullscreen().get(), readerPreferences.drawUnderCutout().get())
         binding.viewerContainer.addView(newViewer.getView())
 
-        // SY -->
-        if (newViewer is PagerViewer) {
-            if (readerPreferences.pageLayout().get() == PagerConfig.PageLayout.AUTOMATIC) {
-                setDoublePageMode(newViewer)
-            }
-            viewModel.state.value.lastShiftDoubleState?.let { newViewer.config.shiftDoublePage = it }
-        }
-
-        val manga = viewModel.state.value.manga
-        val defaultReaderType = manga?.defaultReaderType(
-            manga.mangaType(sourceName = sourceManager.get(manga.source)?.name),
-        )
-        if (
-            readerPreferences.useAutoWebtoon().get() &&
-            (manga?.readingMode?.toInt() ?: ReadingMode.DEFAULT.flagValue) == ReadingMode.DEFAULT.flagValue &&
-            defaultReaderType != null &&
-            defaultReaderType == ReadingMode.WEBTOON.flagValue
-        ) {
-            readingModeToast?.cancel()
-            readingModeToast = toast(SYMR.strings.eh_auto_webtoon_snack)
-        } else if (readerPreferences.showReadingMode().get()) {
-            // SY <--
-            showReadingModeToast(viewModel.getMangaReadingMode())
-        }
-
         loadingIndicator = ReaderProgressIndicator(
             context = this,
             // KMK -->
@@ -998,6 +965,10 @@ class ReaderActivity : BaseActivity() {
             // KMK <--
         )
         binding.readerContainer.addView(loadingIndicator)
+
+        // The chapter can finish loading before this viewer is attached, especially for local
+        // manhwa. Replay the latest state so the initial chapter is never lost.
+        viewModel.state.value.viewerChapters?.let(::setChapters)
 
         startPostponedEnterTransition()
     }
@@ -1105,6 +1076,12 @@ class ReaderActivity : BaseActivity() {
      * other cases are handled with chapter transitions on the viewers and chapter preloading.
      */
     private fun setProgressDialog(show: Boolean) {
+        if (viewModel.state.value.viewer is LnReaderWebViewViewer) {
+            if (!show && viewModel.state.value.dialog is ReaderViewModel.Dialog.Loading) {
+                viewModel.closeDialog()
+            }
+            return
+        }
         if (show) {
             viewModel.showLoadingDialog()
         } else {
@@ -1123,13 +1100,23 @@ class ReaderActivity : BaseActivity() {
         viewer.moveToPage(page)
     }
 
+    private fun scrollToStart() {
+        moveToPageIndex(0)
+    }
+
     /**
      * Tells the presenter to load the next chapter and mark it as active. The progress dialog
      * should be automatically shown.
      */
     private fun loadNextChapter() {
+        val lnReaderViewer = viewModel.state.value.viewer as? LnReaderWebViewViewer
+        if (lnReaderViewer != null && !lnReaderViewer.beginChapterNavigation()) return
+        val originChapterId = viewModel.state.value.currentChapter?.chapter?.id
         lifecycleScope.launch {
             viewModel.loadNextChapter()
+            if (viewModel.state.value.currentChapter?.chapter?.id == originChapterId) {
+                lnReaderViewer?.cancelChapterNavigation()
+            }
             moveToPageIndex(0)
         }
     }
@@ -1139,8 +1126,14 @@ class ReaderActivity : BaseActivity() {
      * should be automatically shown.
      */
     private fun loadPreviousChapter() {
+        val lnReaderViewer = viewModel.state.value.viewer as? LnReaderWebViewViewer
+        if (lnReaderViewer != null && !lnReaderViewer.beginChapterNavigation()) return
+        val originChapterId = viewModel.state.value.currentChapter?.chapter?.id
         lifecycleScope.launch {
             viewModel.loadPreviousChapter()
+            if (viewModel.state.value.currentChapter?.chapter?.id == originChapterId) {
+                lnReaderViewer?.cancelChapterNavigation()
+            }
             moveToPageIndex(0)
         }
     }

@@ -1,8 +1,11 @@
 package eu.kanade.presentation.updates
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.FilterList
@@ -20,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastAny
@@ -27,6 +31,7 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.updates.UpdatesItem
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel
@@ -128,32 +133,40 @@ fun UpdateScreen(
                     enabled = !state.selectionMode,
                     indicatorPadding = contentPadding,
                 ) {
-                    FastScrollLazyColumn(
-                        contentPadding = contentPadding,
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopCenter,
                     ) {
-                        updatesLastUpdatedItem(lastUpdated)
+                        FastScrollLazyColumn(
+                            modifier = Modifier
+                                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                                .fillMaxSize(),
+                            contentPadding = contentPadding,
+                        ) {
+                            updatesLastUpdatedItem(lastUpdated)
 
-                        updatesUiItems(
-                            uiModels = state.getUiModel(),
-                            // KMK -->
-                            expandedState = state.expandedState,
-                            collapseToggle = collapseToggle,
-                            usePanoramaCover = usePanoramaCover,
-                            // KMK <--
-                            selectionMode = state.selectionMode,
-                            // SY -->
-                            preserveReadingPosition = preserveReadingPosition,
-                            // SY <--
-                            onUpdateSelected = onUpdateSelected,
-                            onClickCover = onClickCover,
-                            onClickUpdate = onOpenChapter,
-                            onDownloadChapter = onDownloadChapter,
-                            // KMK -->
-                            updateSwipeStartAction = updateSwipeStartAction,
-                            updateSwipeEndAction = updateSwipeEndAction,
-                            onUpdateSwipe = onUpdateSwipe,
-                            // KMK <--
-                        )
+                            updatesUiItems(
+                                uiModels = state.getUiModel(),
+                                // KMK -->
+                                expandedState = state.expandedState,
+                                collapseToggle = collapseToggle,
+                                usePanoramaCover = usePanoramaCover,
+                                // KMK <--
+                                selectionMode = state.selectionMode,
+                                // SY -->
+                                preserveReadingPosition = preserveReadingPosition,
+                                // SY <--
+                                onUpdateSelected = onUpdateSelected,
+                                onClickCover = onClickCover,
+                                onClickUpdate = onOpenChapter,
+                                onDownloadChapter = onDownloadChapter,
+                                // KMK -->
+                                updateSwipeStartAction = updateSwipeStartAction,
+                                updateSwipeEndAction = updateSwipeEndAction,
+                                onUpdateSwipe = onUpdateSwipe,
+                                // KMK <--
+                            )
+                        }
                     }
                 }
             }

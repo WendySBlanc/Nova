@@ -61,6 +61,11 @@
         <item quantity="other">Next %d chapters</item>
     </plurals>
 
+    <plurals name="downloads_started">
+        <item quantity="one">%d chapter download started</item>
+        <item quantity="other">%d chapter downloads started</item>
+    </plurals>
+
     <plurals name="num_trackers">
         <item quantity="one">%d tracker</item>
         <item quantity="other">%d trackers</item>

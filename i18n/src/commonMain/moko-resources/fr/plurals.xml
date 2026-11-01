@@ -70,6 +70,11 @@
         <item quantity="many">%d chapitres suivants</item>
         <item quantity="other">%d chapitres suivants</item>
     </plurals>
+    <plurals name="downloads_started">
+        <item quantity="one">Téléchargement de %d chapitre lancé</item>
+        <item quantity="many">Téléchargement de %d chapitres lancé</item>
+        <item quantity="other">Téléchargement de %d chapitres lancé</item>
+    </plurals>
     <plurals name="missing_chapters">
         <item quantity="one">%1$s chapitre manquant</item>
         <item quantity="many">%1$s chapitres manquants</item>

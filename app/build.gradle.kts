@@ -23,10 +23,10 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.komikku"
+        applicationId = "com.nova.manhwa"
 
-        versionCode = 78
-        versionName = "1.13.6"
+        versionCode = 101
+        versionName = "1.14.0-nova-fast-data"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
@@ -73,7 +73,9 @@ android {
         create("preview") {
             initWith(release)
 
-            applicationIdSuffix = ".beta"
+            applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
+            isShrinkResources = false
 
             versionNameSuffix = debug.versionNameSuffix
             signingConfig = debug.signingConfig
@@ -103,8 +105,8 @@ android {
 
     splits {
         abi {
-            isEnable = true
-            isUniversalApk = true
+            isEnable = false
+            isUniversalApk = false
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
@@ -232,6 +234,8 @@ dependencies {
     implementation(androidx.biometricktx)
     implementation(androidx.constraintlayout)
     implementation(androidx.corektx)
+    implementation(androidx.media3.common)
+    implementation(androidx.media3.session)
     implementation(androidx.splashscreen)
     implementation(androidx.recyclerview)
     implementation(androidx.viewpager)

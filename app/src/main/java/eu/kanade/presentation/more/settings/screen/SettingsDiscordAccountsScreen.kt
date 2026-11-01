@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.StateScreenModel
@@ -39,6 +40,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.domain.connections.service.ConnectionsPreferences
 import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.tachiyomi.data.connections.ConnectionsManager
 import eu.kanade.tachiyomi.data.connections.discord.DiscordAccount
 import eu.kanade.tachiyomi.ui.setting.connections.DiscordLoginScreen
@@ -231,6 +233,7 @@ private fun DiscordAccountItem(
     onRemove: () -> Unit,
     onSetActive: () -> Unit,
 ) {
+    val avatarRequest = rememberHighQualityImageRequest(account.avatarUrl)
     Card(
         onClick = onSetActive,
         modifier = Modifier.fillMaxWidth(),
@@ -242,8 +245,9 @@ private fun DiscordAccountItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
-                model = account.avatarUrl,
+                model = avatarRequest,
                 contentDescription = null,
+                filterQuality = FilterQuality.High,
                 modifier = Modifier.size(40.dp),
             )
 

@@ -32,7 +32,7 @@ import tachiyomi.presentation.core.components.BaseSliderItem
 import tachiyomi.presentation.core.util.collectAsState
 
 val LocalPreferenceHighlighted = compositionLocalOf(structuralEqualityPolicy()) { false }
-val LocalPreferenceMinHeight = compositionLocalOf(structuralEqualityPolicy()) { 56.dp }
+val LocalPreferenceMinHeight = compositionLocalOf(structuralEqualityPolicy()) { 64.dp }
 
 @Composable
 fun StatusWrapper(

@@ -41,9 +41,24 @@ internal class DownloadPageLoader(
             manga.ogTitle,
             // SY <--
             source,
+            manga.id,
+            dbChapter.id,
         )
         return if (chapterPath?.isFile == true) {
             getPagesFromArchive(chapterPath)
+        } else if (chapterPath?.isDirectory == true) {
+            chapterPath.findFile("index.html")
+                ?.takeIf { it.isFile }
+                ?.let { indexFile ->
+                    listOf(
+                        ReaderPage(0, indexFile.uri.toString(), null) {
+                            context.contentResolver.openInputStream(indexFile.uri)!!
+                        }.apply {
+                            status = Page.State.Ready
+                        },
+                    )
+                }
+                ?: getPagesFromDirectory()
         } else {
             getPagesFromDirectory()
         }
@@ -62,9 +77,10 @@ internal class DownloadPageLoader(
     private fun getPagesFromDirectory(): List<ReaderPage> {
         val pages = downloadManager.buildPageList(source, manga, chapter.chapter.toDomainChapter()!!)
         return pages.map { page ->
-            ReaderPage(page.index, page.url, page.imageUrl) {
+            ReaderPage(page.index, page.uri?.toString().orEmpty(), page.imageUrl) {
                 context.contentResolver.openInputStream(page.uri ?: Uri.EMPTY)!!
             }.apply {
+                uri = page.uri
                 status = Page.State.Ready
             }
         }

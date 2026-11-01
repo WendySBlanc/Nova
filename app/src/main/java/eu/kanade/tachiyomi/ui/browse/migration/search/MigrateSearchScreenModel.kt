@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchScreenModel
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mihon.feature.migration.list.search.MigrationSearchQueries
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
@@ -18,6 +19,10 @@ class MigrateSearchScreenModel(
     private val sourceManager: SourceManager = Injekt.get(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
 ) : SearchScreenModel() {
+
+    override fun getSearchQueries(query: String): List<String> {
+        return MigrationSearchQueries.build(query).take(GLOBAL_MIGRATION_QUERY_LIMIT)
+    }
 
     private val migrationSources by lazy { sourcePreferences.migrationSources().get() }
 
@@ -49,3 +54,5 @@ class MigrateSearchScreenModel(
         return migrationSources.mapNotNull { sourceManager.get(it) as? CatalogueSource }
     }
 }
+
+private const val GLOBAL_MIGRATION_QUERY_LIMIT = 4

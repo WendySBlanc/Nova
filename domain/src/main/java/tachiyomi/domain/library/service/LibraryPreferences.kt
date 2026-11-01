@@ -35,7 +35,7 @@ class LibraryPreferences(
     fun landscapeColumns() = preferenceStore.getInt("pref_library_columns_landscape_key", 0)
 
     fun lastUpdatedTimestamp() = preferenceStore.getLong(Preference.appStateKey("library_update_last_timestamp"), 0L)
-    fun autoUpdateInterval() = preferenceStore.getInt("pref_library_update_interval_key", 0)
+    fun autoUpdateInterval() = preferenceStore.getInt("pref_library_update_interval_key", NOVA_AUTO_UPDATE_30_MINUTES)
 
     // KMK -->
     fun showUpdatingProgressBanner() = preferenceStore.getBoolean(
@@ -71,7 +71,7 @@ class LibraryPreferences(
         ),
     )
 
-    fun autoUpdateMetadata() = preferenceStore.getBoolean("auto_update_metadata", false)
+    fun autoUpdateMetadata() = preferenceStore.getBoolean("auto_update_metadata", true)
 
     // KMK -->
     fun syncOnAdd() = preferenceStore.getBoolean("sync_on_add", false)
@@ -270,6 +270,7 @@ class LibraryPreferences(
     // SY <--
 
     companion object {
+        const val NOVA_AUTO_UPDATE_30_MINUTES = 30
         const val DEVICE_ONLY_ON_WIFI = "wifi"
         const val DEVICE_NETWORK_NOT_METERED = "network_not_metered"
         const val DEVICE_CHARGING = "ac"

@@ -1,18 +1,23 @@
 package eu.kanade.presentation.browse
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import eu.kanade.presentation.browse.components.BaseSourceItem
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.browse.source.SourcesFilterScreenModel
 import eu.kanade.tachiyomi.util.system.LocaleHelper
@@ -75,74 +80,82 @@ private fun SourcesFilterContent(
     onClickSources: (Boolean, List<Source>) -> Unit,
     // SY <--
 ) {
-    FastScrollLazyColumn(
-        // KMK -->
-        // Using modifier instead of contentPadding so we can use stickyHeader
-        modifier = Modifier.padding(contentPadding),
-        // KMK <--
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        state.items.forEach { (language, sources) ->
-            val enabled = language in state.enabledLanguages
+        FastScrollLazyColumn(
             // KMK -->
-            stickyHeader(
-                // KMK <--
-                key = "$STICKY_HEADER_KEY_PREFIX-$language",
-                contentType = "source-filter-header",
-            ) {
-                SourcesFilterHeader(
-                    modifier = Modifier
-                        // KMK -->
-                        .padding(end = MaterialTheme.padding.small)
-                        // KMK <--
-                        .animateItemFastScroll(),
-                    language = language,
-                    enabled = enabled,
-                    onClickItem = onClickLanguage,
-                )
-            }
-            if (enabled) {
-                // SY -->
+            // Using modifier instead of contentPadding so we can use stickyHeader
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize()
+                .padding(contentPadding),
+            // KMK <--
+        ) {
+            state.items.forEach { (language, sources) ->
+                val enabled = language in state.enabledLanguages
                 // KMK -->
                 stickyHeader(
                     // KMK <--
-                    key = "$STICKY_HEADER_KEY_PREFIX-toggle-$language",
-                    contentType = "source-filter-toggle",
+                    key = "$STICKY_HEADER_KEY_PREFIX-$language",
+                    contentType = "source-filter-header",
                 ) {
-                    val toggleEnabled = remember(state.disabledSources) {
-                        sources.none { it.id.toString() in state.disabledSources }
-                    }
-                    SourcesFilterToggle(
+                    SourcesFilterHeader(
                         modifier = Modifier
                             // KMK -->
-                            .background(MaterialTheme.colorScheme.background)
                             .padding(end = MaterialTheme.padding.small)
                             // KMK <--
                             .animateItemFastScroll(),
-                        isEnabled = toggleEnabled,
-                        // KMK -->
                         language = language,
-                        // KMK <--
-                        onClickItem = {
-                            onClickSources(!toggleEnabled, sources)
-                        },
+                        enabled = enabled,
+                        onClickItem = onClickLanguage,
                     )
                 }
-                // SY <--
-                items(
-                    items = sources,
-                    key = { "source-filter-${it.key()}" },
-                    contentType = { "source-filter-item" },
-                ) { source ->
-                    SourcesFilterItem(
-                        modifier = Modifier
+                if (enabled) {
+                    // SY -->
+                    // KMK -->
+                    stickyHeader(
+                        // KMK <--
+                        key = "$STICKY_HEADER_KEY_PREFIX-toggle-$language",
+                        contentType = "source-filter-toggle",
+                    ) {
+                        val toggleEnabled = remember(state.disabledSources) {
+                            sources.none { it.id.toString() in state.disabledSources }
+                        }
+                        SourcesFilterToggle(
+                            modifier = Modifier
+                                // KMK -->
+                                .background(MaterialTheme.colorScheme.background)
+                                .padding(end = MaterialTheme.padding.small)
+                                // KMK <--
+                                .animateItemFastScroll(),
+                            isEnabled = toggleEnabled,
                             // KMK -->
-                            .padding(end = MaterialTheme.padding.small)
+                            language = language,
                             // KMK <--
-                            .animateItemFastScroll(),
-                        source = source,
-                        enabled = "${source.id}" !in state.disabledSources,
-                        onClickItem = onClickSource,
-                    )
+                            onClickItem = {
+                                onClickSources(!toggleEnabled, sources)
+                            },
+                        )
+                    }
+                    // SY <--
+                    items(
+                        items = sources,
+                        key = { "source-filter-${it.key()}" },
+                        contentType = { "source-filter-item" },
+                    ) { source ->
+                        SourcesFilterItem(
+                            modifier = Modifier
+                                // KMK -->
+                                .padding(end = MaterialTheme.padding.small)
+                                // KMK <--
+                                .animateItemFastScroll(),
+                            source = source,
+                            enabled = "${source.id}" !in state.disabledSources,
+                            onClickItem = onClickSource,
+                        )
+                    }
                 }
             }
         }

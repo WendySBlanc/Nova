@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -36,6 +37,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
 import eu.kanade.domain.manga.model.PagePreview
 import eu.kanade.presentation.manga.MangaScreenItem
+import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.tachiyomi.ui.manga.PagePreviewState
 import exh.util.floor
 import kotlinx.collections.immutable.ImmutableList
@@ -175,6 +177,7 @@ fun PagePreview(
     page: PagePreview,
     onOpenPage: (Int) -> Unit,
 ) {
+    val previewRequest = rememberHighQualityImageRequest(page)
     Column(
         modifier
             .clip(MaterialTheme.shapes.small)
@@ -183,8 +186,9 @@ fun PagePreview(
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         SubcomposeAsyncImage(
-            model = page,
+            model = previewRequest,
             contentDescription = null,
+            filterQuality = FilterQuality.High,
             loading = {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     val progress by page.progress.collectAsState()

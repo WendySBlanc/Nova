@@ -51,6 +51,7 @@ class StorageManager(
                 baseDir = getBaseDir(uri)
                 baseDir?.let { parent ->
                     parent.createDirectory(AUTOMATIC_BACKUPS_PATH)
+                    parent.createDirectory(EXTENSIONS_PATH)
                     parent.createDirectory(LOCAL_SOURCE_PATH)
                     parent.createDirectory(DOWNLOADS_PATH).also {
                         DiskUtil.createNoMediaFile(it, context)
@@ -80,6 +81,10 @@ class StorageManager(
 
     fun getLocalSourceDirectory(): UniFile? {
         return baseDir?.createDirectory(LOCAL_SOURCE_PATH)
+    }
+
+    fun getExtensionsDirectory(): UniFile? {
+        return baseDir?.createDirectory(EXTENSIONS_PATH)
     }
 
     // SY -->
@@ -221,6 +226,7 @@ class StorageManager(
 
 private const val AUTOMATIC_BACKUPS_PATH = "autobackup"
 private const val DOWNLOADS_PATH = "downloads"
+private const val EXTENSIONS_PATH = "extensions"
 private const val LOCAL_SOURCE_PATH = "local"
 
 // SY -->

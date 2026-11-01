@@ -106,6 +106,9 @@ class DownloadQueueScreenModel(
                     R.id.cancel_download -> {
                         cancel(listOf(item.download))
                     }
+                    R.id.retry_download -> {
+                        retry(item.download)
+                    }
                     R.id.cancel_series -> {
                         val allDownloadsForSeries = adapter?.currentItems
                             ?.filterIsInstance<DownloadItem>()
@@ -176,6 +179,10 @@ class DownloadQueueScreenModel(
         downloadManager.cancelQueuedDownloads(downloads)
     }
 
+    fun retry(download: Download) {
+        downloadManager.startDownloadNow(download.chapter.id)
+    }
+
     // KMK -->
     fun showManga(mangaId: Long) {
         navigator?.push(MangaScreen(mangaId))
@@ -203,6 +210,7 @@ class DownloadQueueScreenModel(
      * @param download the download whose status has changed.
      */
     fun onStatusChange(download: Download) {
+        getHolder(download)?.notifyStatus()
         when (download.status) {
             Download.State.DOWNLOADING -> {
                 launchProgressJob(download)
@@ -281,6 +289,12 @@ class DownloadQueueScreenModel(
      * @return the holder of the download or null if it's not bound.
      */
     private fun getHolder(download: Download): DownloadHolder? {
-        return controllerBinding.root.findViewHolderForItemId(download.chapter.id) as? DownloadHolder
+        if (!::controllerBinding.isInitialized) return null
+        val recyclerView = controllerBinding.root
+        return (0 until recyclerView.childCount)
+            .asSequence()
+            .map { recyclerView.getChildViewHolder(recyclerView.getChildAt(it)) }
+            .filterIsInstance<DownloadHolder>()
+            .firstOrNull { it.isBoundTo(download) }
     }
 }

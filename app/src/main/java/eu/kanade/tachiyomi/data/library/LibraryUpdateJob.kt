@@ -19,6 +19,7 @@ import androidx.work.WorkQuery
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import eu.kanade.domain.chapter.interactor.SyncChaptersWithSource
+import eu.kanade.domain.chapter.interactor.getChapterListWithRecovery
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.domain.source.service.SourcePreferences
@@ -76,6 +77,7 @@ import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_HAS_U
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_NON_COMPLETED
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_NON_READ
 import tachiyomi.domain.library.service.LibraryPreferences.Companion.MANGA_OUTSIDE_RELEASE_PERIOD
+import tachiyomi.domain.library.service.LibraryPreferences.Companion.NOVA_AUTO_UPDATE_30_MINUTES
 import tachiyomi.domain.libraryUpdateError.interactor.DeleteLibraryUpdateErrors
 import tachiyomi.domain.libraryUpdateError.interactor.InsertLibraryUpdateErrors
 import tachiyomi.domain.libraryUpdateError.model.LibraryUpdateError
@@ -89,6 +91,7 @@ import tachiyomi.domain.manga.interactor.GetMergedMangaForDownloading
 import tachiyomi.domain.manga.interactor.InsertFlatMetadata
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.model.MangaUpdate
 import tachiyomi.domain.source.model.SourceNotInstalledException
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
@@ -178,7 +181,8 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         val group = inputData.getInt(KEY_GROUP, LibraryGroup.BY_DEFAULT)
         val groupExtra = inputData.getString(KEY_GROUP_EXTRA)
         // SY <--
-        addMangaToQueue(categoryId, group, groupExtra)
+        val forceUpdate = inputData.getBoolean(KEY_FORCE_UPDATE, false)
+        addMangaToQueue(categoryId, group, groupExtra, forceUpdate)
 
         return withIOContext {
             try {
@@ -225,7 +229,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      *
      * @param categoryId the ID of the category to update, or -1 if no category specified.
      */
-    private suspend fun addMangaToQueue(categoryId: Long, group: Int, groupExtra: String?) {
+    private suspend fun addMangaToQueue(categoryId: Long, group: Int, groupExtra: String?, forceUpdate: Boolean) {
         val libraryManga = getLibraryManga.await()
         // SY -->
         val groupLibraryUpdateType = libraryPreferences.groupLibraryUpdateType().get()
@@ -252,7 +256,9 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         }
         // KMK <--
 
-        val listToUpdate = if (categoryId != -1L) {
+        val listToUpdate = if (forceUpdate && categoryId == -1L && group == LibraryGroup.BY_DEFAULT) {
+            libraryManga
+        } else if (categoryId != -1L) {
             libraryManga.filter { categoryId in it.categories }
             // SY -->
         } else if (
@@ -307,7 +313,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             // SY <--
         }
 
-        val restrictions = libraryPreferences.autoUpdateMangaRestrictions().get()
+        val restrictions = if (forceUpdate) {
+            emptySet()
+        } else {
+            libraryPreferences.autoUpdateMangaRestrictions().get()
+        }
         val skippedUpdates = mutableListOf<Pair<Manga, String?>>()
         val (_, fetchWindowUpperBound) = fetchInterval.getWindow(ZonedDateTime.now())
 
@@ -535,24 +545,38 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      */
     private suspend fun updateManga(manga: Manga, fetchWindow: Pair<Long, Long>): List<Chapter> {
         val source = sourceManager.getOrStub(manga.source)
+        var currentManga = manga
 
         // Update manga metadata if needed
         if (libraryPreferences.autoUpdateMetadata().get()) {
-            val networkManga = source.getMangaDetails(manga.toSManga())
-            updateManga.awaitUpdateFromSource(manga, networkManga, manualFetch = false, coverCache)
+            try {
+                val networkManga = source.getMangaDetails(currentManga.toSManga())
+                updateManga.awaitUpdateFromSource(currentManga, networkManga, manualFetch = false, coverCache)
+                currentManga = getManga.await(manga.id) ?: currentManga
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                // Chapter recovery below can repair entries whose source URL changed.
+            }
         }
 
         if (source is MergedSource) {
-            return source.fetchChaptersAndSync(manga, false)
+            return source.fetchChaptersAndSync(currentManga, false)
         }
 
-        val chapters = source.getChapterList(manga.toSManga())
+        val result = source.getChapterListWithRecovery(currentManga)
+        result.details?.let {
+            updateManga.awaitUpdateFromSource(currentManga, it, manualFetch = false, coverCache)
+        }
+        result.resolvedUrl
+            ?.takeIf { it != currentManga.url }
+            ?.let { updateManga.await(MangaUpdate(id = currentManga.id, url = it)) }
 
         // Get manga from database to account for if it was removed during the update and
         // to get latest data so it doesn't get overwritten later on
         val dbManga = getManga.await(manga.id)?.takeIf { it.favorite } ?: return emptyList()
 
-        return syncChaptersWithSource.await(chapters, dbManga, source, false, fetchWindow)
+        return syncChaptersWithSource.await(result.chapters, dbManga, source, false, fetchWindow)
     }
 
     // SY -->
@@ -746,6 +770,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
          * Key for specific manga IDs to update.
          */
         private const val KEY_MANGA_IDS = "manga_ids"
+        private const val KEY_FORCE_UPDATE = "force_update"
         // KMK <--
 
         fun cancelAllWorks(context: Context) {
@@ -759,6 +784,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             val preferences = Injekt.get<LibraryPreferences>()
             val interval = prefInterval ?: preferences.autoUpdateInterval().get()
             if (interval > 0) {
+                val intervalDuration = if (interval == NOVA_AUTO_UPDATE_30_MINUTES) {
+                    NOVA_AUTO_UPDATE_30_MINUTES.toLong() to TimeUnit.MINUTES
+                } else {
+                    interval.toLong() to TimeUnit.HOURS
+                }
                 val restrictions = preferences.autoUpdateDeviceRestrictions().get()
                 val networkType = if (DEVICE_NETWORK_NOT_METERED in restrictions) {
                     NetworkType.UNMETERED
@@ -780,8 +810,8 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                     .build()
 
                 val request = PeriodicWorkRequestBuilder<LibraryUpdateJob>(
-                    interval.toLong(),
-                    TimeUnit.HOURS,
+                    intervalDuration.first,
+                    intervalDuration.second,
                     10,
                     TimeUnit.MINUTES,
                 )
@@ -811,6 +841,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             // SY <--
             // KMK -->
             mangaIds: List<Long>? = null,
+            forceUpdate: Boolean = false,
             // KMK <--
         ): Boolean {
             val wm = context.workManager
@@ -829,6 +860,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                 // SY <--
                 // KMK -->
                 KEY_MANGA_IDS to mangaIds?.toLongArray(),
+                KEY_FORCE_UPDATE to forceUpdate,
                 // KMK <--
             )
 

@@ -67,6 +67,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
@@ -85,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.allowRgb565
 import coil3.request.crossfade
 import com.mikepenz.markdown.model.markdownAnnotator
 import com.mikepenz.markdown.model.markdownAnnotatorConfig
@@ -153,9 +155,11 @@ fun MangaInfoBox(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(manga)
                 .crossfade(true)
+                .allowRgb565(false)
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            filterQuality = FilterQuality.High,
             // KMK -->
             onSuccess = { result ->
                 val image = result.result.image

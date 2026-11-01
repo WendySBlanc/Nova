@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -48,6 +49,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import dev.icerock.moko.resources.StringResource
@@ -58,12 +60,11 @@ import tachiyomi.presentation.core.components.material.DISABLED_ALPHA
 import tachiyomi.presentation.core.components.material.Slider
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.theme.header
 import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.presentation.core.util.secondaryItemAlpha
 
 object SettingsItemsPaddings {
-    val Horizontal = 24.dp
+    val Horizontal = 20.dp
     val Vertical = 10.dp
 }
 
@@ -76,7 +77,9 @@ fun HeadingItem(labelRes: StringResource) {
 fun HeadingItem(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.header,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
         modifier = Modifier
             .fillMaxWidth()
             .padding(
@@ -471,17 +474,19 @@ private fun BaseSettingsItem(
         modifier = Modifier
             .clickable(onClick = onClick)
             .fillMaxWidth()
+            .heightIn(min = 64.dp)
             .padding(
                 horizontal = SettingsItemsPaddings.Horizontal,
                 vertical = SettingsItemsPaddings.Vertical,
             ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         widget(this)
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyLarge,
         )
     }
 }

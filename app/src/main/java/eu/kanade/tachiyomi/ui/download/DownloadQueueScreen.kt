@@ -4,8 +4,10 @@ import android.view.LayoutInflater
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.PlayArrow
@@ -49,6 +51,8 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.NestedMenuItem
+import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.theme.colorscheme.AndroidViewColorScheme
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.databinding.DownloadListBinding
@@ -106,6 +110,7 @@ object DownloadQueueScreen : Screen() {
         }
 
         Scaffold(
+            containerColor = NovaVikiColors.Background,
             topBar = {
                 AppBar(
                     titleContent = {
@@ -234,6 +239,8 @@ object DownloadQueueScreen : Screen() {
                         }
                     },
                     expanded = fabExpanded,
+                    containerColor = NovaVikiColors.Accent,
+                    contentColor = NovaVikiColors.Background,
                     modifier = Modifier.animateFloatingActionButton(
                         visible = downloadList.isNotEmpty(),
                         alignment = Alignment.BottomEnd,
@@ -260,9 +267,16 @@ object DownloadQueueScreen : Screen() {
             val colorScheme = AndroidViewColorScheme(MaterialTheme.colorScheme)
             // KMK <--
 
-            Box(modifier = Modifier.nestedScroll(nestedScrollConnection)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection),
+                contentAlignment = Alignment.TopCenter,
+            ) {
                 AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                        .fillMaxWidth(),
                     factory = { context ->
                         screenModel.controllerBinding = DownloadListBinding.inflate(LayoutInflater.from(context))
                         screenModel.adapter = DownloadAdapter(

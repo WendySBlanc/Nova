@@ -1,10 +1,8 @@
 package eu.kanade.presentation.theme
 
 import android.content.Context
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -59,7 +57,7 @@ fun TachiyomiTheme(
     seedColor: Color?,
     appTheme: AppTheme? = null,
     amoled: Boolean? = null,
-    typography: Typography = MaterialTheme.typography,
+    typography: Typography = NovaVikiTypography,
     content: @Composable () -> Unit,
 ) {
     if (seedColor == null) {
@@ -71,6 +69,7 @@ fun TachiyomiTheme(
             seedColor = seedColor,
             isAmoled = isAmoled,
             style = uiPreferences.themeCoverBasedStyle().get(),
+            shapes = NovaVikiShapes,
             typography = typography,
             animate = true,
             content = content,
@@ -93,7 +92,7 @@ private fun BaseTachiyomiTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val isDark = isSystemInDarkTheme()
+    val isDark = true
     MaterialExpressiveTheme(
         colorScheme = remember(appTheme, isDark, isAmoled) {
             getThemeColorScheme(
@@ -103,6 +102,8 @@ private fun BaseTachiyomiTheme(
                 isAmoled = isAmoled,
             )
         },
+        shapes = NovaVikiShapes,
+        typography = NovaVikiTypography,
         content = content,
     )
 }

@@ -1,0 +1,137 @@
+#ToolWrapper {
+  position: fixed;
+  top: 50%;
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 9999999;
+  transform: translateY(-50%);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+#ToolWrapper.horizontal {
+  top: auto;
+  right: auto;
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 72px));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#ToolWrapper.hidden {
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(10px, -50%);
+}
+
+#ToolWrapper.hidden.horizontal {
+  transform: translate(-50%, 8px);
+}
+
+#ToolWrapper > #ScrollBar {
+  box-sizing: border-box;
+  width: 48px;
+  height: min(46vh, 440px);
+  min-height: 200px;
+  padding: 12px 0;
+  border: 1px solid color-mix(in srgb, var(--theme-outline) 78%, transparent);
+  border-radius: 8px;
+  background-color: color-mix(
+    in srgb,
+    var(--readerSettings-theme) 94%,
+    var(--readerSettings-textColor) 6%
+  );
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  touch-action: none;
+  user-select: none;
+}
+
+#ScrollBar > .scrollbar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#ScrollBar > .scrollbar-item.scrollbar-text {
+  display: none;
+}
+
+#ScrollBar > .scrollbar-item#scrollbar-slider {
+  height: 100%;
+}
+
+#ScrollBar #scrollbar-track {
+  width: 2px;
+  height: 100%;
+  border-radius: 2px;
+  background-color: color-mix(
+    in srgb,
+    var(--readerSettings-textColor) 24%,
+    transparent
+  );
+}
+
+#ScrollBar #scrollbar-progress {
+  width: 100%;
+  height: 0;
+  border-radius: 2px;
+  background-color: var(--theme-primary);
+}
+
+#ScrollBar #scrollbar-thumb-wrapper {
+  position: relative;
+  top: 100%;
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-23px, -24px);
+}
+
+#ScrollBar #scrollbar-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--theme-onPrimary);
+  border-radius: 50%;
+  background-color: var(--theme-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+#ToolWrapper.horizontal > #ScrollBar {
+  display: flex;
+  width: min(calc(100vw - 24px), 440px);
+  height: 48px;
+  min-height: 0;
+  padding: 0 12px;
+  align-items: center;
+}
+
+#ToolWrapper.horizontal > #ScrollBar > .scrollbar-item#scrollbar-slider {
+  width: 100%;
+  height: 48px;
+  align-items: center;
+}
+
+#ToolWrapper.horizontal > #ScrollBar #scrollbar-track {
+  width: 100%;
+  height: 2px;
+}
+
+#ToolWrapper.horizontal > #ScrollBar #scrollbar-progress {
+  width: 0;
+  height: 100%;
+}
+
+#ToolWrapper.horizontal > #ScrollBar #scrollbar-thumb-wrapper {
+  top: auto;
+  left: 100%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-24px, -23px);
+}
+
+@media only screen and (min-width: 600px) {
+  #ToolWrapper {
+    right: max(16px, env(safe-area-inset-right));
+  }
+}

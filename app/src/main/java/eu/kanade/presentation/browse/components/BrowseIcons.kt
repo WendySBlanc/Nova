@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.ColorPainter
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import coil3.compose.AsyncImage
 import eu.kanade.domain.source.model.icon
+import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.presentation.util.rememberResourceBitmapPainter
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.extension.model.Extension
@@ -87,11 +89,13 @@ fun ExtensionIcon(
 ) {
     when (extension) {
         is Extension.Available -> {
+            val iconRequest = rememberHighQualityImageRequest(extension.iconUrl)
             AsyncImage(
-                model = extension.iconUrl,
+                model = iconRequest,
                 contentDescription = null,
                 placeholder = ColorPainter(Color(0x1F888888)),
                 error = rememberResourceBitmapPainter(id = R.drawable.cover_error),
+                filterQuality = FilterQuality.High,
                 modifier = modifier
                     .clip(MaterialTheme.shapes.extraSmall),
             )

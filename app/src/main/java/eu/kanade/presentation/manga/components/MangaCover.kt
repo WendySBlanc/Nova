@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -30,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.SubcomposeAsyncImage
+import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.presentation.manga.components.MangaCover.Companion.COVER_TEMPLATE_SIZE_BIG
 import eu.kanade.presentation.manga.components.MangaCover.Companion.COVER_TEMPLATE_SIZE_MEDIUM
 import eu.kanade.presentation.manga.components.MangaCover.Companion.COVER_TEMPLATE_SIZE_NORMAL
@@ -74,6 +76,7 @@ enum class MangaCover(val ratio: Float) {
         // KMK -->
         var succeed by remember { mutableStateOf(false) }
         // KMK <--
+        val imageRequest = rememberHighQualityImageRequest(data)
 
         val modifierColored = modifier
             .aspectRatio(ratio)
@@ -94,7 +97,7 @@ enum class MangaCover(val ratio: Float) {
             )
 
         SubcomposeAsyncImage(
-            model = data,
+            model = imageRequest,
             // KMK -->
             loading = {
                 Box(
@@ -153,6 +156,7 @@ enum class MangaCover(val ratio: Float) {
             contentDescription = contentDescription,
             modifier = modifierColored,
             contentScale = scale,
+            filterQuality = FilterQuality.High,
         )
     }
 

@@ -8,6 +8,8 @@ import eu.kanade.tachiyomi.util.storage.DiskUtil
 import logcat.LogPriority
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.storage.displayablePath
+import tachiyomi.core.common.storage.extension
+import tachiyomi.core.common.storage.nameWithoutExtension
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.download.service.DownloadPreferences
@@ -102,6 +104,17 @@ class DownloadProvider(
         return sourceDir?.findFile(getMangaDirName(mangaTitle))
     }
 
+    private fun findMangaDirs(mangaTitle: String, source: Source): Sequence<UniFile> {
+        val mangaDirName = getMangaDirName(mangaTitle)
+        val preferredMangaDir = findMangaDir(mangaTitle, source)
+        val fallbackMangaDirs = downloadsDir?.listFiles().orEmpty().asSequence()
+            .filter { it.isDirectory }
+            .mapNotNull { sourceDir -> sourceDir.findFile(mangaDirName) }
+
+        return (sequenceOf(preferredMangaDir).filterNotNull() + fallbackMangaDirs)
+            .distinctBy { it.uri.toString() }
+    }
+
     /**
      * Returns the download directory for a chapter if it exists.
      *
@@ -116,11 +129,45 @@ class DownloadProvider(
         chapterUrl: String,
         mangaTitle: String,
         source: Source,
+        mangaId: Long? = null,
+        chapterId: Long? = null,
     ): UniFile? {
-        val mangaDir = findMangaDir(mangaTitle, source)
-        return getValidChapterDirNames(chapterName, chapterScanlator, chapterUrl).asSequence()
-            .mapNotNull { mangaDir?.findFile(it) }
+        return findMangaDirs(mangaTitle, source)
+            .flatMap { mangaDir -> mangaDir.listFiles().orEmpty().asSequence() }
+            .filter { it.isDirectory || it.isFile }
+            .filter { isValidChapterDirName(it.name, chapterName, chapterScanlator, chapterUrl, chapterId) }
             .firstOrNull()
+            ?: findRestoredLightNovelChapterDir(
+                chapterName = chapterName,
+                chapterUrl = chapterUrl,
+                mangaTitle = mangaTitle,
+                source = source,
+                mangaId = mangaId,
+                chapterId = chapterId,
+            )
+    }
+
+    fun findLightNovelIndexFile(
+        chapterName: String,
+        chapterScanlator: String?,
+        chapterUrl: String,
+        mangaTitle: String,
+        source: Source,
+        mangaId: Long? = null,
+        chapterId: Long? = null,
+    ): UniFile? {
+        return findChapterDir(
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            mangaTitle = mangaTitle,
+            source = source,
+            mangaId = mangaId,
+            chapterId = chapterId,
+        )
+            ?.takeIf { it.isDirectory }
+            ?.findFile(LNREADER_INDEX_FILE)
+            ?.takeIf { it.isFile }
     }
 
     /**
@@ -131,25 +178,65 @@ class DownloadProvider(
      * @param source the source of the chapter.
      */
     fun findChapterDirs(chapters: List<Chapter>, manga: Manga, source: Source): Pair<UniFile?, List<UniFile>> {
-        val mangaDir = findMangaDir(/* SY --> */ manga.ogTitle /* SY <-- */, source) ?: return null to emptyList()
-        return mangaDir to chapters.mapNotNull { chapter ->
-            // KMK -->
-            if (source.isLocal()) {
-                val splitUrl = chapter.url.split('/', limit = 2)
-                if (splitUrl.size < 2) {
-                    null
-                } else {
-                    val (mangaDirName, chapterDirName) = splitUrl
-                    mangaDir.findFile(chapterDirName)
-                        ?: storageManager.getLocalSourceDirectory()?.findFile(mangaDirName)?.findFile(chapterDirName)
+        val mangaDirs = findMangaDirs(/* SY --> */ manga.ogTitle /* SY <-- */, source).toList()
+        if (mangaDirs.isEmpty()) return null to emptyList()
+
+        val chapterDirs = chapters.mapNotNull { chapter ->
+            mangaDirs.asSequence()
+                .mapNotNull { mangaDir ->
+                    // KMK -->
+                    if (source.isLocal()) {
+                        val splitUrl = chapter.url.split('/', limit = 2)
+                        if (splitUrl.size < 2) {
+                            null
+                        } else {
+                            val (mangaDirName, chapterDirName) = splitUrl
+                            mangaDir.findFile(chapterDirName)
+                                ?: storageManager.getLocalSourceDirectory()?.findFile(mangaDirName)?.findFile(chapterDirName)
+                        }
+                    } else {
+                        // KMK <--
+                        mangaDir.listFiles().orEmpty().asSequence()
+                            .filter { it.isDirectory || it.isFile }
+                            .filter {
+                                isValidChapterDirName(
+                                    downloadedDirName = it.name,
+                                    chapterName = chapter.name,
+                                    chapterScanlator = chapter.scanlator,
+                                    chapterUrl = chapter.url,
+                                    chapterId = chapter.id,
+                                )
+                            }
+                            .firstOrNull()
+                    }
                 }
-            } else {
-                // KMK <--
-                getValidChapterDirNames(chapter.name, chapter.scanlator, chapter.url).asSequence()
-                    .mapNotNull { mangaDir.findFile(it) }
-                    .firstOrNull()
-            }
+                .firstOrNull()
         }
+
+        return mangaDirs.firstOrNull() to chapterDirs
+    }
+
+    fun findDownloadedChapterDirNames(
+        mangaTitles: Collection<String>,
+        source: Source,
+        mangaId: Long? = null,
+    ): Set<String> {
+        if (mangaTitles.isEmpty()) return emptySet()
+
+        val regularChapterDirs = mangaTitles
+            .asSequence()
+            .flatMap { title -> findMangaDirs(title, source) }
+            .distinctBy { it.uri.toString() }
+            .flatMap { mangaDir -> mangaDir.listFiles().orEmpty().asSequence() }
+            .mapNotNull { it.asDownloadedChapterNameOrNull() }
+
+        val restoredLightNovelChapterDirs = findRestoredLightNovelChapterDirNames(
+            mangaTitles = mangaTitles,
+            source = source,
+            mangaId = mangaId,
+        )
+
+        return (regularChapterDirs + restoredLightNovelChapterDirs).toSet()
     }
 
     // SY -->
@@ -165,15 +252,14 @@ class DownloadProvider(
         manga: Manga,
         source: Source,
     ): List<UniFile> {
-        val mangaDir = findMangaDir(/* SY --> */ manga.ogTitle /* SY <-- */, source) ?: return emptyList()
-        return mangaDir.listFiles().orEmpty().asList().filter {
-            chapters.find { chp ->
-                getValidChapterDirNames(chp.name, chp.scanlator, chp.url).any { dir ->
-                    mangaDir.findFile(dir) != null
-                }
-            } == null ||
-                it.name?.endsWith(Downloader.TMP_DIR_SUFFIX) == true
-        }
+        return findMangaDirs(/* SY --> */ manga.ogTitle /* SY <-- */, source).flatMap { mangaDir ->
+            mangaDir.listFiles().orEmpty().asSequence().filter {
+                chapters.find { chp ->
+                    isValidChapterDirName(it.name, chp.name, chp.scanlator, chp.url, chp.id)
+                } == null ||
+                    it.name?.endsWith(Downloader.TMP_DIR_SUFFIX) == true
+            }
+        }.toList()
     }
     // SY <--
 
@@ -295,9 +381,15 @@ class DownloadProvider(
      * @param chapterScanlator the scanlator group for the chapter, if any.
      * @param chapterUrl the unique URL of the chapter.
      */
-    fun getValidChapterDirNames(chapterName: String, chapterScanlator: String?, chapterUrl: String): List<String> {
+    fun getValidChapterDirNames(
+        chapterName: String,
+        chapterScanlator: String?,
+        chapterUrl: String,
+        chapterId: Long? = null,
+    ): List<String> {
         val chapterDirName = getChapterDirName(chapterName, chapterScanlator, chapterUrl)
         val legacyChapterDirNames = getLegacyChapterDirNames(chapterName, chapterScanlator, chapterUrl)
+        val restoredLightNovelDirNames = getRestoredLightNovelChapterDirNames(chapterName, chapterUrl, chapterId)
 
         return buildList {
             // Folder of images
@@ -310,6 +402,151 @@ class DownloadProvider(
                 add(it)
                 add("$it.cbz")
             }
+
+            restoredLightNovelDirNames.forEach {
+                add(it)
+                add("$it.cbz")
+            }
         }
+    }
+
+    fun isValidChapterDirName(
+        downloadedDirName: String?,
+        chapterName: String,
+        chapterScanlator: String?,
+        chapterUrl: String,
+        chapterId: Long? = null,
+    ): Boolean {
+        val actualName = downloadedDirName?.removeSuffix(".cbz") ?: return false
+        if (downloadedDirName in getValidChapterDirNames(chapterName, chapterScanlator, chapterUrl, chapterId)) {
+            return true
+        }
+
+        // Restored chapters can keep the same visible chapter name but receive a new source URL,
+        // which changes the 6-character URL hash suffix. Treat matching base names as downloaded.
+        val possibleBaseNames = buildSet {
+            add(getChapterDirName(chapterName, chapterScanlator, chapterUrl, includeChapterUrlHash = false))
+            add(
+                getChapterDirName(
+                    chapterName,
+                    chapterScanlator,
+                    chapterUrl,
+                    disallowNonAsciiFilenames = !libraryPreferences.disallowNonAsciiFilenames().get(),
+                    includeChapterUrlHash = false,
+                ),
+            )
+            addAll(getLegacyChapterDirNames(chapterName, chapterScanlator, chapterUrl))
+            addAll(getRestoredLightNovelChapterDirNames(chapterName, chapterUrl, chapterId))
+        }
+
+        return possibleBaseNames.any { baseName ->
+            actualName == baseName || actualName.removePrefix("${baseName}_").let { suffix ->
+                actualName.startsWith("${baseName}_") &&
+                    suffix.length == 6 &&
+                    suffix.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
+            }
+        }
+    }
+
+    private fun getRestoredLightNovelChapterDirNames(
+        chapterName: String,
+        chapterUrl: String,
+        chapterId: Long?,
+    ): List<String> {
+        val urlSlug = chapterUrl
+            .trim('/')
+            .substringAfterLast('/')
+            .takeIf { it.isNotBlank() }
+
+        return buildList {
+            chapterId?.let { add(it.toString()) }
+            urlSlug?.let { slug ->
+                add(DiskUtil.buildValidFilename(slug))
+            }
+            add(DiskUtil.buildValidFilename(sanitizeChapterName(chapterName)))
+        }.distinct()
+    }
+
+    private fun findRestoredLightNovelChapterDir(
+        chapterName: String,
+        chapterUrl: String,
+        mangaTitle: String,
+        source: Source,
+        mangaId: Long?,
+        chapterId: Long?,
+    ): UniFile? {
+        val root = downloadsDir?.findFile(LNREADER_NOVELS_DIR_NAME) ?: return null
+        val pluginCandidates = listOf(
+            getSourceDirName(source),
+            source.name,
+            source.id.toString(),
+        ).map { DiskUtil.buildValidFilename(it).lowercase() }.toSet()
+        val novelCandidates = buildSet {
+            mangaId?.let { add(it.toString()) }
+            add(getMangaDirName(mangaTitle))
+            add(DiskUtil.buildValidFilename(mangaTitle))
+        }
+        val chapterCandidates = getRestoredLightNovelChapterDirNames(chapterName, chapterUrl, chapterId).toSet()
+
+        return root.listFiles().orEmpty()
+            .asSequence()
+            .filter { it.isDirectory }
+            .sortedByDescending { pluginDir -> pluginDir.name.orEmpty().lowercase() in pluginCandidates }
+            .flatMap { pluginDir -> pluginDir.listFiles().orEmpty().asSequence() }
+            .filter { novelDir ->
+                novelDir.isDirectory && novelDir.name.orEmpty() in novelCandidates
+            }
+            .flatMap { novelDir -> novelDir.listFiles().orEmpty().asSequence() }
+            .firstOrNull { chapterDir ->
+                chapterDir.isDirectory &&
+                    chapterDir.name.orEmpty() in chapterCandidates &&
+                    chapterDir.findFile(LNREADER_INDEX_FILE)?.isFile == true
+            }
+    }
+
+    private fun findRestoredLightNovelChapterDirNames(
+        mangaTitles: Collection<String>,
+        source: Source,
+        mangaId: Long?,
+    ): Sequence<String> {
+        val root = downloadsDir?.findFile(LNREADER_NOVELS_DIR_NAME) ?: return emptySequence()
+        val pluginCandidates = listOf(
+            getSourceDirName(source),
+            source.name,
+            source.id.toString(),
+        ).map { DiskUtil.buildValidFilename(it).lowercase() }.toSet()
+        val novelCandidates = buildSet {
+            mangaId?.let { add(it.toString()) }
+            mangaTitles.forEach { title ->
+                add(getMangaDirName(title))
+                add(DiskUtil.buildValidFilename(title))
+            }
+        }
+
+        return root.listFiles().orEmpty()
+            .asSequence()
+            .filter { it.isDirectory }
+            .sortedByDescending { pluginDir -> pluginDir.name.orEmpty().lowercase() in pluginCandidates }
+            .flatMap { pluginDir -> pluginDir.listFiles().orEmpty().asSequence() }
+            .filter { novelDir -> novelDir.isDirectory && novelDir.name.orEmpty() in novelCandidates }
+            .flatMap { novelDir -> novelDir.listFiles().orEmpty().asSequence() }
+            .filter { chapterDir ->
+                chapterDir.isDirectory && chapterDir.findFile(LNREADER_INDEX_FILE)?.isFile == true
+            }
+            .mapNotNull { it.name }
+    }
+
+    private fun UniFile.asDownloadedChapterNameOrNull(): String? {
+        return when {
+            name?.endsWith(Downloader.TMP_DIR_SUFFIX) == true -> null
+            isDirectory -> name
+            isFile && extension == "cbz" -> nameWithoutExtension
+            else -> null
+        }
+    }
+
+    private companion object {
+        const val LNREADER_NOVELS_DIR_NAME = "Novels"
+        const val LNREADER_INDEX_FILE = "index.html"
     }
 }

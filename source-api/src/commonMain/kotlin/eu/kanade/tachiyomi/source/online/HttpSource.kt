@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.network.asObservableSuccess
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.newCachelessCallWithProgress
 import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -295,6 +296,9 @@ abstract class HttpSource : CatalogueSource {
      * @return the updated manga.
      */
     override suspend fun getMangaDetails(manga: SManga): SManga {
+        if (usesCombinedMangaUpdateApi) {
+            return getMangaUpdate(manga, emptyList(), fetchDetails = true, fetchChapters = false).manga
+        }
         @Suppress("DEPRECATION")
         return fetchMangaDetails(manga).awaitSingle()
     }
@@ -390,6 +394,9 @@ abstract class HttpSource : CatalogueSource {
      * @return the chapters for the manga.
      */
     override suspend fun getChapterList(manga: SManga): List<SChapter> {
+        if (usesCombinedMangaUpdateApi) {
+            return getMangaUpdate(manga, emptyList(), fetchDetails = false, fetchChapters = true).chapters
+        }
         @Suppress("DEPRECATION")
         return fetchChapterList(manga).awaitSingle()
     }
@@ -537,6 +544,28 @@ abstract class HttpSource : CatalogueSource {
     }
 
     /**
+     * Returns an image response starting after [existingSize] when the source uses the standard
+     * image request. Sources with a custom image fetcher keep their existing behavior and restart
+     * the page safely instead of bypassing source-specific authentication or decoding.
+     */
+    suspend fun getImage(page: Page, existingSize: Long): Response {
+        if (existingSize <= 0L || hasCustomImageFetcher) {
+            return getImage(page)
+        }
+        return client.newCachelessCallWithProgress(imageRequest(page), page, existingSize)
+            .awaitSuccess()
+    }
+
+    private val hasCustomImageFetcher by lazy(LazyThreadSafetyMode.NONE) {
+        javaClass.methods.any { method ->
+            method.name == "getImage" &&
+                method.parameterCount == 2 &&
+                method.parameterTypes.firstOrNull() == Page::class.java &&
+                method.declaringClass != HttpSource::class.java
+        }
+    }
+
+    /**
      * Returns the request for getting the source image. Override only if it's needed to override
      * the url, send different headers or request method like POST.
      * Normally it's not needed to override this method.
@@ -623,6 +652,15 @@ abstract class HttpSource : CatalogueSource {
      * @param manga the manga of the chapter.
      */
     open fun prepareNewChapter(chapter: SChapter, manga: SManga) {}
+
+    private val usesCombinedMangaUpdateApi by lazy(LazyThreadSafetyMode.NONE) {
+        javaClass.methods.any { method ->
+            method.name == "getMangaUpdate" &&
+                method.declaringClass != Source::class.java &&
+                method.declaringClass != CatalogueSource::class.java &&
+                method.declaringClass != HttpSource::class.java
+        }
+    }
 
     /**
      * Returns the list of filters for the source.

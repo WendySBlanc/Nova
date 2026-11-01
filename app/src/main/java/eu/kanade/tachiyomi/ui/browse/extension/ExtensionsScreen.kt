@@ -40,14 +40,19 @@ class ExtensionsScreen(private val searchSource: String? = null) : Screen() {
         Scaffold(
             topBar = {
                 val searchEnabled = extensionsTab.searchEnabled
-                SearchToolbar(
-                    navigateUp = { navigator?.pop() },
-                    titleContent = { AppBarTitle(stringResource(MR.strings.label_extensions)) },
-                    searchEnabled = searchEnabled,
-                    searchQuery = if (searchEnabled) searchQuery else null,
-                    onChangeSearchQuery = onChangeSearchQuery,
-                    actions = { AppBarActions(extensionsTab.actions) },
-                )
+                val selectionTopBar = extensionsTab.topBar
+                if (selectionTopBar != null) {
+                    selectionTopBar()
+                } else {
+                    SearchToolbar(
+                        navigateUp = { navigator?.pop() },
+                        titleContent = { AppBarTitle(stringResource(MR.strings.label_extensions)) },
+                        searchEnabled = searchEnabled,
+                        searchQuery = if (searchEnabled) searchQuery else null,
+                        onChangeSearchQuery = onChangeSearchQuery,
+                        actions = { AppBarActions(extensionsTab.actions) },
+                    )
+                }
             },
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         ) { paddingValues ->

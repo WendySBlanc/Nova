@@ -21,3 +21,8 @@ local.properties
 /app/google-services.json
 *.jks
 app/standard/preview/*
+
+# Local diagnostic and assistant scratch files
+/.codex-tmp/
+/hs_err_pid*.log
+/replay_pid*.log

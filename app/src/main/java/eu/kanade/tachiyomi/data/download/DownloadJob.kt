@@ -21,6 +21,7 @@ import eu.kanade.tachiyomi.util.system.networkStateFlow
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combineTransform
 import kotlinx.coroutines.flow.launchIn
@@ -70,22 +71,26 @@ class DownloadJob(private val context: Context, workerParams: WorkerParameters) 
 
         setForegroundSafely()
 
-        coroutineScope {
-            combineTransform(
+        return coroutineScope {
+            val networkObserver = combineTransform(
                 applicationContext.networkStateFlow(),
                 downloadPreferences.downloadOnlyOverWifi().changes(),
                 transform = { a, b -> emit(checkNetworkState(a, b)) },
             )
                 .onEach { networkCheck = it }
                 .launchIn(this)
-        }
 
-        // Keep the worker running when needed
-        while (active) {
-            active = !isStopped && downloadManager.isRunning && networkCheck
-        }
+            try {
+                while (!isStopped && active) {
+                    delay(WORKER_STATE_POLL_INTERVAL_MS)
+                    active = downloadManager.isRunning && networkCheck
+                }
 
-        return Result.success()
+                Result.success()
+            } finally {
+                networkObserver.cancel()
+            }
+        }
     }
 
     private fun checkNetworkState(state: NetworkState, requireWifi: Boolean): Boolean {
@@ -105,6 +110,7 @@ class DownloadJob(private val context: Context, workerParams: WorkerParameters) 
 
     companion object {
         private const val TAG = "Downloader"
+        private const val WORKER_STATE_POLL_INTERVAL_MS = 250L
 
         fun start(context: Context) {
             val request = OneTimeWorkRequestBuilder<DownloadJob>()

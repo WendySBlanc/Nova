@@ -18,6 +18,10 @@
         android:title="@string/action_move_to_bottom_all_for_series" />
 
     <item
+        android:id="@+id/retry_download"
+        android:title="@string/action_retry" />
+
+    <item
         android:id="@+id/cancel_download"
         android:title="@string/action_cancel" />
 

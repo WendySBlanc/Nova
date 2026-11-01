@@ -3,6 +3,7 @@ package mihon.domain.extensionrepo.interactor
 import logcat.LogPriority
 import mihon.domain.extensionrepo.exception.SaveExtensionRepoException
 import mihon.domain.extensionrepo.model.ExtensionRepo
+import mihon.domain.extensionrepo.model.NOVA_SIGNING_KEY_FINGERPRINT
 import mihon.domain.extensionrepo.repository.ExtensionRepoRepository
 import mihon.domain.extensionrepo.service.ExtensionRepoService
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -12,7 +13,7 @@ class CreateExtensionRepo(
     private val repository: ExtensionRepoRepository,
     private val service: ExtensionRepoService,
 ) {
-    private val repoRegex = """^https://.*/index\.min\.json$""".toRegex()
+    private val repoRegex = """^https://.*/index\.(?:min\.json|pb)$""".toRegex()
 
     suspend fun await(indexUrl: String): Result {
         val formattedIndexUrl = indexUrl.toHttpUrlOrNull()
@@ -20,7 +21,9 @@ class CreateExtensionRepo(
             ?.takeIf { it.matches(repoRegex) }
             ?: return Result.InvalidUrl
 
-        val baseUrl = formattedIndexUrl.removeSuffix("/index.min.json")
+        val baseUrl = formattedIndexUrl
+            .removeSuffix("/index.min.json")
+            .removeSuffix("/index.pb")
         return service.fetchRepoDetails(baseUrl)?.let { insert(it) } ?: Result.InvalidUrl
     }
 
@@ -75,6 +78,6 @@ class CreateExtensionRepo(
 
         // cuong-tran's key
         const val KOMIKKU_SIGNATURE = "cbec121aa82ebb02aaa73806992e0368a97d47b5451ed6524816d03084c45905"
-        const val REPO_SIGNATURE = "9add655a78e96c4ec7a53ef89dccb557cb5d767489fac5e785d671a5a75d4da2"
+        const val REPO_SIGNATURE = NOVA_SIGNING_KEY_FINGERPRINT
     }
 }

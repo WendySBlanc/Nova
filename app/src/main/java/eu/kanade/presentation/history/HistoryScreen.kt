@@ -1,8 +1,11 @@
 package eu.kanade.presentation.history
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
@@ -17,6 +20,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -27,6 +31,7 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.history.components.HistoryItem
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel
 import eu.kanade.tachiyomi.ui.history.HistoryScreenModel.HistorySelectionOptions
@@ -165,74 +170,76 @@ private fun HistoryScreenContent(
     usePanoramaCover: Boolean,
     // KMK <--
 ) {
-    FastScrollLazyColumn(
-        contentPadding = contentPadding,
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        items(
-            items = history,
-            key = { "history-${it.hashCode()}" },
-            contentType = {
-                when (it) {
-                    is HistoryUiModel.Header -> "header"
-                    is HistoryUiModel.Item -> "item"
-                }
-            },
-        ) { item ->
-            when (item) {
-                is HistoryUiModel.Header -> {
-                    ListGroupHeader(
-                        modifier = Modifier.animateItemFastScroll(),
-                        text = relativeDateText(item.date),
-                    )
-                }
-                is HistoryUiModel.Item -> {
-                    val value = item.item
-                    // KMK -->
-                    val isSelected = remember(state.selection) { value.chapterId in state.selection }
-                    // KMK <--
-                    HistoryItem(
-                        modifier = Modifier.animateItemFastScroll(),
-                        history = value,
-                        onClickCover = { onClickCover(value) },
-                        // KMK -->
-                        onClick = {
-                            when {
-                                selectionMode -> onHistorySelected(
+        FastScrollLazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize(),
+            contentPadding = contentPadding,
+        ) {
+            items(
+                items = history,
+                key = { "history-${it.hashCode()}" },
+                contentType = {
+                    when (it) {
+                        is HistoryUiModel.Header -> "header"
+                        is HistoryUiModel.Item -> "item"
+                    }
+                },
+            ) { item ->
+                when (item) {
+                    is HistoryUiModel.Header -> {
+                        ListGroupHeader(
+                            modifier = Modifier.animateItemFastScroll(),
+                            text = relativeDateText(item.date),
+                        )
+                    }
+                    is HistoryUiModel.Item -> {
+                        val value = item.item
+                        val isSelected = remember(state.selection) { value.chapterId in state.selection }
+                        HistoryItem(
+                            modifier = Modifier.animateItemFastScroll(),
+                            history = value,
+                            onClickCover = { onClickCover(value) },
+                            onClick = {
+                                when {
+                                    selectionMode -> onHistorySelected(
+                                        item.item,
+                                        HistorySelectionOptions(
+                                            selected = !isSelected,
+                                            fromLongPress = false,
+                                        ),
+                                    )
+                                    else -> onClickResume(value)
+                                }
+                            },
+                            onLongClick = {
+                                onHistorySelected(
                                     item.item,
                                     HistorySelectionOptions(
                                         selected = !isSelected,
-                                        fromLongPress = false,
+                                        fromLongPress = true,
                                     ),
                                 )
-                                else -> onClickResume(value)
-                            }
-                        },
-                        onLongClick = {
-                            onHistorySelected(
-                                item.item,
-                                HistorySelectionOptions(
-                                    selected = !isSelected,
-                                    fromLongPress = true,
-                                ),
-                            )
-                        },
-                        // KMK <--
-                        onClickDelete = { onClickDelete(value) },
-                        onClickFavorite = { onClickFavorite(value) },
-                        // KMK -->
-                        selected = isSelected,
-                        readProgress = value.lastPageRead
-                            .takeIf { !value.read && it > 0L }
-                            ?.let {
-                                stringResource(
-                                    MR.strings.chapter_progress,
-                                    it + 1,
-                                )
                             },
-                        hasUnread = value.unreadCount > 0,
-                        usePanoramaCover = usePanoramaCover,
-                        // KMK <--
-                    )
+                            onClickDelete = { onClickDelete(value) },
+                            onClickFavorite = { onClickFavorite(value) },
+                            selected = isSelected,
+                            readProgress = value.lastPageRead
+                                .takeIf { !value.read && it > 0L }
+                                ?.let {
+                                    stringResource(
+                                        MR.strings.chapter_progress,
+                                        it + 1,
+                                    )
+                                },
+                            hasUnread = value.unreadCount > 0,
+                            usePanoramaCover = usePanoramaCover,
+                        )
+                    }
                 }
             }
         }

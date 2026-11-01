@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.library.LibraryUpdateNotifier
 import eu.kanade.tachiyomi.data.notification.NotificationHandler
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.UnmeteredSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -67,6 +68,7 @@ import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.io.IOException
 import java.util.Locale
 
 /**
@@ -294,11 +296,33 @@ class Downloader(
         if (source.id == MERGED_SOURCE_ID) return
         // KMK <--
 
-        val wasEmpty = queueState.value.isEmpty()
+        val requestedChapterIds = chapters.mapTo(mutableSetOf()) { it.id }
         val chaptersToQueue = chapters.asSequence()
             // Filter out those already downloaded.
-            .filter {
-                provider.findChapterDir(it.name, it.scanlator, it.url, /* SY --> */ manga.ogTitle /* SY <-- */, source) == null
+            .filter { chapter ->
+                val originalTitleDir = provider.findChapterDir(
+                    chapterName = chapter.name,
+                    chapterScanlator = chapter.scanlator,
+                    chapterUrl = chapter.url,
+                    mangaTitle = manga.ogTitle,
+                    source = source,
+                    mangaId = manga.id,
+                    chapterId = chapter.id,
+                )
+                val displayTitleDir = manga.title
+                    .takeUnless { it == manga.ogTitle }
+                    ?.let { title ->
+                        provider.findChapterDir(
+                            chapterName = chapter.name,
+                            chapterScanlator = chapter.scanlator,
+                            chapterUrl = chapter.url,
+                            mangaTitle = title,
+                            source = source,
+                            mangaId = manga.id,
+                            chapterId = chapter.id,
+                        )
+                    }
+                originalTitleDir == null && displayTitleDir == null
             }
             // Add chapters to queue from the start.
             .sortedByDescending { it.sourceOrder }
@@ -310,30 +334,31 @@ class Downloader(
 
         if (chaptersToQueue.isNotEmpty()) {
             addAllToQueue(chaptersToQueue)
+        }
 
-            // Start downloader if needed
-            if (autoStart && wasEmpty) {
-                val queuedDownloads = queueState.value.count { it.source !is UnmeteredSource }
-                val maxDownloadsFromSource = queueState.value
-                    .groupBy { it.source }
-                    .filterKeys { it !is UnmeteredSource }
-                    .maxOfOrNull { it.value.size }
-                    ?: 0
-                if (
-                    queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD ||
-                    maxDownloadsFromSource > CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD
-                ) {
-                    notifier.onWarning(
-                        context.stringResource(
-                            MR.strings.download_queue_size_warning,
-                            context.stringResource(MR.strings.app_name),
-                        ),
-                        WARNING_NOTIF_TIMEOUT_MS,
-                        NotificationHandler.openUrl(context, LibraryUpdateNotifier.HELP_WARNING_URL),
-                    )
-                }
-                DownloadJob.start(context)
+        val requestedDownloadIsQueued = queueState.value.any { it.chapter.id in requestedChapterIds }
+        if (autoStart && requestedDownloadIsQueued && !isRunning) {
+            // Restart stopped, paused, or failed queues when the user explicitly requests a download.
+            val queuedDownloads = queueState.value.count { it.source !is UnmeteredSource }
+            val maxDownloadsFromSource = queueState.value
+                .groupBy { it.source }
+                .filterKeys { it !is UnmeteredSource }
+                .maxOfOrNull { it.value.size }
+                ?: 0
+            if (
+                queuedDownloads > DOWNLOADS_QUEUED_WARNING_THRESHOLD ||
+                maxDownloadsFromSource > CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD
+            ) {
+                notifier.onWarning(
+                    context.stringResource(
+                        MR.strings.download_queue_size_warning,
+                        context.stringResource(MR.strings.app_name),
+                    ),
+                    WARNING_NOTIF_TIMEOUT_MS,
+                    NotificationHandler.openUrl(context, LibraryUpdateNotifier.HELP_WARNING_URL),
+                )
             }
+            DownloadJob.start(context)
         }
     }
 
@@ -392,11 +417,6 @@ class Downloader(
             } else {
                 DataSaver.NoOp
             }
-
-            // Delete all temporary (unfinished) files
-            tmpDir.listFiles()
-                ?.filter { it.extension == "tmp" }
-                ?.forEach { it.delete() }
 
             download.status = Download.State.DOWNLOADING
 
@@ -472,14 +492,12 @@ class Downloader(
 
         val digitCount = (download.pages?.size ?: 0).toString().length.coerceAtLeast(3)
         val filename = "%0${digitCount}d".format(Locale.ENGLISH, page.number)
-        val tmpFile = tmpDir.findFile("$filename.tmp")
-
-        // Delete temp file if it exists
-        tmpFile?.delete()
 
         // Try to find the image file
         val imageFile = tmpDir.listFiles()?.firstOrNull {
-            it.name!!.startsWith("$filename.") || it.name!!.startsWith("${filename}__001")
+            val fileName = it.name.orEmpty()
+            !fileName.endsWith(".tmp") &&
+                (fileName.startsWith("$filename.") || fileName.startsWith("${filename}__001"))
         }
 
         try {
@@ -524,15 +542,24 @@ class Downloader(
         page.status = Page.State.DownloadImage
         page.progress = 0
         return flow {
-            val response = source.getImage(page, dataSaver)
-            val file = tmpDir.createFile("$filename.tmp")!!
+            val file = tmpDir.findFile("$filename.tmp")
+                ?: tmpDir.createFile("$filename.tmp")!!
             try {
-                response.body.source().saveTo(file.openOutputStream())
-                val extension = getImageExtension(response, file)
-                file.renameTo("$filename.$extension")
-            } catch (e: Exception) {
-                response.close()
-                file.delete()
+                val existingSize = file.length()
+                source.getImage(page, dataSaver, existingSize).use { response ->
+                    val append = response.code == 206 && existingSize > 0L
+                    if (append && response.contentRangeStart() != existingSize) {
+                        file.delete()
+                        throw IOException("Invalid partial image response")
+                    }
+                    response.body.source().saveTo(file.openOutputStream(append))
+                    val extension = getImageExtension(response, file)
+                    file.renameTo("$filename.$extension")
+                }
+            } catch (e: HttpException) {
+                if (e.code == 416) {
+                    file.delete()
+                }
                 throw e
             }
             emit(file)
@@ -552,6 +579,14 @@ class Downloader(
             .first()
     }
 
+    private fun Response.contentRangeStart(): Long? {
+        return header("Content-Range")
+            ?.let(CONTENT_RANGE_REGEX::matchEntire)
+            ?.groupValues
+            ?.get(1)
+            ?.toLongOrNull()
+    }
+
     /**
      * Copies the image from cache to file in tmpDir.
      *
@@ -560,6 +595,7 @@ class Downloader(
      * @param filename the filename of the image.
      */
     private fun copyImageFromCache(cacheFile: File, tmpDir: UniFile, filename: String): UniFile {
+        tmpDir.findFile("$filename.tmp")?.delete()
         val tmpFile = tmpDir.createFile("$filename.tmp")!!
         cacheFile.inputStream().use { input ->
             tmpFile.openOutputStream().use { output ->
@@ -777,6 +813,7 @@ class Downloader(
         const val WARNING_NOTIF_TIMEOUT_MS = 30_000L
         const val CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD = 15
         private const val DOWNLOADS_QUEUED_WARNING_THRESHOLD = 30
+        private val CONTENT_RANGE_REGEX = Regex("""bytes\s+(\d+)-\d+/\d+""", RegexOption.IGNORE_CASE)
     }
 }
 

@@ -226,6 +226,21 @@ internal class ExtensionInstaller(private val context: Context) {
         }
     }
 
+    fun uninstallApks(pkgNames: Collection<String>) {
+        val (installedPackages, privatePackages) = pkgNames
+            .distinct()
+            .partition(context::isPackageInstalled)
+
+        privatePackages.forEach { pkgName ->
+            ExtensionLoader.uninstallPrivateExtension(context, pkgName)
+            ExtensionInstallReceiver.notifyRemoved(context, pkgName)
+        }
+
+        if (installedPackages.isNotEmpty()) {
+            context.startActivity(ExtensionUninstallActivity.createIntent(context, installedPackages))
+        }
+    }
+
     /**
      * Sets the step of the installation of an extension.
      *

@@ -349,6 +349,10 @@ class ExtensionManager(
         installer.uninstallApk(extension.pkgName)
     }
 
+    fun uninstallExtensions(extensions: Collection<Extension>) {
+        installer.uninstallApks(extensions.map(Extension::pkgName))
+    }
+
     /**
      * Adds the given extension to the list of trusted extensions. It also loads in background the
      * now trusted extensions.

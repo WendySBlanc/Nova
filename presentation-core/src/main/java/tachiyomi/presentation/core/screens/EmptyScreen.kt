@@ -1,24 +1,28 @@
 package tachiyomi.presentation.core.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.paddingFromBaseline
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import dev.icerock.moko.resources.StringResource
@@ -26,8 +30,6 @@ import kotlinx.collections.immutable.ImmutableList
 import tachiyomi.presentation.core.components.ActionButton
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.util.secondaryItemAlpha
-import kotlin.random.Random
 
 data class EmptyScreenAction(
     val stringRes: StringResource,
@@ -48,9 +50,7 @@ fun EmptyScreen(
         message = stringResource(stringRes),
         modifier = modifier,
         actions = actions,
-        // KMK -->
         help = help,
-        // KMK <--
     )
 }
 
@@ -63,7 +63,6 @@ fun EmptyScreen(
     help: @Composable (() -> Unit)? = null,
     // KMK <--
 ) {
-    val face = remember { getRandomErrorFace() }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -72,30 +71,40 @@ fun EmptyScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Text(
-                text = face,
-                modifier = Modifier.secondaryItemAlpha(),
-                style = MaterialTheme.typography.displayMedium,
-            )
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.primary,
+        ) {
+            Box(
+                modifier = Modifier.size(64.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoStories,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         Text(
             text = message,
             modifier = Modifier
-                .paddingFromBaseline(top = 24.dp)
-                .secondaryItemAlpha(),
-            style = MaterialTheme.typography.bodyMedium,
+                .widthIn(max = 520.dp)
+                .padding(top = 20.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
 
-        // KMK -->
         help?.invoke()
-        // KMK <--
 
         if (!actions.isNullOrEmpty()) {
             Row(
                 modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .fillMaxWidth()
                     .padding(top = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
             ) {
@@ -110,23 +119,4 @@ fun EmptyScreen(
             }
         }
     }
-}
-
-private val ErrorFaces = listOf(
-    "(･o･;)",
-    "Σ(ಠ_ಠ)",
-    "ಥ_ಥ",
-    "(˘･_･˘)",
-    "(；￣Д￣)",
-    "(･Д･。",
-    "(╬ಠ益ಠ)",
-    "(╥﹏╥)",
-    "(⋟﹏⋞)",
-    "Ò︵Ó",
-    " ˙ᯅ˙)",
-    "(¬_¬)",
-)
-
-private fun getRandomErrorFace(): String {
-    return ErrorFaces[Random.nextInt(ErrorFaces.size)]
 }

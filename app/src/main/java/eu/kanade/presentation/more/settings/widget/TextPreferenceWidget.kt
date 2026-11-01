@@ -18,6 +18,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import tachiyomi.presentation.core.util.secondaryItemAlpha
 
@@ -44,7 +45,7 @@ fun TextPreferenceWidget(
                     Text(
                         text = subtitle,
                         modifier = Modifier
-                            .padding(horizontal = PrefsHorizontalPadding)
+                            .padding(top = 2.dp)
                             .secondaryItemAlpha(),
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 10,
@@ -54,7 +55,7 @@ fun TextPreferenceWidget(
                     Text(
                         text = subtitle.toString(),
                         modifier = Modifier
-                            .padding(horizontal = PrefsHorizontalPadding)
+                            .padding(top = 2.dp)
                             .secondaryItemAlpha(),
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 10,
@@ -64,21 +65,20 @@ fun TextPreferenceWidget(
         } else {
             null
         },
-        icon = {
-            if (icon != null && icon is ImageVector) {
-                Icon(
-                    imageVector = icon,
-                    tint = iconTint,
-                    contentDescription = null,
-                )
-                // KMK -->
-            } else if (icon != null && icon is Painter) {
-                Icon(
-                    painter = icon,
-                    tint = iconTint,
-                    contentDescription = null,
-                )
-                // KMK <--
+        icon = icon?.let { iconValue ->
+            {
+                when (iconValue) {
+                    is ImageVector -> Icon(
+                        imageVector = iconValue,
+                        tint = iconTint,
+                        contentDescription = null,
+                    )
+                    is Painter -> Icon(
+                        painter = iconValue,
+                        tint = iconTint,
+                        contentDescription = null,
+                    )
+                }
             }
         },
         onClick = onPreferenceClick,

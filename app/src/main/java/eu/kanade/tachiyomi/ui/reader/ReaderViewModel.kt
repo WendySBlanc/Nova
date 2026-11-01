@@ -12,13 +12,13 @@ import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.chapter.model.toDbChapter
 import eu.kanade.domain.manga.interactor.SetMangaViewerFlags
 import eu.kanade.domain.manga.model.readerOrientation
-import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.source.interactor.GetIncognitoState
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
@@ -27,6 +27,7 @@ import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.data.sync.SyncDataJob
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.MetadataSource
@@ -34,6 +35,7 @@ import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.ui.reader.chapter.ReaderChapterItem
 import eu.kanade.tachiyomi.ui.reader.loader.ChapterLoader
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
+import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
@@ -55,8 +57,6 @@ import exh.metadata.metadata.RaisedSearchMetadata
 import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
 import exh.source.isEhBasedManga
-import exh.util.defaultReaderType
-import exh.util.mangaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -75,6 +75,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import org.json.JSONObject
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Entities
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.storage.UniFileTempFileManager
 import tachiyomi.core.common.util.lang.launchIO
@@ -619,7 +622,11 @@ class ReaderViewModel @JvmOverloads constructor(
      * that the user doesn't have to wait too long to continue reading.
      */
     suspend fun preload(chapter: ReaderChapter) {
-        if (chapter.state is ReaderChapter.State.Loaded || chapter.state == ReaderChapter.State.Loading) {
+        if (chapter.state is ReaderChapter.State.Loaded) {
+            boostPreloadedChapterImages(chapter)
+            return
+        }
+        if (chapter.state == ReaderChapter.State.Loading) {
             return
         }
 
@@ -659,7 +666,15 @@ class ReaderViewModel @JvmOverloads constructor(
             }
             return
         }
+        boostPreloadedChapterImages(chapter)
         eventChannel.trySend(Event.ReloadViewerChapters)
+    }
+
+    private fun boostPreloadedChapterImages(chapter: ReaderChapter) {
+        val httpLoader = chapter.pageLoader as? HttpPageLoader ?: return
+        chapter.pages.orEmpty()
+            .take(ADJACENT_CHAPTER_IMAGE_PRELOAD_COUNT)
+            .forEach(httpLoader::boostPage)
     }
 
     fun onViewerLoaded(viewer: Viewer?) {
@@ -680,7 +695,12 @@ class ReaderViewModel @JvmOverloads constructor(
         }
 
         // SY -->
-        mutableState.update { it.copy(currentPageText = currentPageText) }
+        mutableState.update {
+            it.copy(
+                currentPage = page.index + 1,
+                currentPageText = currentPageText,
+            )
+        }
         // SY <--
 
         val selectedChapter = page.chapter
@@ -815,13 +835,19 @@ class ReaderViewModel @JvmOverloads constructor(
         val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
         val isSyncEnabled = syncPreferences.isSyncEnabled()
 
-        mutableState.update {
-            it.copy(currentPage = pageIndex + 1)
-        }
         readerChapter.requestedPage = pageIndex
         chapterPageIndex = pageIndex
 
         if (!incognitoMode && page.status !is Page.State.Error) {
+            val totalPages = readerChapter.pages?.size ?: 0
+            readerChapter.chapter.id?.let { chapterId ->
+                if (totalPages > 0) {
+                    val pageCountPreference = readerPreferences.chapterPageCount(chapterId)
+                    if (pageCountPreference.get() != totalPages) {
+                        pageCountPreference.set(totalPages)
+                    }
+                }
+            }
             readerChapter.chapter.last_page_read = pageIndex
 
             if (readerChapter.pages?.lastIndex == pageIndex ||
@@ -959,6 +985,208 @@ class ReaderViewModel @JvmOverloads constructor(
         }
     }
 
+    suspend fun getLightNovelChapterHtml(readerChapter: ReaderChapter): String? = withIOContext {
+        val manga = getMangaForReaderChapter(readerChapter) ?: return@withIOContext null
+        val source = getSourceForReaderChapter(readerChapter) ?: return@withIOContext null
+        val chapter = readerChapter.chapter
+
+        val localIndex = downloadProvider.findLightNovelIndexFile(
+            chapterName = chapter.name,
+            chapterScanlator = chapter.scanlator,
+            chapterUrl = chapter.url,
+            mangaTitle = manga.ogTitle,
+            source = source,
+            mangaId = manga.id,
+            chapterId = chapter.id,
+        ) ?: manga.title
+            .takeUnless { it == manga.ogTitle }
+            ?.let { title ->
+                downloadProvider.findLightNovelIndexFile(
+                    chapterName = chapter.name,
+                    chapterScanlator = chapter.scanlator,
+                    chapterUrl = chapter.url,
+                    mangaTitle = title,
+                    source = source,
+                    mangaId = manga.id,
+                    chapterId = chapter.id,
+                )
+            }
+
+        if (localIndex != null) {
+            return@withIOContext localIndex.openInputStream()
+                .bufferedReader()
+                .use { it.readText() }
+                .toReaderContentHtml()
+        }
+
+        if (source is HttpSource) {
+            fetchNovelFranceChapterHtml(source, chapter)?.let { return@withIOContext it }
+        }
+
+        readerChapter.toImageReaderContentHtml()
+    }
+
+    fun onTextReaderProgress(readerChapter: ReaderChapter, progressPercent: Int) {
+        val progress = progressPercent.coerceIn(0, 100)
+        onTextReaderPosition(progress)
+
+        if (incognitoMode) return
+
+        viewModelScope.launchNonCancellable {
+            readerChapter.chapter.last_page_read = progress
+
+            if (progress >= TEXT_READER_COMPLETE_PERCENT && !readerChapter.chapter.read) {
+                updateChapterProgressOnComplete(readerChapter)
+            }
+
+            updateChapter.await(
+                ChapterUpdate(
+                    id = readerChapter.chapter.id!!,
+                    read = readerChapter.chapter.read,
+                    lastPageRead = readerChapter.chapter.last_page_read.toLong(),
+                ),
+            )
+        }
+    }
+
+    fun onTextReaderPosition(progressPercent: Int) {
+        val progress = progressPercent.coerceIn(0, 100)
+        mutableState.update {
+            it.copy(
+                currentPage = progress,
+                currentPageText = "$progress%",
+            )
+        }
+    }
+
+    private fun getMangaForReaderChapter(readerChapter: ReaderChapter): Manga? {
+        val currentManga = manga ?: return null
+        return if (currentManga.source == MERGED_SOURCE_ID) {
+            state.value.mergedManga?.get(readerChapter.chapter.manga_id)
+        } else {
+            currentManga
+        }
+    }
+
+    private fun getSourceForReaderChapter(readerChapter: ReaderChapter): Source? {
+        val currentManga = manga ?: return null
+        return if (currentManga.source == MERGED_SOURCE_ID) {
+            state.value.mergedManga
+                ?.get(readerChapter.chapter.manga_id)
+                ?.source
+                ?.let(sourceManager::getOrStub)
+        } else {
+            sourceManager.getOrStub(currentManga.source)
+        }
+    }
+
+    private fun fetchNovelFranceChapterHtml(source: HttpSource, chapter: eu.kanade.tachiyomi.data.database.models.Chapter): String? {
+        val chapterUrl = runCatching { source.getChapterUrl(chapter) }.getOrNull() ?: return null
+        val uri = Uri.parse(chapterUrl)
+        if (!uri.host.orEmpty().contains("novelfrance.fr", ignoreCase = true)) return null
+
+        val segments = uri.pathSegments
+        if (segments.getOrNull(0) != "novel") return null
+        val novelSlug = segments.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return null
+        val chapterSlug = segments.getOrNull(2)?.takeIf { it.isNotBlank() } ?: return null
+
+        val request = GET("${source.baseUrl}/api/chapters/$novelSlug/$chapterSlug", source.headers)
+        return runCatching {
+            source.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                response.body.string().toNovelFranceHtml()
+            }
+        }.getOrNull()
+    }
+
+    private fun String.toNovelFranceHtml(): String {
+        val json = JSONObject(this)
+        val title = json.optString("title").takeIf { it.isNotBlank() }
+        val paragraphs = json.optJSONArray("paragraphs")
+        val content = buildList {
+            if (paragraphs != null) {
+                for (index in 0 until paragraphs.length()) {
+                    add(paragraphs.getJSONObject(index))
+                }
+            }
+        }
+            .sortedBy { it.optInt("index") }
+            .mapNotNull { paragraph ->
+                paragraph.optString("content")
+                    .takeIf { it.isNotBlank() }
+                    ?.let { html ->
+                        if (html.trimStart().startsWith("<")) {
+                            html
+                        } else {
+                            "<p>${Entities.escape(html)}</p>"
+                        }
+                    }
+            }
+
+        return buildString {
+            title?.let {
+                append("<h2>")
+                append(Entities.escape(it))
+                append("</h2>")
+            }
+            if (content.isEmpty()) {
+                append("<p>")
+                append(Entities.escape(title ?: "Chapitre indisponible."))
+                append("</p>")
+            } else {
+                content.forEach(::append)
+            }
+        }
+    }
+
+    private fun String.toReaderContentHtml(): String {
+        val trimmed = trim()
+        if (!trimmed.contains("<html", ignoreCase = true) && !trimmed.contains("<body", ignoreCase = true)) {
+            return this
+        }
+
+        val document = Jsoup.parse(this)
+        return document.selectFirst("#LNReader-chapter")?.html()
+            ?: document.body()?.html()
+            ?: this
+    }
+
+    private fun ReaderChapter.toImageReaderContentHtml(): String? {
+        val pages = pages.orEmpty().filterNot { it is InsertPage }
+        if (pages.isEmpty()) return null
+
+        val chapterKey = chapter.id?.toString() ?: chapter.url.hashCode().toString()
+        val figures = pages.map { page ->
+            val imageSource = "$NOVA_READER_IMAGE_URL_PREFIX$chapterKey/${page.index}"
+            val loadingMode = if (page.index < 3) "eager" else "lazy"
+            val fetchPriority = if (page.index < 2) "high" else "auto"
+            """
+                <figure class="nova-reader-page nova-image-pending" data-page="${page.number}" data-page-index="${page.index}">
+                    <img src="${imageSource.escapeHtmlAttribute()}" alt="Page ${page.number}" width="1080" height="1920" loading="$loadingMode" decoding="async" fetchpriority="$fetchPriority" />
+                    <div class="nova-image-error-message" role="status">
+                        <button class="nova-image-retry" type="button" aria-label="Reessayer la page ${page.number}" title="Reessayer">&#8635;</button>
+                        <span>Page ${page.number} indisponible</span>
+                    </div>
+                </figure>
+            """.trimIndent()
+        }
+        if (figures.isEmpty()) return null
+
+        return buildString {
+            append("""<div class="nova-image-chapter" data-nova-reader-type="image">""")
+            figures.forEach(::append)
+            append("</div>")
+        }
+    }
+
+    private fun String.escapeHtmlAttribute(): String {
+        return Entities.escape(this)
+    }
+
+    companion object {
+        const val NOVA_READER_IMAGE_URL_PREFIX = "https://nova.local/reader-page/"
+    }
+
     /**
      * Bookmarks the currently active chapter.
      */
@@ -1001,21 +1229,8 @@ class ReaderViewModel @JvmOverloads constructor(
     /**
      * Returns the viewer position used by this manga or the default one.
      */
-    fun getMangaReadingMode(resolveDefault: Boolean = true): Int {
-        val default = readerPreferences.defaultReadingMode().get()
-        val manga = manga ?: return default
-        val readingMode = ReadingMode.fromPreference(manga.readingMode.toInt())
-        // SY -->
-        return when {
-            resolveDefault && readingMode == ReadingMode.DEFAULT && readerPreferences.useAutoWebtoon().get() -> {
-                manga.defaultReaderType(manga.mangaType(sourceName = sourceManager.get(manga.source)?.name))
-                    ?: default
-            }
-            resolveDefault && readingMode == ReadingMode.DEFAULT -> default
-            else -> manga.readingMode.toInt()
-        }
-        // SY <--
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun getMangaReadingMode(resolveDefault: Boolean = true): Int = ReadingMode.WEBTOON.flagValue
 
     /**
      * Updates the viewer position for the open manga.
@@ -1546,3 +1761,6 @@ class ReaderViewModel @JvmOverloads constructor(
         data class CopyImage(val uri: Uri) : Event
     }
 }
+
+private const val TEXT_READER_COMPLETE_PERCENT = 95
+private const val ADJACENT_CHAPTER_IMAGE_PRELOAD_COUNT = 3

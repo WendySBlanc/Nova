@@ -22,6 +22,8 @@ object Notifications {
      */
     const val CHANNEL_COMMON = "common_channel"
     const val ID_DOWNLOAD_IMAGE = 2
+    const val CHANNEL_READER_TTS = "reader_tts_channel"
+    const val ID_READER_TTS = -801
 
     /**
      * Notification channel and ids used by the library updater.
@@ -146,6 +148,10 @@ object Notifications {
             listOf(
                 buildNotificationChannel(CHANNEL_COMMON, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.channel_common))
+                },
+                buildNotificationChannel(CHANNEL_READER_TTS, IMPORTANCE_LOW) {
+                    setName("TTS Media Controls")
+                    setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_LIBRARY_PROGRESS, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.channel_progress))

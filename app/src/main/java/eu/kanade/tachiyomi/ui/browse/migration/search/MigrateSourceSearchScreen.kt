@@ -72,7 +72,7 @@ data class MigrateSourceSearchScreen(
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
 
-        val screenModel = rememberScreenModel { BrowseSourceScreenModel(sourceId, query) }
+        val screenModel = rememberScreenModel { MigrationSourceSearchScreenModel(sourceId, query) }
         val state by screenModel.state.collectAsState()
 
         val snackbarHostState = remember { SnackbarHostState() }

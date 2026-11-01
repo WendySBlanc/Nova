@@ -2,7 +2,6 @@ package eu.kanade.presentation.browse
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,8 +9,10 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,12 +51,14 @@ import eu.kanade.presentation.browse.components.ExtensionIcon
 import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.presentation.manga.components.DotSeparatorNoSpaceText
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionReposScreen
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionUiModel
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsScreenModel
+import eu.kanade.tachiyomi.ui.browse.extension.selectionKey
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import kotlinx.collections.immutable.persistentListOf
@@ -73,12 +77,16 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.theme.header
 import tachiyomi.presentation.core.util.plus
 import tachiyomi.presentation.core.util.secondaryItemAlpha
+import tachiyomi.presentation.core.util.selectedBackground
 
 @Composable
 fun ExtensionScreen(
     state: ExtensionsScreenModel.State,
     contentPadding: PaddingValues,
     searchQuery: String?,
+    selectionMode: Boolean,
+    selectedExtensionKeys: Set<String>,
+    onSelectionChange: (Extension) -> Unit,
     onLongClickItem: (Extension) -> Unit,
     onClickItemCancel: (Extension) -> Unit,
     onOpenWebView: (Extension.Available) -> Unit,
@@ -121,6 +129,9 @@ fun ExtensionScreen(
                 ExtensionContent(
                     state = state,
                     contentPadding = contentPadding,
+                    selectionMode = selectionMode,
+                    selectedExtensionKeys = selectedExtensionKeys,
+                    onSelectionChange = onSelectionChange,
                     onLongClickItem = onLongClickItem,
                     onClickItemCancel = onClickItemCancel,
                     onOpenWebView = onOpenWebView,
@@ -140,6 +151,9 @@ fun ExtensionScreen(
 private fun ExtensionContent(
     state: ExtensionsScreenModel.State,
     contentPadding: PaddingValues,
+    selectionMode: Boolean,
+    selectedExtensionKeys: Set<String>,
+    onSelectionChange: (Extension) -> Unit,
     onLongClickItem: (Extension) -> Unit,
     onClickItemCancel: (Extension) -> Unit,
     onOpenWebView: (Extension.Available) -> Unit,
@@ -157,126 +171,144 @@ private fun ExtensionContent(
     val navigator = LocalNavigator.current
     // KMK <--
 
-    FastScrollLazyColumn(
-        contentPadding = contentPadding + topSmallPaddingValues,
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        if (!installGranted && state.installer?.requiresSystemPermission == true) {
-            item(key = "extension-permissions-warning") {
-                WarningBanner(
-                    textRes = MR.strings.ext_permission_install_apps_warning,
-                    modifier = Modifier.clickable {
-                        context.launchRequestPackageInstallsPermission()
-                    },
-                )
-            }
-        }
-
-        state.items.forEach { (header, items) ->
-            item(
-                contentType = "header",
-                key = "extensionHeader-${header.hashCode()}",
-            ) {
-                when (header) {
-                    is ExtensionUiModel.Header.Resource -> {
-                        val action: @Composable RowScope.() -> Unit =
-                            when (header.textRes) {
-                                MR.strings.ext_updates_pending -> {
-                                    {
-                                        Button(onClick = { onClickUpdateAll() }) {
-                                            Text(
-                                                text = stringResource(MR.strings.ext_update_all),
-                                                style = LocalTextStyle.current.copy(
-                                                    color = MaterialTheme.colorScheme.onPrimary,
-                                                ),
-                                            )
-                                        }
-                                    }
-                                }
-                                // KMK -->
-                                KMR.strings.extensions_page_more -> {
-                                    {
-                                        Button(onClick = { navigator?.push(ExtensionReposScreen()) }) {
-                                            Text(
-                                                text = stringResource(MR.strings.action_add_repo),
-                                                style = LocalTextStyle.current.copy(
-                                                    color = MaterialTheme.colorScheme.onPrimary,
-                                                ),
-                                            )
-                                        }
-                                    }
-                                }
-                                // KMK <--
-                                else -> {
-                                    {}
-                                }
-                            }
-                        ExtensionHeader(
-                            textRes = header.textRes,
-                            modifier = Modifier
-                                // KMK -->
-                                .padding(end = MaterialTheme.padding.small)
-                                // KMK <--
-                                .animateItemFastScroll(),
-                            action = action,
-                        )
-                    }
-                    is ExtensionUiModel.Header.Text -> {
-                        ExtensionHeader(
-                            text = header.text,
-                            modifier = Modifier.animateItemFastScroll(),
-                        )
-                    }
+        FastScrollLazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize(),
+            contentPadding = contentPadding + topSmallPaddingValues,
+        ) {
+            if (!installGranted && state.installer?.requiresSystemPermission == true) {
+                item(key = "extension-permissions-warning") {
+                    WarningBanner(
+                        textRes = MR.strings.ext_permission_install_apps_warning,
+                        modifier = Modifier.clickable {
+                            context.launchRequestPackageInstallsPermission()
+                        },
+                    )
                 }
             }
 
-            items(
-                items = items,
-                contentType = { "item" },
-                key = { item ->
-                    when (item.extension) {
-                        is Extension.Untrusted -> "extension-untrusted-${item.hashCode()}"
-                        is Extension.Installed -> "extension-installed-${item.hashCode()}"
-                        is Extension.Available -> "extension-available-${item.hashCode()}"
+            state.items.forEach { (header, items) ->
+                item(
+                    contentType = "header",
+                    key = "extensionHeader-${header.hashCode()}",
+                ) {
+                    when (header) {
+                        is ExtensionUiModel.Header.Resource -> {
+                            val action: @Composable RowScope.() -> Unit =
+                                if (selectionMode) {
+                                    {}
+                                } else when (header.textRes) {
+                                    MR.strings.ext_updates_pending -> {
+                                        {
+                                            Button(onClick = { onClickUpdateAll() }) {
+                                                Text(
+                                                    text = stringResource(MR.strings.ext_update_all),
+                                                    style = LocalTextStyle.current.copy(
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                    }
+                                    // KMK -->
+                                    KMR.strings.extensions_page_more -> {
+                                        {
+                                            Button(onClick = { navigator?.push(ExtensionReposScreen()) }) {
+                                                Text(
+                                                    text = stringResource(MR.strings.action_add_repo),
+                                                    style = LocalTextStyle.current.copy(
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                    }
+                                    // KMK <--
+                                    else -> {
+                                        {}
+                                    }
+                                }
+                            ExtensionHeader(
+                                textRes = header.textRes,
+                                modifier = Modifier
+                                    // KMK -->
+                                    .padding(end = MaterialTheme.padding.small)
+                                    // KMK <--
+                                    .animateItemFastScroll(),
+                                action = action,
+                            )
+                        }
+                        is ExtensionUiModel.Header.Text -> {
+                            ExtensionHeader(
+                                text = header.text,
+                                modifier = Modifier.animateItemFastScroll(),
+                            )
+                        }
                     }
-                },
-            ) { item ->
-                ExtensionItem(
-                    modifier = Modifier.animateItemFastScroll(),
-                    item = item,
-                    onClickItem = {
-                        when (it) {
-                            is Extension.Available -> onInstallExtension(it)
-                            is Extension.Installed -> onOpenExtension(it)
-                            is Extension.Untrusted -> {
-                                trustState = it
-                            }
+                }
+
+                items(
+                    items = items,
+                    contentType = { "item" },
+                    key = { item ->
+                        when (item.extension) {
+                            is Extension.Untrusted -> "extension-untrusted-${item.hashCode()}"
+                            is Extension.Installed -> "extension-installed-${item.hashCode()}"
+                            is Extension.Available -> "extension-available-${item.hashCode()}"
                         }
                     },
-                    onLongClickItem = onLongClickItem,
-                    onClickItemSecondaryAction = {
-                        when (it) {
-                            is Extension.Available -> onOpenWebView(it)
-                            is Extension.Installed -> onOpenExtension(it)
-                            else -> {}
-                        }
-                    },
-                    onClickItemCancel = onClickItemCancel,
-                    onClickItemAction = {
-                        when (it) {
-                            is Extension.Available -> onInstallExtension(it)
-                            is Extension.Installed -> {
-                                if (it.hasUpdate) {
-                                    onUpdateExtension(it)
-                                } else {
-                                    onOpenExtension(it)
+                ) { item ->
+                    val extension = item.extension
+                    val selected = extension.selectionKey() in selectedExtensionKeys
+                    ExtensionItem(
+                        modifier = Modifier.animateItemFastScroll(),
+                        item = item,
+                        selectionMode = selectionMode,
+                        selected = selected,
+                        onClickItem = {
+                            if (selectionMode) {
+                                onSelectionChange(it)
+                            } else {
+                                when (it) {
+                                    is Extension.Available -> onInstallExtension(it)
+                                    is Extension.Installed -> onOpenExtension(it)
+                                    is Extension.Untrusted -> {
+                                        trustState = it
+                                    }
                                 }
                             }
-                            is Extension.Untrusted -> {
-                                trustState = it
+                        },
+                        onLongClickItem = onLongClickItem,
+                        onClickItemSecondaryAction = {
+                            when (it) {
+                                is Extension.Available -> onOpenWebView(it)
+                                is Extension.Installed -> onOpenExtension(it)
+                                else -> {}
                             }
-                        }
-                    },
-                )
+                        },
+                        onClickItemCancel = onClickItemCancel,
+                        onClickItemAction = {
+                            when (it) {
+                                is Extension.Available -> onInstallExtension(it)
+                                is Extension.Installed -> {
+                                    if (it.hasUpdate) {
+                                        onUpdateExtension(it)
+                                    } else {
+                                        onOpenExtension(it)
+                                    }
+                                }
+                                is Extension.Untrusted -> {
+                                    trustState = it
+                                }
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -300,6 +332,8 @@ private fun ExtensionContent(
 @Composable
 private fun ExtensionItem(
     item: ExtensionUiModel.Item,
+    selectionMode: Boolean,
+    selected: Boolean,
     onClickItem: (Extension) -> Unit,
     onLongClickItem: (Extension) -> Unit,
     onClickItemCancel: (Extension) -> Unit,
@@ -310,10 +344,7 @@ private fun ExtensionItem(
     val (extension, installStep) = item
     BaseBrowseItem(
         modifier = modifier
-            .combinedClickable(
-                onClick = { onClickItem(extension) },
-                onLongClick = { onLongClickItem(extension) },
-            ),
+            .selectedBackground(selected),
         onClickItem = { onClickItem(extension) },
         onLongClickItem = { onLongClickItem(extension) },
         icon = {
@@ -340,13 +371,20 @@ private fun ExtensionItem(
             }
         },
         action = {
-            ExtensionItemActions(
-                extension = extension,
-                installStep = installStep,
-                onClickItemCancel = onClickItemCancel,
-                onClickItemAction = onClickItemAction,
-                onClickItemSecondaryAction = onClickItemSecondaryAction,
-            )
+            if (selectionMode) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = { onClickItem(extension) },
+                )
+            } else {
+                ExtensionItemActions(
+                    extension = extension,
+                    installStep = installStep,
+                    onClickItemCancel = onClickItemCancel,
+                    onClickItemAction = onClickItemAction,
+                    onClickItemSecondaryAction = onClickItemSecondaryAction,
+                )
+            }
         },
     ) {
         ExtensionItemContent(

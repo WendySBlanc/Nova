@@ -2,6 +2,7 @@
 
 package eu.kanade.tachiyomi.source.model
 
+import kotlinx.serialization.json.JsonObject
 import java.io.Serializable
 
 interface SManga : Serializable {
@@ -25,6 +26,9 @@ interface SManga : Serializable {
     var update_strategy: UpdateStrategy
 
     var initialized: Boolean
+
+    /** Source-specific metadata used by extension API 1.6 and newer. */
+    var memo: JsonObject
 
     fun getGenres(): List<String>? {
         if (genre.isNullOrBlank()) return null
@@ -54,6 +58,7 @@ interface SManga : Serializable {
         // SY <--
         it.update_strategy = update_strategy
         it.initialized = initialized
+        it.memo = memo
     }
 
     companion object {
@@ -108,6 +113,7 @@ fun SManga.copy(
     status: Int = this.status,
     thumbnail_url: String? = this.originalThumbnailUrl,
     initialized: Boolean = this.initialized,
+    memo: JsonObject = this.memo,
 ) = SManga.create().also {
     it.url = url
     it.title = title
@@ -118,5 +124,6 @@ fun SManga.copy(
     it.status = status
     it.thumbnail_url = thumbnail_url
     it.initialized = initialized
+    it.memo = memo
 }
 // SY <--

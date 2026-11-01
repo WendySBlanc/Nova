@@ -89,7 +89,7 @@ fun RelatedMangaCardRow(
 fun RelatedMangaLoadingItem() {
     Box(
         modifier = Modifier
-            .width(96.dp)
+            .width(77.dp)
             .aspectRatio(MangaCover.Book.ratio)
             .padding(vertical = MaterialTheme.padding.medium),
     ) {

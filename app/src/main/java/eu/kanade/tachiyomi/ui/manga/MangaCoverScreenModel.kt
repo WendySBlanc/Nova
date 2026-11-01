@@ -8,6 +8,7 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import coil3.asDrawable
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.allowRgb565
 import coil3.size.Size
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.tachiyomi.data.cache.CoverCache
@@ -94,6 +95,7 @@ class MangaCoverScreenModel(
         val req = ImageRequest.Builder(context)
             .data(manga)
             .size(Size.ORIGINAL)
+            .allowRgb565(false)
             .build()
 
         return withIOContext {

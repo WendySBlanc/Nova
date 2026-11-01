@@ -1,0 +1,30 @@
+body.page-reader {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+body.page-reader > #LNReader-chapter {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  margin: 0;
+  column-width: calc(100vw - var(--readerSettings-padding) * 2);
+  column-gap: calc(var(--readerSettings-padding) * 2);
+  transition: transform 180ms ease-out;
+}
+
+.transition-chapter {
+  height: 100dvh;
+  width: 100vw;
+  max-width: 100vw;
+  position: fixed;
+  left: 100vw;
+  top: 0;
+  box-sizing: border-box;
+  padding: var(--readerSettings-padding);
+  padding-top: 30vh;
+  text-align: center;
+  font-size: 22px;
+  z-index: 888888;
+  background-color: var(--readerSettings-theme);
+}

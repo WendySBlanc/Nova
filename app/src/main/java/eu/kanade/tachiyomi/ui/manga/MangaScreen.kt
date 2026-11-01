@@ -230,7 +230,7 @@ class MangaScreen(
     ) {
         // KMK <--
         val haptic = LocalHapticFeedback.current
-        val isHttpSource = remember { successState.source is HttpSource }
+        val isHttpSource = remember(successState.source) { successState.source is HttpSource }
 
         LaunchedEffect(successState.manga, screenModel.source) {
             if (isHttpSource) {
@@ -333,7 +333,11 @@ class MangaScreen(
             onTagSearch = { scope.launch { performGenreSearch(navigator, it, screenModel.source!!) } },
             onFilterButtonClicked = screenModel::showSettingsDialog,
             onRefresh = screenModel::fetchAllFromSource,
-            onContinueReading = { continueReading(context, screenModel.getNextUnreadChapter()) },
+            onContinueReading = {
+                scope.launch {
+                    continueReading(context, screenModel.getResumeChapter())
+                }
+            },
             onSearch = { query, global -> scope.launch { performSearch(navigator, query, global) } },
             // KMK -->
             librarySearch = { query ->

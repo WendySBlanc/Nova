@@ -7,6 +7,7 @@ import eu.kanade.domain.source.service.SourcePreferences.DataSaver.WSRV_NL
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import kotlinx.coroutines.CancellationException
 import okhttp3.Response
 import tachiyomi.core.common.preference.Preference
 
@@ -21,14 +22,38 @@ interface DataSaver {
             }
         }
 
-        suspend fun HttpSource.getImage(page: Page, dataSaver: DataSaver): Response {
-            val imageUrl = page.imageUrl ?: return getImage(page)
-            page.imageUrl = dataSaver.compress(imageUrl)
+        suspend fun HttpSource.getImage(page: Page, dataSaver: DataSaver, existingSize: Long = 0L): Response {
+            val imageUrl = page.imageUrl ?: return getImage(page, existingSize)
+            if (imageUrl.shouldBypassDataSaver()) {
+                return getImage(page, existingSize)
+            }
+            val compressedImageUrl = dataSaver.compress(imageUrl)
+            if (compressedImageUrl == imageUrl) {
+                return getImage(page, existingSize)
+            }
+            page.imageUrl = compressedImageUrl
             return try {
-                getImage(page)
+                // A proxy can produce different bytes than the original image. Start proxy
+                // downloads from zero so falling back to the source can never mix both payloads.
+                getImage(page, 0L)
+            } catch (e: Throwable) {
+                if (e is CancellationException) {
+                    throw e
+                }
+                page.imageUrl = imageUrl
+                getImage(page, 0L)
             } finally {
                 page.imageUrl = imageUrl
             }
+        }
+
+        private fun String.shouldBypassDataSaver(): Boolean {
+            return startsWith("file:", ignoreCase = true) ||
+                startsWith("content:", ignoreCase = true) ||
+                startsWith("data:", ignoreCase = true) ||
+                contains("127.0.0.1", ignoreCase = true) ||
+                contains("localhost", ignoreCase = true) ||
+                contains("/novel-france-rendered-page.png", ignoreCase = true)
         }
     }
 }

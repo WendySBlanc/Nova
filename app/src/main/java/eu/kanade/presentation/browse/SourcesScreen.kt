@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -31,12 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import eu.kanade.domain.source.model.installedExtension
 import eu.kanade.presentation.browse.components.BaseSourceItem
 import eu.kanade.presentation.components.AnimatedFloatingSearchBox
 import eu.kanade.presentation.components.SOURCE_SEARCH_BOX_HEIGHT
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.tachiyomi.ui.browse.source.SourcesScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel.Listing
@@ -57,7 +61,6 @@ import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
-import tachiyomi.presentation.core.theme.header
 import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.isLocal
 
@@ -69,7 +72,7 @@ fun SourcesScreen(
     onClickPin: (Source) -> Unit,
     onLongClickItem: (Source) -> Unit,
     // KMK -->
-    @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,
     onChangeSearchQuery: (String?) -> Unit,
     // KMK <--
 ) {
@@ -92,12 +95,18 @@ fun SourcesScreen(
         )
         // KMK -->
         else -> Box(
-            modifier = Modifier.padding(contentPadding),
+            modifier = modifier
+                .fillMaxSize()
+                .padding(contentPadding),
         ) {
             val density = LocalDensity.current
             var searchBoxHeight by remember { mutableStateOf(SOURCE_SEARCH_BOX_HEIGHT) }
 
             FastScrollLazyColumn(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                    .fillMaxSize(),
                 state = lazyListState,
                 contentPadding = PaddingValues(top = searchBoxHeight),
                 // KMK <--
@@ -150,6 +159,8 @@ fun SourcesScreen(
                 onChangeSearchQuery = onChangeSearchQuery,
                 placeholderText = stringResource(KMR.strings.action_search_for_source),
                 modifier = Modifier
+                    .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                    .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
                     .padding(
                         horizontal = MaterialTheme.padding.medium,
@@ -184,7 +195,9 @@ private fun SourceHeader(
         // SY <--
         modifier = modifier
             .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
-        style = MaterialTheme.typography.header,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
     )
 }
 

@@ -3,18 +3,20 @@ package eu.kanade.presentation.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -42,6 +45,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
@@ -115,18 +119,21 @@ fun SourcesSearchBox(
         modifier = modifier
             .onGloballyPositioned(onGloballyPositioned)
             .fillMaxWidth()
+            .heightIn(min = NovaVikiDimensions.MinimumTouchTarget)
+            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .focusRequester(focusRequester)
             .onFocusChanged { isFocused = it.isFocused }
             .runOnEnterKeyPressed(action = searchAndClearFocus)
             .clearFocusOnSoftKeyboardHide(),
         enabled = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(
-            color = MaterialTheme.colorScheme.onBackground,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = MaterialTheme.colorScheme.onSurface,
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { searchAndClearFocus() }),
         singleLine = true,
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         decorationBox = { innerTextField ->
             TextFieldDefaults.DecorationBox(
                 value = searchQuery ?: "",
@@ -141,7 +148,8 @@ fun SourcesSearchBox(
                         text = (placeholderText ?: stringResource(MR.strings.action_search_hint)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                 },
                 leadingIcon = {
@@ -156,12 +164,16 @@ fun SourcesSearchBox(
                         onClickClearSearch = onClickClearSearch,
                     )
                 },
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                 colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    errorContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     errorIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.onBackground,
+                    cursorColor = MaterialTheme.colorScheme.primary,
                 ),
                 contentPadding = PaddingValues(MaterialTheme.padding.small),
             )
@@ -181,15 +193,15 @@ fun SearchBoxLeadingIcon(
             onClick = onClickCloseSearch,
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Close",
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = stringResource(MR.strings.action_close),
             )
         }
     } else {
         Icon(
             modifier = modifier,
-            imageVector = Icons.Filled.Search,
-            contentDescription = "Search",
+            imageVector = Icons.Outlined.Search,
+            contentDescription = stringResource(MR.strings.action_search),
         )
     }
 }
@@ -206,14 +218,14 @@ fun SearchBoxTrailingIcon(
             onClick = onClickClearSearch,
         ) {
             Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = "Clear",
+                imageVector = Icons.Outlined.Close,
+                contentDescription = stringResource(MR.strings.action_reset),
             )
         }
     }
 }
 
-internal val SOURCE_SEARCH_BOX_HEIGHT = 65.dp
+internal val SOURCE_SEARCH_BOX_HEIGHT = 64.dp
 
 @Preview
 @Composable

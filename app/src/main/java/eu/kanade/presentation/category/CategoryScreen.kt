@@ -1,9 +1,11 @@
 package eu.kanade.presentation.category
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -13,10 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import eu.kanade.presentation.category.components.CategoryFloatingActionButton
 import eu.kanade.presentation.category.components.CategoryListItem
 import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.ui.category.CategoryScreenState
 import kotlinx.collections.immutable.ImmutableList
 import sh.calvin.reorderable.ReorderableItem
@@ -106,28 +110,35 @@ private fun CategoryContent(
         }
     }
 
-    LazyColumn(
+    Box(
         modifier = Modifier.fillMaxSize(),
-        state = lazyListState,
-        contentPadding = paddingValues +
-            topSmallPaddingValues +
-            PaddingValues(horizontal = MaterialTheme.padding.medium),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        items(
-            items = categoriesState,
-            key = { category -> category.key },
-        ) { category ->
-            ReorderableItem(reorderableState, category.key) {
-                CategoryListItem(
-                    modifier = Modifier.animateItem(),
-                    category = category,
-                    onRename = { onClickRename(category) },
-                    onDelete = { onClickDelete(category) },
-                    // KMK -->
-                    onHide = { onClickHide(category) },
-                    // KMK <--
-                )
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize(),
+            state = lazyListState,
+            contentPadding = paddingValues +
+                topSmallPaddingValues +
+                PaddingValues(horizontal = MaterialTheme.padding.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+        ) {
+            items(
+                items = categoriesState,
+                key = { category -> category.key },
+            ) { category ->
+                ReorderableItem(reorderableState, category.key) {
+                    CategoryListItem(
+                        modifier = Modifier.animateItem(),
+                        category = category,
+                        onRename = { onClickRename(category) },
+                        onDelete = { onClickDelete(category) },
+                        // KMK -->
+                        onHide = { onClickHide(category) },
+                        // KMK <--
+                    )
+                }
             }
         }
     }

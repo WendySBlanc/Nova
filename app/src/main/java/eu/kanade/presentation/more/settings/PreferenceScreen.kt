@@ -1,18 +1,30 @@
 package eu.kanade.presentation.more.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import eu.kanade.presentation.more.settings.screen.SearchableSettings
 import eu.kanade.presentation.more.settings.widget.PreferenceGroupHeader
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import kotlinx.coroutines.delay
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import kotlin.time.Duration.Companion.seconds
@@ -41,41 +53,71 @@ fun PreferenceScreen(
         }
     }
 
-    ScrollbarLazyColumn(
-        modifier = modifier,
-        state = state,
-        contentPadding = contentPadding,
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        items.fastForEachIndexed { i, preference ->
-            when (preference) {
-                // Create Preference Group
-                is Preference.PreferenceGroup -> {
-                    if (!preference.enabled) return@fastForEachIndexed
+        ScrollbarLazyColumn(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                .fillMaxSize(),
+            state = state,
+            contentPadding = contentPadding,
+        ) {
+            items.fastForEachIndexed { i, preference ->
+                when (preference) {
+                    is Preference.PreferenceGroup -> {
+                        if (!preference.enabled) return@fastForEachIndexed
 
-                    item {
-                        Column {
-                            PreferenceGroupHeader(title = preference.title)
+                        item {
+                            Column {
+                                PreferenceGroupHeader(title = preference.title)
+                                Column(
+                                    modifier = Modifier
+                                        .padding(horizontal = 12.dp)
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
+                                        .background(MaterialTheme.colorScheme.outlineVariant)
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant,
+                                            shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                                        ),
+                                    verticalArrangement = Arrangement.spacedBy(1.dp),
+                                ) {
+                                    preference.preferenceItems.forEach { item ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                        ) {
+                                            PreferenceItem(
+                                                item = item,
+                                                highlightKey = highlightKey,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            if (i < items.lastIndex) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                         }
                     }
-                    items(preference.preferenceItems) { item ->
-                        PreferenceItem(
-                            item = item,
-                            highlightKey = highlightKey,
-                        )
-                    }
-                    item {
-                        if (i < items.lastIndex) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                    is Preference.PreferenceItem<*, *> -> item {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                        ) {
+                            PreferenceItem(
+                                item = preference,
+                                highlightKey = highlightKey,
+                            )
                         }
                     }
-                }
-
-                // Create Preference Item
-                is Preference.PreferenceItem<*, *> -> item {
-                    PreferenceItem(
-                        item = preference,
-                        highlightKey = highlightKey,
-                    )
                 }
             }
         }
@@ -83,15 +125,13 @@ fun PreferenceScreen(
 }
 
 private fun List<Preference>.findHighlightedIndex(highlightKey: String): Int {
-    return flatMap {
-        if (it is Preference.PreferenceGroup) {
-            buildList<String?> {
-                add(null) // Header
-                addAll(it.preferenceItems.map { groupItem -> groupItem.title })
-                add(null) // Spacer
+    return indexOfFirst { preference ->
+        when (preference) {
+            is Preference.PreferenceGroup -> {
+                preference.title == highlightKey ||
+                    preference.preferenceItems.any { item -> item.title == highlightKey }
             }
-        } else {
-            listOf(it.title)
+            is Preference.PreferenceItem<*, *> -> preference.title == highlightKey
         }
-    }.indexOfFirst { it == highlightKey }
+    }
 }

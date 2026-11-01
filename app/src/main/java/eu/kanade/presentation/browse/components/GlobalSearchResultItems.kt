@@ -1,5 +1,6 @@
 package eu.kanade.presentation.browse.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,8 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Error
@@ -22,6 +26,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import tachiyomi.i18n.MR
@@ -39,16 +47,18 @@ fun GlobalSearchResultItem(
     // SY -->
     onLongClick: (() -> Unit)? = null,
     // SY <--
+    highlighted: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier) {
         Row(
             modifier = Modifier
                 .padding(
-                    start = MaterialTheme.padding.medium,
-                    end = MaterialTheme.padding.extraSmall,
+                    start = 12.dp,
+                    end = 4.dp,
                 )
                 .fillMaxWidth()
+                .heightIn(min = 64.dp)
                 // SY -->
                 .let {
                     if (onLongClick == null) {
@@ -61,17 +71,45 @@ fun GlobalSearchResultItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(32.dp)
+                    .background(
+                        color = if (highlighted) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(2.dp),
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
                 Text(
                     text = title,
+                    color = if (highlighted) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
                 )
                 if (subtitle != null) {
-                    Text(text = subtitle)
+                    Text(
+                        text = subtitle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                    )
                 }
             }
             IconButton(onClick = onClick) {
-                Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = title,
+                )
             }
         }
         content()
@@ -96,20 +134,24 @@ fun GlobalSearchLoadingResultItem() {
 
 @Composable
 fun GlobalSearchErrorResultItem(message: String?) {
+    val errorMessage = message ?: stringResource(MR.strings.unknown_error)
     Column(
         modifier = Modifier
             .padding(
                 horizontal = MaterialTheme.padding.medium,
                 vertical = MaterialTheme.padding.small,
             )
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .semantics { error(errorMessage) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Icon(imageVector = Icons.Outlined.Error, contentDescription = null)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = message ?: stringResource(MR.strings.unknown_error),
+            text = errorMessage,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
         )
     }

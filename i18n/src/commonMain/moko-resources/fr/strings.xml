@@ -3,6 +3,7 @@
     <string name="name">Nom</string>
     <string name="label_settings">Paramètres</string>
     <string name="label_download_queue">File de téléchargement</string>
+    <string name="label_home_nova">Accueil</string>
     <string name="label_library">Bibliothèque</string>
     <string name="label_recent_manga">Historique</string>
     <string name="label_recent_updates">Mises à jour</string>
@@ -143,6 +144,12 @@
     <string name="sort_by_number">Par numéro de chapitre</string>
     <string name="manga_download">Télécharger</string>
     <string name="download_unread">Non lus</string>
+    <string name="download_all">Tous les chapitres</string>
+    <string name="no_chapters_to_download">Aucun chapitre à télécharger</string>
+    <string name="download_state_queued">En attente</string>
+    <string name="download_state_preparing">Préparation</string>
+    <string name="download_state_error">Erreur</string>
+    <string name="download_state_complete">Terminé</string>
     <string name="manga_tracking_tab">Suivi</string>
     <string name="reading">En cours</string>
     <string name="completed">Terminé</string>
@@ -227,7 +234,7 @@
     <string name="other_source">Autre</string>
     <string name="action_global_search_hint">Recherche globale…</string>
     <string name="latest">Récents</string>
-    <string name="browse">Explorer</string>
+    <string name="browse">Recherche</string>
     <string name="action_display_download_badge">Chapitres téléchargés</string>
     <string name="channel_common">Général</string>
     <string name="information_empty_category">Vous n\'avez aucune catégorie. Appuyez sur le bouton « + » pour en créer une afin d\'organiser votre bibliothèque.</string>
@@ -295,7 +302,7 @@
     <string name="logout">Se déconnecter</string>
     <string name="logout_success">Vous êtes maintenant déconnecté(e)</string>
     <string name="paused">En pause</string>
-    <string name="label_more">Plus</string>
+    <string name="label_more">Moi</string>
     <string name="action_sort_latest_chapter">Dernier chapitre</string>
     <string name="action_view_chapters">Voir les chapitres</string>
     <string name="action_cancel_all">Tout annuler</string>
@@ -546,6 +553,20 @@
     <string name="update_72hour">Tous les 3 jours</string>
     <string name="download_queue_size_warning">Attention : les téléchargements massifs peuvent entraîner un ralentissement des sources ou le blocage de %s. Appuyez pour en savoir plus.</string>
     <string name="ext_update_all">Tout mettre à jour</string>
+    <string name="action_install_all_extensions">Installer toutes les extensions (%d)</string>
+    <string name="action_uninstall_all_extensions">Désinstaller toutes les extensions (%d)</string>
+    <string name="action_cancel_install_all_extensions">Annuler l\'installation globale (%1$d/%2$d)</string>
+    <string name="action_select_extensions">Sélectionner des extensions</string>
+    <string name="action_install_selected_extensions">Installer la sélection (%d)</string>
+    <string name="action_uninstall_selected_extensions">Désinstaller la sélection (%d)</string>
+    <string name="ext_install_all_confirmation_title">Installer toutes les extensions ?</string>
+    <string name="ext_install_all_confirmation_message">%d extensions de vos dépôts actifs seront installées l\'une après l\'autre. Selon l\'installateur Android, vous devrez peut-être confirmer chaque installation.</string>
+    <string name="ext_uninstall_all_confirmation_title">Désinstaller toutes les extensions ?</string>
+    <string name="ext_uninstall_all_confirmation_message">%d extensions seront supprimées. Android demandera une confirmation pour chaque extension système. Annuler une confirmation arrêtera les suppressions restantes.</string>
+    <string name="ext_install_selected_confirmation_title">Installer les extensions sélectionnées ?</string>
+    <string name="ext_install_selected_confirmation_message">Les %d extensions sélectionnées seront installées ou mises à jour l\'une après l\'autre. Selon l\'installateur Android, vous devrez peut-être confirmer chaque installation.</string>
+    <string name="ext_uninstall_selected_confirmation_title">Désinstaller les extensions sélectionnées ?</string>
+    <string name="ext_uninstall_selected_confirmation_message">Les %d extensions sélectionnées seront supprimées. Android demandera une confirmation pour chaque extension système. Annuler une confirmation arrêtera les suppressions restantes.</string>
     <string name="channel_app_updates">Mises à jour de l\'application</string>
     <string name="pref_auto_clear_chapter_cache">Vider le cache de chapitre au lancement de l\'application</string>
     <string name="clear_database_source_item_count">%1$d séries hors de la bibliothèque dans la base de données</string>
@@ -769,6 +790,7 @@
     <string name="invalid_backup_file_error">Erreur complète :</string>
     <string name="action_delete_repo">Supprimer le répertoire</string>
     <string name="label_extension_repos">Répertoire d\'extension</string>
+    <string name="action_share_installed_extensions">Partager la liste des extensions installées</string>
     <string name="ext_revoke_trust">Révoquer les extensions provenant d\'un répertoire additionnel</string>
     <string name="label_add_repo_input">URL du répertoire</string>
     <string name="action_add_repo_message">Ajouter un répertoire additionnel à %s. L\'URL devrait se terminer par « index.min.json ».</string>

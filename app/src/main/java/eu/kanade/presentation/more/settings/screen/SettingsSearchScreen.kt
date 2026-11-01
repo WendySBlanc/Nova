@@ -2,12 +2,14 @@ package eu.kanade.presentation.more.settings.screen
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.paddingFromBaseline
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -49,6 +51,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.components.UpIcon
 import eu.kanade.presentation.more.settings.Preference
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.Screen
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -219,36 +222,43 @@ private fun SearchResult(
                 EmptyScreen(stringResource(MR.strings.no_results_found))
             }
             else -> {
-                LazyColumn(
+                Box(
                     modifier = modifier.fillMaxSize(),
-                    state = listState,
-                    contentPadding = contentPadding,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    contentAlignment = Alignment.TopCenter,
                 ) {
-                    items(
-                        items = it,
-                        key = { i -> "settings-search-${i.hashCode()}" },
-                    ) { item ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onItemClick(item) }
-                                .padding(horizontal = 24.dp, vertical = 14.dp),
-                        ) {
-                            Text(
-                                text = item.title,
-                                overflow = TextOverflow.Ellipsis,
-                                maxLines = 1,
-                                fontWeight = FontWeight.Normal,
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                            Text(
-                                text = item.breadcrumbs,
-                                modifier = Modifier.paddingFromBaseline(top = 16.dp),
-                                maxLines = 1,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
+                            .fillMaxSize(),
+                        state = listState,
+                        contentPadding = contentPadding,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        items(
+                            items = it,
+                            key = { i -> "settings-search-${i.hashCode()}" },
+                        ) { item ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onItemClick(item) }
+                                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                            ) {
+                                Text(
+                                    text = item.title,
+                                    overflow = TextOverflow.Ellipsis,
+                                    maxLines = 1,
+                                    fontWeight = FontWeight.Normal,
+                                    style = MaterialTheme.typography.titleMedium,
+                                )
+                                Text(
+                                    text = item.breadcrumbs,
+                                    modifier = Modifier.paddingFromBaseline(top = 16.dp),
+                                    maxLines = 1,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
                     }
                 }
