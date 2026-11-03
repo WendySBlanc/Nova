@@ -82,6 +82,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import mihon.core.common.utils.mutate
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
@@ -170,6 +172,8 @@ class LibraryScreenModel(
 
     private var recommendationSearchJob: Job? = null
     // SY <--
+
+    private val novaArchiveMutex = Mutex()
 
     private val nextUnreadChapterCache = object : LinkedHashMap<Long, NextUnreadChapterCacheEntry>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, NextUnreadChapterCacheEntry>?): Boolean {
@@ -1200,18 +1204,8 @@ class LibraryScreenModel(
 
     fun setNovaArchived(mangaId: Long, archived: Boolean) {
         screenModelScope.launchNonCancellable {
-            var archiveCategory = getCategories.await()
-                .filter { category ->
-                    category.name.equals(
-                        eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME,
-                        ignoreCase = true,
-                    )
-                }
-                .minByOrNull { category -> category.id }
-
-            if (archived && archiveCategory == null) {
-                createCategoryWithName.await(eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME)
-                archiveCategory = getCategories.await()
+            novaArchiveMutex.withLock {
+                var archiveCategory = getCategories.await()
                     .filter { category ->
                         category.name.equals(
                             eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME,
@@ -1219,16 +1213,28 @@ class LibraryScreenModel(
                         )
                     }
                     .minByOrNull { category -> category.id }
-            }
 
-            val archiveId = archiveCategory?.id ?: return@launchNonCancellable
-            val existingIds = getCategories.await(mangaId).mapTo(linkedSetOf()) { category -> category.id }
-            if (archived) {
-                existingIds += archiveId
-            } else {
-                existingIds -= archiveId
+                if (archived && archiveCategory == null) {
+                    createCategoryWithName.await(eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME)
+                    archiveCategory = getCategories.await()
+                        .filter { category ->
+                            category.name.equals(
+                                eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME,
+                                ignoreCase = true,
+                            )
+                        }
+                        .minByOrNull { category -> category.id }
+                }
+
+                val archiveId = archiveCategory?.id ?: return@withLock
+                val existingIds = getCategories.await(mangaId).mapTo(linkedSetOf()) { category -> category.id }
+                if (archived) {
+                    existingIds += archiveId
+                } else {
+                    existingIds -= archiveId
+                }
+                setMangaCategories.await(mangaId, existingIds.toList())
             }
-            setMangaCategories.await(mangaId, existingIds.toList())
         }
     }
 

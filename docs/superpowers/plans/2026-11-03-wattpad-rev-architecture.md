@@ -101,13 +101,13 @@ Keep the bundled skill implementation as the baseline, then add:
 - stable unique key validation and a safe empty-items state
 - backdrop semantics hidden while expanded and an explicit dismiss callback for hosted detail
 
-- [ ] **Step 5: Run module tests and compile the host**
+- [x] **Step 5: Run module tests and compile the host**
 
 Run: `./gradlew.bat :card-motion:testDebugUnitTest :app:compileDebugKotlin --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Commit message: `feat: add adaptive Rev card motion module`
 
@@ -142,7 +142,7 @@ Use `NovaHomeTab, BrowseTab, NovaLibraryTab, NovaActivityTab, MoreTab`; initiali
 
 Use indices Home 0, Discover 1, Library 2, Activity 3, Me 4. Preserve `HomeScreen.openTab` compatibility for existing callers and map legacy `Tab.Library` directly to `NovaLibraryTab`.
 
-- [ ] **Step 5: Run focused and complete app unit tests**
+- [x] **Step 5: Run focused and complete app unit tests**
 
 Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.home.NovaNavigationTest" --no-problems-report`
 
@@ -150,7 +150,7 @@ Then: `./gradlew.bat :app:testDebugUnitTest --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Commit message: `feat: add five-destination Nova shell`
 
@@ -167,7 +167,7 @@ Commit message: `feat: add five-destination Nova shell`
 - Produces: `NovaHomeSections`, `deriveNovaHomeSections(items, maxResume, maxRecent)`, and `NovaRevResumeCarousel`.
 - Consumes: `NovaLibraryEntry`, `CardCarousel`, existing Coil requests, `onOpenManga`, and `onPlay`.
 
-- [ ] **Step 1: Write failing Home derivation tests**
+- [x] **Step 1: Write failing Home derivation tests**
 
 Cover empty/uninitialized input, started titles ordered by `lastRead`, unread recent titles ordered by `latestUpload`, recently added ordering, stable deduplication, and partial refresh data that retains successful items.
 
@@ -177,25 +177,25 @@ Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.home.
 
 Expected: FAIL because `deriveNovaHomeSections` is missing.
 
-- [ ] **Step 3: Implement immutable Home section derivation**
+- [x] **Step 3: Implement immutable Home section derivation**
 
 Do not perform chapter lookup, filesystem work, or network work in the helper. Use existing `lastRead`, `remainingChapters`, `latestUpload`, and `dateAdded` fields.
 
-- [ ] **Step 4: Build `NovaRevResumeCarousel`**
+- [x] **Step 4: Build `NovaRevResumeCarousel`**
 
 Render landscape reading cards containing cover, title, next chapter subtitle, progress, unread count, and local/offline indicator when available. Use manga ID as the stable key, 260 ms spatial motion, no auto-advance, and reduced mode when the system animation scale is disabled. `onItemExpanded` opens the canonical `MangaScreen` without a second tap.
 
-- [ ] **Step 5: Replace the old auto-advancing Home hero**
+- [x] **Step 5: Replace the old auto-advancing Home hero**
 
 Keep the pinned search header and pull-to-refresh. Order sections as Reprendre, Nouveaux chapitres, Ajoutes recemment. Keep cached content visible while refresh runs and preserve section list position with saveable state.
 
-- [ ] **Step 6: Run Home tests and compile**
+- [x] **Step 6: Run Home tests and compile**
 
 Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.home.NovaHomeModelsTest" :app:compileDebugKotlin --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Commit message: `feat: add Rev-powered local reading home`
 
@@ -213,7 +213,7 @@ Commit message: `feat: add Rev-powered local reading home`
 - Produces: `NovaLibraryShelf { Current, Archive, Collections }`, `findNovaArchiveCategory`, `filterNovaLibraryShelf`, and `LibraryScreenModel.setNovaArchived(mangaId, archived)`.
 - Consumes: existing categories and `NovaLibraryEntry.categoryIds`; archive metadata is an ordinary backed-up category named `Archives`, excluded from collection chips.
 
-- [ ] **Step 1: Write failing shelf tests**
+- [x] **Step 1: Write failing shelf tests**
 
 Assert case-insensitive archive-category matching, Current excluding archived titles, Archive containing only explicit archive members, Collections excluding the archive category, missing archive category leaving all titles Current, and duplicate archive names choosing the lowest stable category ID without hiding unrelated titles.
 
@@ -223,19 +223,19 @@ Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.libra
 
 Expected: FAIL because shelf helpers are missing.
 
-- [ ] **Step 3: Implement pure shelf derivation**
+- [x] **Step 3: Implement pure shelf derivation**
 
 Use the localized canonical name `Archives` with case-insensitive matching. Keep the helper independent from Compose and repositories.
 
-- [ ] **Step 4: Implement `LibraryScreenModel.setNovaArchived`**
+- [x] **Step 4: Implement `LibraryScreenModel.setNovaArchived`**
 
 Create the ordinary Archives category on first archive, resolve its inserted ID by re-querying categories, preserve every non-archive category, and add/remove only the archive category. No source/tracker status may call this method automatically.
 
-- [ ] **Step 5: Replace the library hero with shelf controls**
+- [x] **Step 5: Replace the library hero with shelf controls**
 
 Add En cours, Archives, Collections controls above the existing Manhwa/Light Novel and sort controls. Show collection chips only in Collections. Preserve the adaptive grid and scroll state per shelf. Add a visible archive/unarchive control to each card and keep long press free for future selection mode.
 
-- [ ] **Step 6: Run shelf, backup, restore, and app tests**
+- [x] **Step 6: Run shelf, backup, restore, and app tests**
 
 Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.library.NovaLibraryShelvesTest" --tests "eu.kanade.tachiyomi.data.backup.*" --no-problems-report`
 
@@ -243,7 +243,7 @@ Then: `./gradlew.bat :app:testDebugUnitTest --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Commit message: `feat: add current archive and collection shelves`
 
@@ -260,23 +260,23 @@ Commit message: `feat: add current archive and collection shelves`
 - Produces: stable Discover subsection order, `NovaActivitySection.Problems`, and one canonical Me route per settings group.
 - Consumes: existing source, extension, migration, download, history, update-error, and settings screens.
 
-- [ ] **Step 1: Write failing destination-content tests**
+- [x] **Step 1: Write failing destination-content tests**
 
 Assert Discover starts with sources/catalogues and contains extensions; Activity exposes Updates, Downloads, History, Problems in that order; Me quick routes contain no duplicate Activity destinations already present in the shell.
 
-- [ ] **Step 2: Implement stable Discover hierarchy**
+- [x] **Step 2: Implement stable Discover hierarchy**
 
 Keep source/catalogue, feed when enabled, extensions, and migration functionality. Ensure the top toolbar exposes global search consistently and switching extension tab still resolves the correct index from the actual tab list rather than a hard-coded page.
 
-- [ ] **Step 3: Add Activity Problems**
+- [x] **Step 3: Add Activity Problems**
 
 Use a scrollable four-tab row. Problems is a live hub linking to current library update errors and other existing actionable error surfaces; it must not create a persistent incident database.
 
-- [ ] **Step 4: Remove duplicate Activity shortcuts from Me**
+- [x] **Step 4: Remove duplicate Activity shortcuts from Me**
 
 Keep downloads, categories, statistics, storage/backup/settings, readers, appearance, accessibility, and advanced routes. Activity, Updates, and History remain canonical in Activity.
 
-- [ ] **Step 5: Run focused and app tests**
+- [x] **Step 5: Run focused and app tests**
 
 Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.home.NovaDestinationContentTest" --no-problems-report`
 
@@ -284,7 +284,7 @@ Then: `./gradlew.bat :app:testDebugUnitTest --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Commit message: `feat: align discover activity and me destinations`
 
@@ -298,17 +298,17 @@ Commit message: `feat: align discover activity and me destinations`
 - Consumes: all earlier tasks.
 - Produces: verified commit history pushed to the current Nova branch, triggering the existing preview update workflow.
 
-- [ ] **Step 1: Run targeted formatting on changed Kotlin files**
+- [x] **Step 1: Run targeted formatting on changed Kotlin files**
 
 Use Spotless IDE-hook paths so pre-existing unrelated formatting violations are not rewritten.
 
-- [ ] **Step 2: Run complete affected test suites**
+- [x] **Step 2: Run complete affected test suites**
 
 Run: `./gradlew.bat :card-motion:testDebugUnitTest :app:testDebugUnitTest :presentation-core:testDebugUnitTest :domain:testDebugUnitTest --no-problems-report`
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 3: Run static and release-oriented checks**
+- [x] **Step 3: Run static and release-oriented checks**
 
 Run: `git diff --check`
 
@@ -316,11 +316,11 @@ Run: `./gradlew.bat :app:lintDebug --no-problems-report`
 
 Expected: no new errors attributable to changed files.
 
-- [ ] **Step 4: Build the preview APK**
+- [x] **Step 4: Build the preview APK**
 
 Run the repository's existing preview variant command used by the GitHub release workflow. Verify APK existence, size, package ID, version code, and signing mode without installing because no ADB device is connected.
 
-- [ ] **Step 5: Review the final diff and commit any verification-only fixes**
+- [x] **Step 5: Review the final diff and commit any verification-only fixes**
 
 Commit message when needed: `fix: finalize Wattpad-inspired Nova shell`
 

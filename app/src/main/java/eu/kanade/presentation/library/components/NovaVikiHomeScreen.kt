@@ -1,5 +1,6 @@
 package eu.kanade.presentation.library.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
@@ -82,8 +84,10 @@ fun NovaVikiHomeScreen(
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
     onRefresh: () -> Boolean,
+    resetToTopKey: Int,
 ) {
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
     var isRefreshing by remember { mutableStateOf(false) }
     val heroItemsToShow = remember(sections) {
         sections.resume
@@ -107,6 +111,17 @@ fun NovaVikiHomeScreen(
         } else {
             fallbackSections
         }
+    }
+
+    LaunchedEffect(resetToTopKey) {
+        if (resetToTopKey > 0) {
+            selectedRail = null
+            listState.scrollToItem(0)
+        }
+    }
+
+    BackHandler(enabled = selectedRail != null) {
+        selectedRail = null
     }
 
     selectedRail?.let { section ->
@@ -142,6 +157,7 @@ fun NovaVikiHomeScreen(
                 onSearch = onSearch,
             )
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),

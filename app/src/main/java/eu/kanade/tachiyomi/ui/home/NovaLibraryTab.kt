@@ -6,7 +6,9 @@ import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -16,6 +18,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME
 import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.library.NovaLibraryScreen
 import eu.kanade.presentation.library.NovaMediaType
@@ -30,11 +33,14 @@ import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.flow.MutableSharedFlow
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
 data object NovaLibraryTab : Tab {
+    private val reselectEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     @Suppress("unused")
     private fun readResolve(): Any = NovaLibraryTab
 
@@ -51,7 +57,7 @@ data object NovaLibraryTab : Tab {
         }
 
     override suspend fun onReselect(navigator: Navigator) {
-        navigator.push(GlobalSearchScreen(""))
+        reselectEvents.emit(Unit)
     }
 
     @Composable
@@ -59,6 +65,7 @@ data object NovaLibraryTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
+        var resetToTopKey by remember { mutableIntStateOf(0) }
         val libraryState by libraryScreenModel.state.collectAsStateWithLifecycle()
         val libraryData = libraryState.libraryData
         val favoriteItems = if (libraryData.isInitialized) {
@@ -72,7 +79,10 @@ data object NovaLibraryTab : Tab {
         val libraryCategories = remember(libraryData.categories) {
             libraryData.categories
                 .asSequence()
-                .filterNot { category -> category.isSystemCategory || category.hidden }
+                .filter { category ->
+                    !category.isSystemCategory &&
+                        (!category.hidden || category.name.equals(NOVA_ARCHIVE_CATEGORY_NAME, ignoreCase = true))
+                }
                 .sortedBy { category -> category.order }
                 .map { category ->
                     NovaLibraryCategory(
@@ -85,6 +95,11 @@ data object NovaLibraryTab : Tab {
         val libraryItems = remember(favoriteItems) {
             favoriteItems.mapIndexed { index, item ->
                 item.toNovaManga(index)
+            }
+        }
+        LaunchedEffect(Unit) {
+            reselectEvents.collect {
+                resetToTopKey += 1
             }
         }
         val lightNovelItems = remember(favoriteItems, categoryNamesById) {
@@ -116,6 +131,7 @@ data object NovaLibraryTab : Tab {
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
             onSetArchived = libraryScreenModel::setNovaArchived,
             onRefresh = ::refreshLibrary,
+            resetToTopKey = resetToTopKey,
         )
 
         LaunchedEffect(Unit) {

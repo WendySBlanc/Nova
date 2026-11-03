@@ -15,6 +15,7 @@ fun NovaLibraryScreen(
     onOpenManga: (Long) -> Unit,
     onSetArchived: (Long, Boolean) -> Unit,
     onRefresh: () -> Boolean,
+    resetToTopKey: Int,
 ) {
     NovaVikiLibraryScreen(
         libraryItems = libraryItems,
@@ -26,5 +27,6 @@ fun NovaLibraryScreen(
         onOpenManga = onOpenManga,
         onSetArchived = onSetArchived,
         onRefresh = onRefresh,
+        resetToTopKey = resetToTopKey,
     )
 }

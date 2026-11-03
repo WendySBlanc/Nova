@@ -41,9 +41,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -66,13 +66,12 @@ import eu.kanade.presentation.theme.NovaSignalDimensions
 import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
-import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.activity.NovaActivitySection
 import eu.kanade.tachiyomi.ui.activity.NovaActivityTab
+import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
-import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
@@ -225,16 +224,14 @@ object HomeScreen : Screen() {
                                     MoreTab
                                 }
                             }
+                            Tab.Problems -> {
+                                NovaActivityTab.showSection(NovaActivitySection.Problems)
+                                NovaActivityTab
+                            }
                         }
 
                         if (it is Tab.Library && it.mangaIdToOpen != null) {
                             navigator.push(MangaScreen(it.mangaIdToOpen))
-                        }
-                        if (it is Tab.More) {
-                            if (it.toLibraryUpdateErrors) {
-                                navigator.push(LibraryUpdateErrorScreen())
-                                // KMK <--
-                            }
                         }
                     }
                 }
@@ -504,12 +501,10 @@ object HomeScreen : Screen() {
         data class Library(val mangaIdToOpen: Long? = null) : Tab
         data object Updates : Tab
         data object History : Tab
+        data object Problems : Tab
         data class Browse(val toExtensions: Boolean = false) : Tab
         data class More(
             val toDownloads: Boolean,
-            // KMK -->
-            val toLibraryUpdateErrors: Boolean = false,
-            // KMK <--
         ) : Tab
     }
 }

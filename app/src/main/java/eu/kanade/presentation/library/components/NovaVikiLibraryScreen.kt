@@ -117,6 +117,7 @@ fun NovaVikiLibraryScreen(
     onOpenManga: (Long) -> Unit,
     onSetArchived: (Long, Boolean) -> Unit,
     onRefresh: () -> Boolean,
+    resetToTopKey: Int,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedShelfIndex by rememberSaveable { mutableIntStateOf(NovaLibraryShelf.Current.ordinal) }
@@ -200,6 +201,11 @@ fun NovaVikiLibraryScreen(
     }
     LaunchedEffect(selectedTab, selectedShelfIndex, selectedCategoryId, sortOption, sortDescending) {
         if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
+            gridState.scrollToItem(0)
+        }
+    }
+    LaunchedEffect(resetToTopKey) {
+        if (resetToTopKey > 0) {
             gridState.scrollToItem(0)
         }
     }

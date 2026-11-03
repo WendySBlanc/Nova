@@ -3,8 +3,10 @@ package eu.kanade.tachiyomi.ui.home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,12 +27,15 @@ import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
 data object NovaHomeTab : Tab {
+    private val reselectEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     @Suppress("unused")
     private fun readResolve(): Any = NovaHomeTab
 
@@ -45,7 +50,7 @@ data object NovaHomeTab : Tab {
         }
 
     override suspend fun onReselect(navigator: Navigator) {
-        // Home owns its reset-to-top behavior; reselecting must never open a new route.
+        reselectEvents.emit(Unit)
     }
 
     @Composable
@@ -53,6 +58,7 @@ data object NovaHomeTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
+        var resetToTopKey by remember { mutableIntStateOf(0) }
         val libraryState by libraryScreenModel.state.collectAsStateWithLifecycle()
         val libraryData = libraryState.libraryData
         val favoriteItems = if (libraryData.isInitialized) {
@@ -97,6 +103,12 @@ data object NovaHomeTab : Tab {
             }
         }
         val nextChapterLabelsSnapshot = nextChapterLabels.toMap()
+
+        LaunchedEffect(Unit) {
+            reselectEvents.collect {
+                resetToTopKey += 1
+            }
+        }
 
         fun nextChapterSubtitle(item: LibraryItem): String {
             return when {
@@ -158,6 +170,7 @@ data object NovaHomeTab : Tab {
             onSearch = { navigator.push(GlobalSearchScreen("")) },
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
             onRefresh = ::refreshLibrary,
+            resetToTopKey = resetToTopKey,
         )
 
         LaunchedEffect(Unit) {

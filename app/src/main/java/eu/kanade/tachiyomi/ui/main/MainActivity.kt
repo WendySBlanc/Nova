@@ -669,7 +669,7 @@ class MainActivity : BaseActivity() {
             // KMK -->
             Constants.SHORTCUT_LIBRARY_UPDATE_ERRORS -> {
                 navigator.popUntilRoot()
-                HomeScreen.Tab.More(toDownloads = false, toLibraryUpdateErrors = true)
+                HomeScreen.Tab.Problems
             }
             // KMK <--
             Intent.ACTION_SEARCH, Intent.ACTION_SEND, "com.google.android.gms.actions.SEARCH_ACTION" -> {
