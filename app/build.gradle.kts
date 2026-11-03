@@ -191,6 +191,7 @@ kotlin {
 
 dependencies {
     implementation(projects.i18n)
+    implementation(projects.cardMotion)
     // KMK -->
     implementation(projects.i18nKmk)
     // KMK <--

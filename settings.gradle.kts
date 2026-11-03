@@ -48,6 +48,7 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 rootProject.name = "NovaKomikku"
 include(":app")
+include(":card-motion")
 include(":core-metadata")
 include(":core:archive")
 include(":core:common")

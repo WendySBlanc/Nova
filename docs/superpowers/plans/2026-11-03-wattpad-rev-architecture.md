@@ -52,11 +52,11 @@ Local note: the Kotlin compilation completed on 2026-11-03. The combined test ru
 
 Commit message: `docs: define Wattpad-inspired Nova architecture`
 
-- [ ] **Step 2: Change the destination contract test to expect `Home`, `Discover`, `Library`, `Activity`, and `Me` in that order**
+- [x] **Step 2: Change the destination contract test to expect `Home`, `Discover`, `Library`, `Activity`, and `Me` in that order**
 
 The test must fail because `NovaDestination.Home` does not yet exist.
 
-- [ ] **Step 3: Run the focused navigation test and verify it fails**
+- [x] **Step 3: Run the focused navigation test and verify it fails**
 
 Run: `./gradlew.bat :app:testDebugUnitTest --tests "eu.kanade.presentation.home.NovaNavigationTest" --no-problems-report`
 
@@ -76,21 +76,21 @@ Expected: FAIL with an unresolved or mismatched `Home` destination.
 - Produces: `CardMotionSpec`, `CardMotionMode`, and generic `CardCarousel<T>` with stable keys, optional `onItemExpanded: (T) -> Unit`, explicit dismiss behavior, and reduced-motion mode.
 - Consumes later: Home passes stable manga IDs and `CardMotionMode.Spatial` or `Reduced`.
 
-- [ ] **Step 1: Write failing `CardMotionSpecTest` cases**
+- [x] **Step 1: Write failing `CardMotionSpecTest` cases**
 
 Assert that invalid negative duration/blur values throw, reduced mode resolves duration to zero and blur to zero, and spatial mode retains the supplied 260 ms duration and 18 dp blur.
 
-- [ ] **Step 2: Run the module test and verify the module is unresolved**
+- [x] **Step 2: Run the module test and verify the module is unresolved**
 
 Run: `./gradlew.bat :card-motion:testDebugUnitTest --no-problems-report`
 
 Expected: FAIL because `:card-motion` is not included.
 
-- [ ] **Step 3: Add `:card-motion` using the repository's `mihon.library` and `mihon.library.compose` plugins**
+- [x] **Step 3: Add `:card-motion` using the repository's `mihon.library` and `mihon.library.compose` plugins**
 
 Use namespace `nova.cardmotion`, the host SDK/JVM conventions, Compose foundation/activity/animation dependencies, and the repository test bundle. Add `implementation(projects.cardMotion)` to `:app`.
 
-- [ ] **Step 4: Implement the generic Rev carousel**
+- [x] **Step 4: Implement the generic Rev carousel**
 
 Keep the bundled skill implementation as the baseline, then add:
 
