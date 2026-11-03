@@ -3,6 +3,7 @@ package eu.kanade.presentation.theme.colorscheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import eu.kanade.presentation.theme.NovaVikiColors
 
 /**
  * Colors for Default theme
@@ -17,39 +18,39 @@ import androidx.compose.ui.graphics.Color
 internal object TachiyomiColorScheme : BaseColorScheme() {
 
     override val darkScheme = darkColorScheme(
-        primary = Color(0xFF39B8FF),
+        primary = NovaVikiColors.Accent,
         onPrimary = Color(0xFF002638),
-        primaryContainer = Color(0xFF0A4561),
+        primaryContainer = NovaVikiColors.AccentSoft,
         onPrimaryContainer = Color(0xFFBCE5FF),
         inversePrimary = Color(0xFF00658C),
-        secondary = Color(0xFFFFA9B5), // Unread badge
+        secondary = NovaVikiColors.AccentWarm, // Unread badge
         onSecondary = Color(0xFF5D1023), // Unread badge text
         secondaryContainer = Color(0xFF76273A), // Navigation bar selector pill & pro
         onSecondaryContainer = Color(0xFFFFD9DE), // Navigation bar selector icon
-        tertiary = Color(0xFF71D6A0), // Downloaded badge
+        tertiary = NovaVikiColors.Success, // Downloaded badge
         onTertiary = Color(0xFF003920), // Downloaded badge text
         tertiaryContainer = Color(0xFF145233),
         onTertiaryContainer = Color(0xFFA5F2C5),
-        background = Color(0xFF080A0D),
-        onBackground = Color(0xFFF7F8FA),
-        surface = Color(0xFF111419),
-        onSurface = Color(0xFFF7F8FA),
-        surfaceVariant = Color(0xFF191D23), // Navigation bar background (ThemePrefWidget)
-        onSurfaceVariant = Color(0xFFAEB6C2),
-        surfaceTint = Color(0xFF39B8FF),
+        background = NovaVikiColors.Background,
+        onBackground = NovaVikiColors.TextPrimary,
+        surface = NovaVikiColors.Surface,
+        onSurface = NovaVikiColors.TextPrimary,
+        surfaceVariant = NovaVikiColors.SurfaceRaised, // Navigation bar background (ThemePrefWidget)
+        onSurfaceVariant = NovaVikiColors.TextSecondary,
+        surfaceTint = NovaVikiColors.Accent,
         inverseSurface = Color(0xFFE2E6EB),
         inverseOnSurface = Color(0xFF171A1F),
-        error = Color(0xFFFFB4AB),
+        error = NovaVikiColors.Danger,
         onError = Color(0xFF690005),
         errorContainer = Color(0xFF93000A),
         onErrorContainer = Color(0xFFFFDAD6),
-        outline = Color(0xFF7D8794),
-        outlineVariant = Color(0xFF313844),
-        surfaceContainerLowest = Color(0xFF080A0D),
-        surfaceContainerLow = Color(0xFF0D1014),
-        surfaceContainer = Color(0xFF111419), // Navigation bar background
-        surfaceContainerHigh = Color(0xFF191D23),
-        surfaceContainerHighest = Color(0xFF222831),
+        outline = NovaVikiColors.OutlineStrong,
+        outlineVariant = NovaVikiColors.Outline,
+        surfaceContainerLowest = NovaVikiColors.Background,
+        surfaceContainerLow = NovaVikiColors.Surface,
+        surfaceContainer = NovaVikiColors.Surface, // Navigation bar background
+        surfaceContainerHigh = NovaVikiColors.SurfaceRaised,
+        surfaceContainerHighest = NovaVikiColors.SurfaceStrong,
     )
 
     override val lightScheme = lightColorScheme(

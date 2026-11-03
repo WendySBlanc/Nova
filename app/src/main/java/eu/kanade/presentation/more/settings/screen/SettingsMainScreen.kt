@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +81,7 @@ import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import kotlin.reflect.KClass
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import cafe.adriel.voyager.core.screen.Screen as VoyagerScreen
 
 object SettingsMainScreen : Screen() {
@@ -112,7 +113,7 @@ object SettingsMainScreen : Screen() {
     fun Content(twoPane: Boolean) {
         val navigator = LocalNavigator.currentOrThrow
         val backPress = LocalBackPress.currentOrThrow
-        val containerColor = if (twoPane) getPalerSurface() else MaterialTheme.colorScheme.surface
+        val containerColor = if (twoPane) getPalerSurface() else MaterialTheme.colorScheme.background
         val topBarState = rememberTopAppBarState()
 
         Scaffold(
@@ -193,7 +194,7 @@ object SettingsMainScreen : Screen() {
                             state = gridState,
                             contentPadding = overviewPadding,
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                         ) {
                             gridItems(
                                 items = groups,
@@ -214,7 +215,7 @@ object SettingsMainScreen : Screen() {
                                 .align(Alignment.TopCenter),
                             state = listState,
                             contentPadding = overviewPadding,
-                            verticalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                         ) {
                             items(
                                 count = groups.size,
@@ -272,14 +273,26 @@ object SettingsMainScreen : Screen() {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = group.section.title,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(group.section.accent),
+                )
+                Text(
+                    text = group.section.title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

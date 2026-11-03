@@ -468,7 +468,7 @@ private fun NovaLibraryModeSelector(
         tabs.forEachIndexed { index, (label, count) ->
             val selected = selectedTab == index
             val background by animateColorAsState(
-                targetValue = if (selected) NovaVikiColors.SurfaceStrong else Color.Transparent,
+                targetValue = if (selected) NovaVikiColors.SurfaceInteractive else Color.Transparent,
                 label = "library_tab_background",
             )
             Box(
@@ -547,7 +547,7 @@ private fun NovaLibraryCategoryChip(
     onClick: () -> Unit,
 ) {
     val background by animateColorAsState(
-        targetValue = if (selected) NovaVikiColors.SurfaceStrong else NovaVikiColors.Surface,
+        targetValue = if (selected) NovaVikiColors.SurfaceInteractive else NovaVikiColors.Surface,
         label = "library_category_background",
     )
     val borderColor by animateColorAsState(

@@ -2,6 +2,7 @@ package eu.kanade.presentation.manga
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -295,8 +296,9 @@ private fun NovaMangaHero(
         val topButtonSize = NovaVikiDimensions.MinimumTouchTarget
         val topButtonModifier = Modifier
             .size(topButtonSize)
-            .clip(RoundedCornerShape(50))
-            .background(Color.Black.copy(alpha = 0.28f))
+            .clip(CircleShape)
+            .background(NovaVikiColors.Surface.copy(alpha = 0.78f))
+            .border(1.dp, NovaVikiColors.OutlineStrong.copy(alpha = 0.8f), CircleShape)
         val titleStyle = if (tablet) {
             MaterialTheme.typography.headlineMedium
         } else {
@@ -326,15 +328,15 @@ private fun NovaMangaHero(
                     .height(backdropHeight)
                     .background(
                         Brush.horizontalGradient(
-                            0f to Color.Black.copy(alpha = 0.72f),
-                            0.58f to Color.Black.copy(alpha = 0.2f),
+                            0f to NovaVikiColors.Scrim.copy(alpha = 0.82f),
+                            0.58f to NovaVikiColors.Scrim.copy(alpha = 0.24f),
                             1f to Color.Transparent,
                         ),
                     )
                     .background(
                         Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.16f),
-                            0.48f to Color.Black.copy(alpha = 0.22f),
+                            0f to NovaVikiColors.Scrim.copy(alpha = 0.16f),
+                            0.48f to NovaVikiColors.Scrim.copy(alpha = 0.28f),
                             0.82f to NovaVikiColors.Background.copy(alpha = 0.82f),
                             1f to NovaVikiColors.Background,
                         ),
@@ -397,7 +399,12 @@ private fun NovaMangaHero(
                             .width(posterWidth)
                             .height(posterHeight)
                             .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                            .background(NovaVikiColors.SurfaceStrong),
+                            .background(NovaVikiColors.SurfaceStrong)
+                            .border(
+                                width = 1.dp,
+                                color = NovaVikiColors.OutlineStrong,
+                                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                            ),
                     ) {
                         AsyncImage(
                             model = coverRequest,
@@ -477,12 +484,12 @@ private fun NovaMangaHero(
                             Icon(
                                 imageVector = if (manga.favorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkAdd,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = NovaVikiColors.TextPrimary,
                             )
                             Text(
                                 text = if (manga.favorite) "Ajoute" else "Ajouter",
                                 modifier = Modifier.padding(start = 6.dp),
-                                color = Color.White,
+                                color = NovaVikiColors.TextPrimary,
                                 fontWeight = FontWeight.Black,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -510,7 +517,7 @@ private fun NovaMangaInfoLine(
     ) {
         Text(
             text = sourceName,
-            color = NovaVikiColors.TextPrimary,
+            color = NovaVikiColors.Accent,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -569,7 +576,12 @@ private fun NovaMangaTabs(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(NovaVikiColors.Surface)
+            .background(NovaVikiColors.SurfaceRaised)
+            .border(
+                width = 1.dp,
+                color = NovaVikiColors.Outline,
+                shape = RoundedCornerShape(0.dp),
+            )
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

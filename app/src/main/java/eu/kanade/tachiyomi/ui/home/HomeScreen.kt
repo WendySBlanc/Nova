@@ -10,7 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,8 +23,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -123,7 +124,7 @@ object HomeScreen : Screen() {
                     startBar = {
                         if (isTabletUi()) {
                             NavigationRail(
-                                containerColor = NovaVikiColors.Background,
+                                containerColor = NovaVikiColors.Surface,
                                 contentColor = NovaVikiColors.TextSecondary,
                             ) {
                                 TABS
@@ -289,7 +290,7 @@ object HomeScreen : Screen() {
             colors = androidx.compose.material3.NavigationRailItemDefaults.colors(
                 selectedIconColor = NovaVikiColors.Accent,
                 selectedTextColor = NovaVikiColors.Accent,
-                indicatorColor = NovaVikiColors.SurfaceStrong,
+                indicatorColor = NovaVikiColors.SurfaceInteractive,
                 unselectedIconColor = NovaVikiColors.TextSecondary,
                 unselectedTextColor = NovaVikiColors.TextSecondary,
             ),
@@ -304,19 +305,22 @@ object HomeScreen : Screen() {
             contentColor = NovaVikiNavBarInactive,
             tonalElevation = 0.dp,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .height(NovaVikiNavBarHeight)
-                    .background(NovaVikiNavBarBackground),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                TABS
-                    .fastFilter { it.isEnabled() }
-                    .fastForEach {
-                        NovaVikiNavigationBarItem(it, alwaysShowLabel)
-                    }
+            Column {
+                HorizontalDivider(color = NovaVikiColors.Outline)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .height(NovaVikiNavBarHeight)
+                        .background(NovaVikiNavBarBackground),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    TABS
+                        .fastFilter { it.isEnabled() }
+                        .fastForEach {
+                            NovaVikiNavigationBarItem(it, alwaysShowLabel)
+                        }
+                }
             }
         }
     }
@@ -336,7 +340,7 @@ object HomeScreen : Screen() {
             label = "navigationItemColor",
         )
         val indicatorWidth by animateFloatAsState(
-            targetValue = if (selected) 0.26f else 0f,
+            targetValue = if (selected) 0.34f else 0f,
             animationSpec = tween(NovaVikiMotion.Standard),
             label = "navigationIndicator",
         )
@@ -471,7 +475,7 @@ object HomeScreen : Screen() {
 
     private val NovaVikiNavBarHeight = NovaVikiDimensions.NavigationBarHeight
     private val NovaVikiNavBarIconSize = 24.dp
-    private val NovaVikiNavBarBackground = NovaVikiColors.Background
+    private val NovaVikiNavBarBackground = NovaVikiColors.Surface
     private val NovaVikiNavBarActive = NovaVikiColors.Accent
     private val NovaVikiNavBarInactive = NovaVikiColors.TextSecondary
 

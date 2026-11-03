@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -101,7 +103,7 @@ fun ReaderAppBars(
     onClickShiftPage: () -> Unit,
     // SY <--
 ) {
-    val backgroundColor = NovaVikiColors.Surface.copy(alpha = 0.94f)
+    val backgroundColor = NovaVikiColors.Surface.copy(alpha = 0.97f)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxHeight()) {
@@ -126,6 +128,7 @@ fun ReaderAppBars(
                         onOpenInBrowser = onOpenInBrowser,
                         onShare = onShare,
                     )
+                    HorizontalDivider(color = NovaVikiColors.Outline)
                     if (isExhToolsVisible) {
                         ExhUtils(
                             isVisible = true,
@@ -165,10 +168,15 @@ fun ReaderAppBars(
                     Surface(
                         modifier = Modifier
                             .widthIn(max = 440.dp)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = NovaVikiColors.OutlineStrong,
+                                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                            ),
                         shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                         color = backgroundColor,
-                        shadowElevation = 8.dp,
+                        shadowElevation = 4.dp,
                     ) {
                         ReaderBottomBar(
                             onPreviousChapter = onPreviousChapter,
@@ -207,10 +215,15 @@ fun ReaderAppBars(
             Surface(
                 modifier = Modifier
                     .width(56.dp)
-                    .fillMaxHeight(0.56f),
+                    .fillMaxHeight(0.56f)
+                    .border(
+                        width = 1.dp,
+                        color = NovaVikiColors.OutlineStrong,
+                        shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                    ),
                 shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                 color = backgroundColor,
-                shadowElevation = 8.dp,
+                shadowElevation = 4.dp,
             ) {
                 ReaderVerticalProgressSlider(
                     currentPage = currentPage,

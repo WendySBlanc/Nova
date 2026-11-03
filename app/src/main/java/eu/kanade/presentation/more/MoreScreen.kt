@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -154,7 +155,7 @@ fun MoreScreen(
                         top = 12.dp,
                         bottom = contentPadding.calculateBottomPadding() + 24.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                 ) {
                     item(contentType = "me_identity") {
                         NovaMeIdentity(
@@ -181,7 +182,7 @@ fun MoreScreen(
                             ) {
                                 Column(
                                     modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                                 ) {
                                     NovaReadingModesSection(
                                         downloadedOnly = downloadedOnly,
@@ -200,7 +201,7 @@ fun MoreScreen(
                                 }
                                 Column(
                                     modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                                 ) {
                                     NovaLibraryToolsSection(
                                         showBatchAdd = showBatchAdd,
@@ -215,7 +216,7 @@ fun MoreScreen(
                         } else {
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                             ) {
                                 NovaReadingModesSection(
                                     downloadedOnly = downloadedOnly,
@@ -424,7 +425,7 @@ private fun NovaQuickAction(
         modifier = modifier
             .height(88.dp)
             .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(NovaVikiColors.SurfaceRaised)
+            .background(NovaVikiColors.SurfaceStrong)
             .border(1.dp, NovaVikiColors.Outline, RoundedCornerShape(NovaVikiDimensions.ControlCorner))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -553,28 +554,21 @@ private fun NovaMoreSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
             text = title,
-            color = Color.White,
+            color = NovaVikiColors.TextPrimary,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             maxLines = 1,
         )
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                .background(NovaVikiColors.Outline)
-                .border(
-                    width = 1.dp,
-                    color = NovaVikiColors.Outline,
-                    shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-                ),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
-            content = content,
-        )
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            HorizontalDivider(color = NovaVikiColors.Outline)
+            content()
+        }
     }
 }
 
@@ -636,49 +630,52 @@ private fun NovaMoreBaseRow(
     modifier: Modifier = Modifier,
     trailing: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = NovaVikiDimensions.ListRowMinHeight)
-            .background(NovaMoreRow)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                .background(accent.copy(alpha = 0.17f)),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .heightIn(min = NovaVikiDimensions.ListRowMinHeight)
+                .background(NovaMoreRow)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            NovaMoreIcon(
-                icon = icon,
-                tint = accent,
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    color = NovaVikiColors.TextSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                    .background(accent.copy(alpha = 0.17f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                NovaMoreIcon(
+                    icon = icon,
+                    tint = accent,
                 )
             }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = NovaVikiColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        color = NovaVikiColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            trailing()
         }
-        Spacer(Modifier.width(10.dp))
-        trailing()
+        HorizontalDivider(color = NovaVikiColors.Outline.copy(alpha = 0.72f))
     }
 }
 

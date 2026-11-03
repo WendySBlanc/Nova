@@ -1,9 +1,9 @@
 package eu.kanade.presentation.library.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -26,10 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -68,6 +68,7 @@ import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.i18n.stringResource
+import androidx.compose.foundation.lazy.grid.items as gridItems
 
 @Immutable
 data class NovaVikiManga(
@@ -217,7 +218,7 @@ internal fun NovaVikiSearchHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = NovaVikiColors.TextPrimary,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
@@ -238,7 +239,12 @@ internal fun NovaVikiSearchHeader(
                     .height(NovaVikiDimensions.MinimumTouchTarget)
                     .width(if (compact) NovaVikiDimensions.MinimumTouchTarget else 144.dp)
                     .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                    .background(NovaVikiColors.SurfaceRaised)
+                    .background(NovaVikiColors.SurfaceStrong)
+                    .border(
+                        width = 1.dp,
+                        color = NovaVikiColors.Outline,
+                        shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                    )
                     .clickable(role = Role.Button, onClick = onSearch)
                     .padding(horizontal = if (compact) 0.dp else 12.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -254,7 +260,7 @@ internal fun NovaVikiSearchHeader(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(MR.strings.action_search),
-                        color = NovaVikiColors.TextSecondary,
+                        color = NovaVikiColors.TextPrimary,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -454,7 +460,7 @@ private fun NovaHeroSlide(
                             0.52f to Color.Black.copy(alpha = 0.35f),
                             1f to Color.Transparent,
                         ),
-                    )
+                    ),
             )
         } else {
             HeroArtwork(hero)
