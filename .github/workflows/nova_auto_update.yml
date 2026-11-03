@@ -43,13 +43,27 @@ jobs:
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
           echo "tag=r$revision" >> "$GITHUB_OUTPUT"
 
-      - name: Test and build
+      - name: Test
         shell: bash
         run: |
           ./gradlew \
             :domain:testDebugUnitTest \
             :app:testDebugUnitTest \
+            --no-daemon \
+            --max-workers=2 \
+            --no-problems-report \
+            -Pkotlin.compiler.execution.strategy=in-process
+
+      - name: Build preview APK
+        shell: bash
+        run: |
+          ./gradlew \
             assemblePreview \
+            --no-daemon \
+            --max-workers=2 \
+            --no-problems-report \
+            -Dorg.gradle.jvmargs="-Xmx5g -Dfile.encoding=UTF-8" \
+            -Pkotlin.compiler.execution.strategy=in-process \
             -Penable-updater \
             -PnovaRevision=${{ steps.version.outputs.revision }} \
             -PnovaVersionCode=${{ steps.version.outputs.revision }} \
