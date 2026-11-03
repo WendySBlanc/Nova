@@ -935,4 +935,11 @@
     <string name="pref_download_concurrent_pages">Téléchargements simultanés de pages</string>
     <string name="pref_download_concurrent_pages_summary">Pages téléchargées simultanément par source</string>
     <string name="action_filter_excluded_scanlators">Filtrer les scantrads exclus</string>
+    <string name="nova_source_error_network">La source est injoignable. Verifiez la connexion puis reessayez.</string>
+    <string name="nova_source_error_access_denied">La source refuse l'acces. Ouvrez son site pour vous connecter ou terminer la verification.</string>
+    <string name="nova_source_error_attestation">La source demande une verification dans le navigateur avant de continuer.</string>
+    <string name="nova_source_error_invalid_response">La source a renvoye une reponse invalide. Reessayez ou mettez son extension a jour.</string>
+    <string name="nova_source_error_unsupported_extension">Cette extension n'est pas compatible avec cette version de Nova. Mettez-la a jour.</string>
+    <string name="nova_source_error_not_found">Ce titre ou ce chapitre n'est plus disponible a cette adresse.</string>
+    <string name="nova_discover">Decouvrir</string>
 </resources>

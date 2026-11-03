@@ -68,7 +68,17 @@ fun BrowseSourceContent(
         ?: mangaList.loadState.append.takeIf { it is LoadState.Error }
 
     val getErrorMessage: (LoadState.Error) -> String = { state ->
-        with(context) { state.error.formattedMessage }
+        when (toNovaSourceError(state.error).kind) {
+            NovaSourceErrorKind.Network -> context.stringResource(MR.strings.nova_source_error_network)
+            NovaSourceErrorKind.AccessDenied -> context.stringResource(MR.strings.nova_source_error_access_denied)
+            NovaSourceErrorKind.Attestation -> context.stringResource(MR.strings.nova_source_error_attestation)
+            NovaSourceErrorKind.InvalidResponse -> context.stringResource(MR.strings.nova_source_error_invalid_response)
+            NovaSourceErrorKind.UnsupportedExtension -> {
+                context.stringResource(MR.strings.nova_source_error_unsupported_extension)
+            }
+            NovaSourceErrorKind.NotFound -> context.stringResource(MR.strings.nova_source_error_not_found)
+            NovaSourceErrorKind.Unknown -> with(context) { state.error.formattedMessage }
+        }
     }
 
     LaunchedEffect(errorState) {

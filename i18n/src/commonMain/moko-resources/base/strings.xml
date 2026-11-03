@@ -1070,4 +1070,11 @@
     <string name="migrationListScreen.migrateDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.progressDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.matchWithoutChapterToast">No chapters found, this entry cannot be used for migration</string>
+    <string name="nova_source_error_network">The source could not be reached. Check your connection and try again.</string>
+    <string name="nova_source_error_access_denied">The source denied access. Open its website to sign in or complete its verification.</string>
+    <string name="nova_source_error_attestation">The source requires a browser verification before Nova can continue.</string>
+    <string name="nova_source_error_invalid_response">The source returned an invalid response. Retry or update its extension.</string>
+    <string name="nova_source_error_unsupported_extension">This extension is not compatible with this Nova version. Update the extension.</string>
+    <string name="nova_source_error_not_found">This title or chapter is no longer available at this address.</string>
+    <string name="nova_discover">Discover</string>
 </resources>
