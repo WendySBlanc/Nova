@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.reader.readerDestinationFromSlider
+import eu.kanade.presentation.reader.resolveNovaReaderProgress
 import eu.kanade.tachiyomi.R
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Slider
@@ -142,75 +144,6 @@ fun ReaderBottomBar(
 }
 
 @Composable
-internal fun ReaderVerticalProgressSlider(
-    currentPage: Int,
-    currentPageText: String,
-    totalPages: Int,
-    isTextReader: Boolean,
-    onPageIndexChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val valueRange = readerSliderRange(isTextReader, totalPages)
-    val safeCurrentPage = currentPage.coerceIn(valueRange)
-    var sliderValue by remember(safeCurrentPage, valueRange.last) {
-        mutableIntStateOf(safeCurrentPage)
-    }
-    val interactionSource = remember { MutableInteractionSource() }
-    val dragged by interactionSource.collectIsDraggedAsState()
-    ReaderSliderHaptics(sliderValue, dragged)
-
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        ReaderVerticalProgressLabel(
-            text = if (dragged) {
-                readerSliderLabel(sliderValue, isTextReader)
-            } else {
-                currentPageText.ifBlank { readerSliderLabel(safeCurrentPage, isTextReader) }
-            },
-            color = NovaVikiColors.Accent,
-        )
-        Slider(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 4.dp)
-                .graphicsLayer {
-                    rotationZ = 90f
-                    transformOrigin = TransformOrigin(0f, 0f)
-                }
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(
-                        Constraints(
-                            minWidth = constraints.minHeight,
-                            maxWidth = constraints.maxHeight,
-                            minHeight = constraints.minWidth,
-                            maxHeight = constraints.maxWidth,
-                        ),
-                    )
-                    layout(placeable.height, placeable.width) {
-                        placeable.place(0, -placeable.height)
-                    }
-                },
-            value = sliderValue,
-            valueRange = valueRange,
-            onValueChange = { sliderValue = it },
-            onValueChangeFinished = {
-                onPageIndexChange(readerSliderDestination(sliderValue, isTextReader))
-            },
-            colors = readerSliderColors(),
-            interactionSource = interactionSource,
-        )
-        ReaderVerticalProgressLabel(
-            text = if (isTextReader) "100%" else totalPages.toString(),
-            color = NovaVikiColors.TextSecondary,
-        )
-    }
-}
-
-@Composable
 private fun ReaderProgressSlider(
     currentPage: Int,
     currentPageText: String,
@@ -218,14 +151,16 @@ private fun ReaderProgressSlider(
     isTextReader: Boolean,
     onPageIndexChange: (Int) -> Unit,
 ) {
-    val valueRange = readerSliderRange(isTextReader, totalPages)
-    val safeCurrentPage = currentPage.coerceIn(valueRange)
-    var sliderValue by remember(safeCurrentPage, valueRange.last) {
-        mutableIntStateOf(safeCurrentPage)
+    val progress = resolveNovaReaderProgress(currentPage, totalPages, isTextReader)
+    var sliderValue by remember {
+        mutableIntStateOf(progress.sliderValue)
     }
     val interactionSource = remember { MutableInteractionSource() }
     val dragged by interactionSource.collectIsDraggedAsState()
     ReaderSliderHaptics(sliderValue, dragged)
+    LaunchedEffect(progress.sliderValue, dragged) {
+        if (!dragged) sliderValue = progress.sliderValue
+    }
 
     Row(
         modifier = Modifier
@@ -236,9 +171,9 @@ private fun ReaderProgressSlider(
     ) {
         ReaderProgressLabel(
             text = if (dragged) {
-                readerSliderLabel(sliderValue, isTextReader)
+                resolveNovaReaderProgress(sliderValue, totalPages, isTextReader).label
             } else {
-                currentPageText.ifBlank { readerSliderLabel(safeCurrentPage, isTextReader) }
+                currentPageText.ifBlank { progress.label.substringBefore(" /") }
             },
             color = NovaVikiColors.Accent,
         )
@@ -247,10 +182,10 @@ private fun ReaderProgressSlider(
                 .weight(1f)
                 .padding(horizontal = 4.dp),
             value = sliderValue,
-            valueRange = valueRange,
+            valueRange = progress.sliderRange,
             onValueChange = { sliderValue = it },
             onValueChangeFinished = {
-                onPageIndexChange(readerSliderDestination(sliderValue, isTextReader))
+                onPageIndexChange(readerDestinationFromSlider(sliderValue, isTextReader))
             },
             colors = readerSliderColors(),
             interactionSource = interactionSource,
@@ -283,38 +218,6 @@ private fun readerSliderColors() = SliderDefaults.colors(
     activeTickColor = Color.Transparent,
     inactiveTickColor = Color.Transparent,
 )
-
-private fun readerSliderRange(isTextReader: Boolean, totalPages: Int): IntRange {
-    return if (isTextReader) 0..100 else 1..totalPages.coerceAtLeast(1)
-}
-
-private fun readerSliderLabel(value: Int, isTextReader: Boolean): String {
-    return if (isTextReader) "$value%" else value.toString()
-}
-
-private fun readerSliderDestination(value: Int, isTextReader: Boolean): Int {
-    return if (isTextReader) value else value - 1
-}
-
-@Composable
-private fun ReaderVerticalProgressLabel(
-    text: String,
-    color: Color,
-) {
-    Box(
-        modifier = Modifier.height(36.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = color,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
-    }
-}
 
 @Composable
 private fun ReaderProgressLabel(

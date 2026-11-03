@@ -38,10 +38,6 @@ object SettingsReaderScreen : SearchableSettings {
     @Composable
     override fun getPreferences(): List<Preference> {
         val readerPref = remember { Injekt.get<ReaderPreferences>() }
-        // SY -->
-        val forceHorizontalSeekbar by readerPref.forceHorizontalSeekbar().collectAsState()
-        // SY <--
-
         return listOf(
             Preference.PreferenceItem.ListPreference(
                 preference = readerPref.defaultReadingMode(),
@@ -75,25 +71,6 @@ object SettingsReaderScreen : SearchableSettings {
                 title = stringResource(KMR.strings.pref_viewer_nav_smaller_tap_zone),
             ),
             // KMK <--
-            // SY -->
-            Preference.PreferenceItem.SwitchPreference(
-                preference = readerPref.forceHorizontalSeekbar(),
-                title = stringResource(SYMR.strings.pref_force_horz_seekbar),
-                subtitle = stringResource(SYMR.strings.pref_force_horz_seekbar_summary),
-            ),
-            Preference.PreferenceItem.SwitchPreference(
-                preference = readerPref.landscapeVerticalSeekbar(),
-                title = stringResource(SYMR.strings.pref_show_vert_seekbar_landscape),
-                subtitle = stringResource(SYMR.strings.pref_show_vert_seekbar_landscape_summary),
-                enabled = !forceHorizontalSeekbar,
-            ),
-            Preference.PreferenceItem.SwitchPreference(
-                preference = readerPref.leftVerticalSeekbar(),
-                title = stringResource(SYMR.strings.pref_left_handed_vertical_seekbar),
-                subtitle = stringResource(SYMR.strings.pref_left_handed_vertical_seekbar_summary),
-                enabled = !forceHorizontalSeekbar,
-            ),
-            // SY <--
             /* SY -->
             Preference.PreferenceItem.SwitchPreference(
                 preference = readerPref.pageTransitions(),

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,14 +29,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.lnreader.LnReaderWebViewViewer
 import kotlinx.collections.immutable.ImmutableSet
 
-private val readerBarsSlideAnimationSpec = tween<IntOffset>(180)
-private val readerBarsFadeAnimationSpec = tween<Float>(120)
+private val readerBarsSlideAnimationSpec = tween<IntOffset>(NovaSignalMotion.Control)
+private val readerBarsFadeAnimationSpec = tween<Float>(NovaSignalMotion.Feedback)
 
 // SY -->
 enum class NavBarType {
@@ -167,7 +167,7 @@ fun ReaderAppBars(
                 ) {
                     Surface(
                         modifier = Modifier
-                            .widthIn(max = 440.dp)
+                            .widthIn(max = 600.dp)
                             .fillMaxWidth()
                             .border(
                                 width = 1.dp,
@@ -190,7 +190,7 @@ fun ReaderAppBars(
                             currentPageText = currentPageText,
                             totalPages = totalPages,
                             isTextReader = viewer is LnReaderWebViewViewer,
-                            showProgressSlider = navBarType == NavBarType.Bottom,
+                            showProgressSlider = true,
                             onPageIndexChange = onPageIndexChange,
                         )
                     }
@@ -198,41 +198,5 @@ fun ReaderAppBars(
             }
         }
 
-        AnimatedVisibility(
-            visible = visible && navBarType != NavBarType.Bottom && totalPages > 1,
-            modifier = Modifier
-                .align(
-                    if (navBarType == NavBarType.VerticalLeft) {
-                        Alignment.CenterStart
-                    } else {
-                        Alignment.CenterEnd
-                    },
-                )
-                .padding(horizontal = 8.dp),
-            enter = fadeIn(animationSpec = readerBarsFadeAnimationSpec),
-            exit = fadeOut(animationSpec = readerBarsFadeAnimationSpec),
-        ) {
-            Surface(
-                modifier = Modifier
-                    .width(56.dp)
-                    .fillMaxHeight(0.56f)
-                    .border(
-                        width = 1.dp,
-                        color = NovaVikiColors.OutlineStrong,
-                        shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-                    ),
-                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-                color = backgroundColor,
-                shadowElevation = 4.dp,
-            ) {
-                ReaderVerticalProgressSlider(
-                    currentPage = currentPage,
-                    currentPageText = currentPageText,
-                    totalPages = totalPages,
-                    isTextReader = viewer is LnReaderWebViewViewer,
-                    onPageIndexChange = onPageIndexChange,
-                )
-            }
-        }
     }
 }
