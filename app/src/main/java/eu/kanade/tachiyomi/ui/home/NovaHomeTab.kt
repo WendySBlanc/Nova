@@ -13,6 +13,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.home.deriveNovaHomeSections
 import eu.kanade.presentation.library.components.NovaVikiHomeScreen
 import eu.kanade.presentation.library.components.NovaVikiManga
 import eu.kanade.presentation.util.Tab
@@ -25,6 +26,7 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
+import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
@@ -90,7 +92,7 @@ data object NovaHomeTab : Tab {
                     val nextChapter = runCatching {
                         libraryScreenModel.getNextUnreadChapter(item)
                     }.getOrNull()
-                    nextChapterLabels[item.id] = nextChapter?.name ?: "All chapters read"
+                    nextChapterLabels[item.id] = nextChapter?.name ?: "Tous les chapitres lus"
                 }
             }
         }
@@ -98,29 +100,27 @@ data object NovaHomeTab : Tab {
 
         fun nextChapterSubtitle(item: LibraryItem): String {
             return when {
-                !item.libraryManga.hasStarted -> "Ready to read"
-                item.libraryManga.unreadCount <= 0L -> "All chapters read"
-                else -> nextChapterLabelsSnapshot[item.id]?.let { chapter -> "Next: $chapter" } ?: "Next chapter"
+                !item.libraryManga.hasStarted -> "Prêt à lire"
+                item.libraryManga.unreadCount <= 0L -> "Tous les chapitres lus"
+                else -> nextChapterLabelsSnapshot[item.id]?.let { chapter -> "À suivre : $chapter" }
+                    ?: "Prochain chapitre"
             }
         }
 
-        fun toNovaManga(item: LibraryItem, index: Int, showNextChapter: Boolean = false): NovaVikiManga {
+        fun toNovaManga(item: LibraryItem, index: Int): NovaVikiManga {
             val manga = item.libraryManga.manga
             val unreadCount = item.libraryManga.unreadCount.coerceAtLeast(0L)
             return NovaVikiManga(
                 id = manga.id,
                 title = manga.title,
-                subtitle = if (showNextChapter) {
-                    nextChapterSubtitle(item)
-                } else {
-                    when {
-                        unreadCount > 0 -> "$unreadCount unread chapters"
-                        item.libraryManga.hasStarted -> nextChapterSubtitle(item)
-                        else -> "Ready to read"
-                    }
+                subtitle = when {
+                    item.libraryManga.hasStarted -> nextChapterSubtitle(item)
+                    unreadCount > 1 -> "$unreadCount chapitres à lire"
+                    unreadCount == 1L -> "1 chapitre à lire"
+                    else -> "Prêt à lire"
                 },
                 tag = item.source?.name?.take(12) ?: if (item.isLocal) "Local" else "NOVA",
-                coverData = manga,
+                coverData = manga.asMangaCover(),
                 colors = novaPalette(index),
                 progress = item.libraryManga.totalChapters
                     .takeIf { it > 0L }
@@ -128,33 +128,24 @@ data object NovaHomeTab : Tab {
                         ((total - unreadCount).toFloat() / total.toFloat()).coerceIn(0f, 1f)
                     },
                 remainingChapters = unreadCount,
+                totalChapters = item.libraryManga.totalChapters,
+                lastRead = item.libraryManga.lastRead,
+                dateAdded = manga.dateAdded,
+                latestUpload = item.libraryManga.latestUpload,
+                chapterFetchedAt = item.libraryManga.chapterFetchedAt,
+                categoryIds = item.libraryManga.categories
+                    .asSequence()
+                    .filterNot { categoryId -> categoryId == 0L }
+                    .toSet(),
             )
         }
         val libraryItems = remember(favoriteItems, nextChapterLabelsSnapshot) {
-            favoriteItems.take(HERO_FALLBACK_LIMIT).mapIndexed { index, item ->
+            favoriteItems.mapIndexed { index, item ->
                 toNovaManga(item, index)
             }
         }
-        val continueItems = remember(startedFavoriteItems, nextChapterLabelsSnapshot) {
-            startedFavoriteItems.mapIndexed { index, item ->
-                toNovaManga(item, index, showNextChapter = true)
-            }
-        }
-        val recentlyReadItems = remember(favoriteItems, nextChapterLabelsSnapshot) {
-            favoriteItems
-                .filter { item -> item.libraryManga.lastRead > 0L }
-                .sortedByDescending { item -> item.libraryManga.lastRead }
-                .take(5)
-                .mapIndexed { index, item ->
-                    toNovaManga(item, index, showNextChapter = true)
-                }
-        }
-        val recentlyAddedItems = remember(favoriteItems, nextChapterLabelsSnapshot) {
-            favoriteItems
-                .sortedByDescending { item -> item.libraryManga.manga.dateAdded }
-                .mapIndexed { index, item ->
-                    toNovaManga(item, index)
-                }
+        val homeSections = remember(libraryItems) {
+            deriveNovaHomeSections(libraryItems)
         }
         fun refreshLibrary(): Boolean {
             val started = LibraryUpdateJob.startNow(context, forceUpdate = true)
@@ -163,17 +154,7 @@ data object NovaHomeTab : Tab {
         }
 
         NovaVikiHomeScreen(
-            libraryItems = libraryItems,
-            heroItems = recentlyReadItems,
-            continueItems = continueItems,
-            recentlyAddedItems = recentlyAddedItems,
-            onPlay = { mangaId ->
-                if (mangaId != null) {
-                    navigator.push(MangaScreen(mangaId))
-                } else {
-                    navigator.push(GlobalSearchScreen("fantasy romance"))
-                }
-            },
+            sections = homeSections,
             onSearch = { navigator.push(GlobalSearchScreen("")) },
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
             onRefresh = ::refreshLibrary,
@@ -184,7 +165,6 @@ data object NovaHomeTab : Tab {
         }
     }
 
-    private const val HERO_FALLBACK_LIMIT = 5
     private const val NEXT_CHAPTER_LOOKUP_LIMIT = 8
 
     private fun novaPalette(index: Int) = when (index % 6) {

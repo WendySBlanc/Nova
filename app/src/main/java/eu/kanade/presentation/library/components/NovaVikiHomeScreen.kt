@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.home.NovaHomeSections
 import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
@@ -77,37 +78,32 @@ typealias NovaVikiManga = NovaLibraryEntry
 
 @Composable
 fun NovaVikiHomeScreen(
-    libraryItems: List<NovaVikiManga>,
-    heroItems: List<NovaVikiManga>,
-    continueItems: List<NovaVikiManga>,
-    recentlyAddedItems: List<NovaVikiManga>,
-    onPlay: (Long?) -> Unit,
+    sections: NovaHomeSections,
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
     onRefresh: () -> Boolean,
 ) {
     val scope = rememberCoroutineScope()
     var isRefreshing by remember { mutableStateOf(false) }
-    val heroItemsToShow = remember(heroItems, libraryItems) {
-        heroItems.take(5).ifEmpty { libraryItems.take(5) }
+    val heroItemsToShow = remember(sections) {
+        sections.resume
+            .ifEmpty { sections.newChapters }
+            .ifEmpty { sections.recentlyAdded }
+            .take(8)
     }
-    val continueRailItems = remember(continueItems) { continueItems.take(12) }
-    val recentlyAddedRailItems = remember(recentlyAddedItems) { recentlyAddedItems.take(12) }
     var selectedRail by remember { mutableStateOf<NovaRail?>(null) }
-    val sections = remember(libraryItems, continueItems, continueRailItems, recentlyAddedItems, recentlyAddedRailItems) {
-        if (libraryItems.isNotEmpty()) {
+    val rails = remember(sections) {
+        if (sections.newChapters.isNotEmpty() || sections.recentlyAdded.isNotEmpty()) {
             listOf(
                 NovaRail(
-                    title = "Continue Reading",
-                    items = continueItems,
-                    railItems = continueRailItems,
+                    title = "Nouveaux chapitres",
+                    items = sections.newChapters,
                 ),
                 NovaRail(
-                    title = "Recently Added",
-                    items = recentlyAddedItems,
-                    railItems = recentlyAddedRailItems,
+                    title = "Ajoutés récemment",
+                    items = sections.recentlyAdded,
                 ),
-            )
+            ).filter { rail -> rail.items.isNotEmpty() }
         } else {
             fallbackSections
         }
@@ -152,14 +148,14 @@ fun NovaVikiHomeScreen(
                 contentPadding = PaddingValues(bottom = 18.dp),
             ) {
                 item(contentType = "hero") {
-                    NovaVikiHero(
-                        heroes = heroItemsToShow,
-                        onPlay = onPlay,
+                    NovaRevResumeCarousel(
+                        items = heroItemsToShow,
                         onOpenManga = onOpenManga,
+                        onSearch = onSearch,
                     )
                 }
                 items(
-                    items = sections,
+                    items = rails,
                     key = { section -> section.title },
                     contentType = { "rail" },
                 ) { section ->
