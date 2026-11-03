@@ -324,6 +324,6 @@ Run the repository's existing preview variant command used by the GitHub release
 
 Commit message when needed: `fix: finalize Wattpad-inspired Nova shell`
 
-- [ ] **Step 6: Push the current branch**
+- [x] **Step 6: Push the current branch**
 
 Push only after verifying the remote/branch and confirming no secrets or local artifacts are tracked. Report the commit SHA, remote branch, workflow URL, build result available at push time, and any device-only checks still pending.
