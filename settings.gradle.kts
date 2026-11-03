@@ -32,6 +32,12 @@ dependencyResolutionManagement {
     }
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        maven {
+            url = uri(rootDir.resolve("third_party/maven"))
+            content {
+                includeGroup("com.github.arkon.FlexibleAdapter")
+            }
+        }
         mavenCentral()
         google()
         maven(url = "https://www.jitpack.io")
