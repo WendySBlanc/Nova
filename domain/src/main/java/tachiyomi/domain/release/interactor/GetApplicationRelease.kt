@@ -19,8 +19,7 @@ class GetApplicationRelease(
     suspend fun await(arguments: Arguments): Result {
         val now = Instant.now()
 
-        // Limit checks to once every 3 days at most
-        val nextCheckTime = Instant.ofEpochMilli(lastChecked.get()).plus(2, ChronoUnit.DAYS)
+        val nextCheckTime = Instant.ofEpochMilli(lastChecked.get()).plus(30, ChronoUnit.MINUTES)
         if (!arguments.forceCheck && now.isBefore(nextCheckTime)) {
             return Result.NoNewUpdate
         }
@@ -80,30 +79,31 @@ class GetApplicationRelease(
         versionName: String,
         versionTag: String,
     ): Boolean {
-        // Removes prefixes like "r" or "v"
-        val newVersion = versionTag.replace("[^\\d.]".toRegex(), "")
         return if (isPreview) {
-            // Preview builds: based on releases in "komikku-app/komikku-preview" repo
-            // tagged as something like "r1234"
-            newVersion.toInt() > commitCount
+            val revision = versionTag
+                .takeIf { it.startsWith("r") }
+                ?.drop(1)
+                ?.toIntOrNull()
+                ?: return false
+            revision > commitCount
         } else {
-            // Release builds: based on releases in "komikku-app/komikku" repo
-            // tagged as something like "v0.1.2"
-            val oldVersion = versionName.replace("[^\\d.]".toRegex(), "")
+            if (!versionTag.startsWith("v")) return false
 
-            val newSemVer = newVersion.split(".").map { it.toInt() }
-            val oldSemVer = oldVersion.split(".").map { it.toInt() }
-
-            oldSemVer.mapIndexed { index, i ->
-                if (newSemVer[index] > i) {
-                    return true
-                }
-                if (newSemVer[index] < i) return false
+            val newSemVer = versionTag.toVersionParts()
+            val oldSemVer = versionName.toVersionParts()
+            val partCount = maxOf(newSemVer.size, oldSemVer.size)
+            repeat(partCount) { index ->
+                val newPart = newSemVer.getOrElse(index) { 0 }
+                val oldPart = oldSemVer.getOrElse(index) { 0 }
+                if (newPart > oldPart) return true
+                if (newPart < oldPart) return false
             }
-
             false
         }
     }
+
+    private fun String.toVersionParts(): List<Int> =
+        "\\d+".toRegex().findAll(this).mapNotNull { it.value.toIntOrNull() }.toList()
 
     data class Arguments(
         val isFoss: Boolean,

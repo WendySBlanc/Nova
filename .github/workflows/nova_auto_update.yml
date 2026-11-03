@@ -1,0 +1,114 @@
+name: Nova phone update
+
+on:
+  push:
+    branches:
+      - nova-stabilization
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: nova-phone-update-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish-preview:
+    name: Build and publish Nova Preview
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884 # v5
+
+      - name: Create update revision
+        id: version
+        shell: bash
+        run: |
+          revision=$((100000 + GITHUB_RUN_NUMBER))
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          echo "tag=r$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Test and build
+        shell: bash
+        run: |
+          ./gradlew \
+            :domain:testDebugUnitTest \
+            :app:testDebugUnitTest \
+            assemblePreview \
+            -Penable-updater \
+            -PnovaRevision=${{ steps.version.outputs.revision }} \
+            -PnovaVersionCode=${{ steps.version.outputs.revision }} \
+            -PnovaUpdaterRepository=${{ github.repository }}
+
+      - name: Sign APK
+        id: sign_apk
+        uses: r0adkll/sign-android-release@f30bdd30588842ac76044ecdbd4b6d0e3e813478
+        with:
+          releaseDirectory: app/build/outputs/apk/preview
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: '35.0.1'
+
+      - name: Prepare release APK
+        id: apk
+        shell: bash
+        env:
+          SIGNED_APK: ${{ steps.sign_apk.outputs.signedReleaseFile }}
+          TAG: ${{ steps.version.outputs.tag }}
+          REVISION: ${{ steps.version.outputs.revision }}
+          EXPECTED_CERT_SHA256: fca3da0c67bc958f0aaea33f0c6204a5a9e7800dbe8c7650cadd363cec305644
+          BUILD_TOOLS_VERSION: '35.0.1'
+        run: |
+          test -n "$SIGNED_APK"
+
+          tools="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION"
+          certificate=$("$tools/apksigner" verify --print-certs "$SIGNED_APK" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+            | tr '[:upper:]' '[:lower:]')
+          test "$certificate" = "$EXPECTED_CERT_SHA256"
+
+          package_info=$("$tools/aapt" dump badging "$SIGNED_APK" | head -n 1)
+          echo "$package_info" | grep -F "name='com.nova.manhwa.debug'"
+          echo "$package_info" | grep -F "versionCode='$REVISION'"
+
+          mkdir -p dist
+          output="dist/Nova-$TAG.apk"
+          cp "$SIGNED_APK" "$output"
+          echo "path=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Publish phone update
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.apk.outputs.path }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          notes="Mise a jour automatique Nova depuis ${GITHUB_SHA::7}."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+            gh release edit "$TAG" --title "Nova $TAG" --notes "$notes"
+          else
+            gh release create "$TAG" "$APK" \
+              --target "$GITHUB_SHA" \
+              --title "Nova $TAG" \
+              --notes "$notes" \
+              --latest
+          fi

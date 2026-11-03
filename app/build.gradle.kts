@@ -12,6 +12,8 @@ plugins {
     id("com.github.ben-manes.versions")
 }
 
+val novaRevision = providers.gradleProperty("novaRevision").orNull?.toIntOrNull() ?: getCommitCount()
+
 if (Config.includeTelemetry) {
     pluginManager.apply {
         apply(libs.plugins.google.services.get().pluginId)
@@ -25,14 +27,19 @@ android {
     defaultConfig {
         applicationId = "com.nova.manhwa"
 
-        versionCode = 101
+        versionCode = providers.gradleProperty("novaVersionCode").orNull?.toIntOrNull() ?: 101
         versionName = "1.14.0-nova-fast-data"
 
-        buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
+        buildConfigField("String", "COMMIT_COUNT", "\"$novaRevision\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLastCommitTime = false)}\"")
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
+        buildConfigField(
+            "String",
+            "NOVA_UPDATER_REPOSITORY",
+            "\"${providers.gradleProperty("novaUpdaterRepository").orNull ?: "WendySBlanc/Nova"}\"",
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,7 +47,7 @@ android {
     buildTypes {
         val debug by getting {
             applicationIdSuffix = ".dev"
-            versionNameSuffix = "-${getCommitCount()}"
+            versionNameSuffix = "-$novaRevision"
             isPseudoLocalesEnabled = true
         }
         val release by getting {

@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.data.updater
 
 import android.content.Context
-import android.os.Build
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.util.system.isFossBuildType
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
@@ -60,14 +59,12 @@ class AppUpdateChecker(
 
                 // KMK -->
                 if (autoUpdate && result is GetApplicationRelease.Result.NewUpdate) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        AppUpdateDownloadJob.start(
-                            context = context,
-                            url = result.release.downloadLink,
-                            title = result.release.version,
-                            scheduled = true,
-                        )
-                    }
+                    AppUpdateDownloadJob.start(
+                        context = context,
+                        url = result.release.downloadLink,
+                        title = result.release.version,
+                        scheduled = true,
+                    )
                 }
                 // KMK <--
             }
@@ -95,12 +92,8 @@ class AppUpdateChecker(
 
 val GITHUB_REPO: String by lazy { getGithubRepo() }
 
-fun getGithubRepo(peekIntoPreview: Boolean = false): String =
-    if (isPreviewBuildType || peekIntoPreview) {
-        "komikku-app/komikku-preview"
-    } else {
-        "komikku-app/komikku"
-    }
+@Suppress("UNUSED_PARAMETER")
+fun getGithubRepo(peekIntoPreview: Boolean = false): String = BuildConfig.NOVA_UPDATER_REPOSITORY
 
 val RELEASE_TAG: String by lazy { getReleaseTag() }
 

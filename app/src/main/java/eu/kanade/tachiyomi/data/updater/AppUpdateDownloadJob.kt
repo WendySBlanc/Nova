@@ -315,7 +315,6 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
                             .build()
 
                         setConstraints(constraints)
-                        setInitialDelay(10, TimeUnit.MINUTES)
                         setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
                     } else {
                         setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
