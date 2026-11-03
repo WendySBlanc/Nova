@@ -1,5 +1,10 @@
 package eu.kanade.presentation.manga
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +39,7 @@ import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.RemoveDone
 import androidx.compose.material.icons.outlined.Share
@@ -96,7 +102,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NovaVikiMangaScreen(
+fun NovaMangaScreen(
     state: MangaScreenModel.State.Success,
     snackbarHostState: SnackbarHostState,
     sourceName: String,
@@ -108,6 +114,11 @@ fun NovaVikiMangaScreen(
     onFilterClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onShareClicked: (() -> Unit)?,
+    onTrackingClicked: () -> Unit,
+    onMigrateClicked: (() -> Unit)?,
+    onEditCategoryClicked: (() -> Unit)?,
+    onEditNotesClicked: () -> Unit,
+    onSourceSettingsClicked: (() -> Unit)?,
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onTitleSearch: (String) -> Unit,
@@ -171,6 +182,11 @@ fun NovaVikiMangaScreen(
                             onAddToLibraryClicked = onAddToLibraryClicked,
                             onWebViewClicked = onWebViewClicked,
                             onShareClicked = onShareClicked,
+                            onTrackingClicked = onTrackingClicked,
+                            onMigrateClicked = onMigrateClicked,
+                            onEditCategoryClicked = onEditCategoryClicked,
+                            onEditNotesClicked = onEditNotesClicked,
+                            onSourceSettingsClicked = onSourceSettingsClicked,
                             onTitleSearch = onTitleSearch,
                             onSourceSearch = onSourceSearch,
                         )
@@ -260,6 +276,11 @@ private fun NovaMangaHero(
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onShareClicked: (() -> Unit)?,
+    onTrackingClicked: () -> Unit,
+    onMigrateClicked: (() -> Unit)?,
+    onEditCategoryClicked: (() -> Unit)?,
+    onEditNotesClicked: () -> Unit,
+    onSourceSettingsClicked: (() -> Unit)?,
     onTitleSearch: (String) -> Unit,
     onSourceSearch: (String) -> Unit,
 ) {
@@ -270,6 +291,14 @@ private fun NovaMangaHero(
             item.chapter.read || item.chapter.lastPageRead > 0L
         }
     }
+    val primaryReadAction = remember(state.chapters) {
+        resolvePrimaryReadAction(
+            totalChapterCount = state.chapters.size,
+            unreadChapterCount = state.chapters.count { !it.chapter.read },
+            hasPageProgress = hasStartedReading,
+        )
+    }
+    var moreActionsExpanded by remember { mutableStateOf(false) }
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -385,6 +414,40 @@ private fun NovaMangaHero(
                         )
                     }
                 }
+                Box {
+                    DropdownMenu(
+                        expanded = moreActionsExpanded,
+                        onDismissRequest = { moreActionsExpanded = false },
+                    ) {
+                        NovaMangaActionItem("Suivi", onTrackingClicked) { moreActionsExpanded = false }
+                        onEditCategoryClicked?.let { action ->
+                            NovaMangaActionItem("Catégories", action) { moreActionsExpanded = false }
+                        }
+                        onMigrateClicked?.let { action ->
+                            NovaMangaActionItem(stringResource(MR.strings.action_migrate), action) {
+                                moreActionsExpanded = false
+                            }
+                        }
+                        NovaMangaActionItem(stringResource(MR.strings.action_edit_notes), onEditNotesClicked) {
+                            moreActionsExpanded = false
+                        }
+                        onSourceSettingsClicked?.let { action ->
+                            NovaMangaActionItem(stringResource(MR.strings.source_settings), action) {
+                                moreActionsExpanded = false
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = { moreActionsExpanded = true },
+                        modifier = topButtonModifier,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "Plus d'actions",
+                            tint = Color.White,
+                        )
+                    }
+                }
             }
             Row(
                 modifier = Modifier
@@ -426,7 +489,7 @@ private fun NovaMangaHero(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text = if (isLightNovel) "NOVA LIGHT NOVEL" else "NOVA MANHWA",
+                        text = if (isLightNovel) "LIGHT NOVEL" else "MANHWA",
                         color = NovaVikiColors.Accent,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black,
@@ -467,12 +530,24 @@ private fun NovaMangaHero(
                                 .height(NovaVikiDimensions.MinimumTouchTarget),
                         ) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                            Text(
-                                text = if (hasStartedReading) "Reprendre" else "Lire",
-                                modifier = Modifier.padding(start = 6.dp),
-                                fontWeight = FontWeight.Black,
-                                maxLines = 1,
-                            )
+                            AnimatedContent(
+                                targetState = primaryReadAction,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "primary-read-action",
+                            ) { action ->
+                                Text(
+                                    text = when (action) {
+                                        NovaPrimaryReadAction.Read -> "Lire"
+                                        NovaPrimaryReadAction.Resume -> "Reprendre"
+                                        NovaPrimaryReadAction.Reread -> "Relire"
+                                    },
+                                    modifier = Modifier
+                                        .padding(start = 6.dp)
+                                        .animateContentSize(),
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1,
+                                )
+                            }
                         }
                         OutlinedButton(
                             onClick = onAddToLibraryClicked,
@@ -500,6 +575,21 @@ private fun NovaMangaHero(
             }
         }
     }
+}
+
+@Composable
+private fun NovaMangaActionItem(
+    label: String,
+    action: () -> Unit,
+    dismiss: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        onClick = {
+            dismiss()
+            action()
+        },
+    )
 }
 
 @Composable
@@ -718,7 +808,11 @@ private fun NovaEpisodeRow(
             else -> 118.dp
         }
         val previewHeight = if (isLightNovel) 68.dp else previewWidth * 0.58f
-        val isInProgress = !item.chapter.read && item.chapter.lastPageRead > 0L
+        val readingState = resolveChapterReadingState(
+            isRead = item.chapter.read,
+            lastPageRead = item.chapter.lastPageRead,
+        )
+        val isInProgress = readingState == NovaChapterReadingState.InProgress
         val remainingFraction = if (isInProgress && item.pageCount > 0) {
             val pagesRead = (item.chapter.lastPageRead + 1L)
                 .coerceAtMost(item.pageCount.toLong())
@@ -730,15 +824,15 @@ private fun NovaEpisodeRow(
         val grayscaleFilter = remember {
             ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
         }
-        val readStateColor = when {
-            item.chapter.read -> NovaVikiColors.Success
-            isInProgress -> NovaVikiColors.AccentGold
-            else -> NovaVikiColors.Accent
+        val readStateColor = when (readingState) {
+            NovaChapterReadingState.Read -> NovaVikiColors.Success
+            NovaChapterReadingState.InProgress -> NovaVikiColors.AccentGold
+            NovaChapterReadingState.Unread -> NovaVikiColors.Accent
         }
-        val readStateLabel = when {
-            item.chapter.read -> "Lu"
-            isInProgress -> "En cours"
-            else -> "\u00c0 lire"
+        val readStateLabel = when (readingState) {
+            NovaChapterReadingState.Read -> "Lu"
+            NovaChapterReadingState.InProgress -> "En cours"
+            NovaChapterReadingState.Unread -> "\u00c0 lire"
         }
         val metadata = listOfNotNull(
             item.chapter.dateUpload.takeIf { it > 0L }?.let { relativeDateText(it) },

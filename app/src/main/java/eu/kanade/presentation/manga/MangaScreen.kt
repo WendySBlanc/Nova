@@ -212,7 +212,7 @@ fun MangaScreen(
     hazeState: HazeState,
     // KMK <--
 ) {
-    NovaVikiMangaScreen(
+    NovaMangaScreen(
         state = state,
         snackbarHostState = snackbarHostState,
         sourceName = remember(state.source, state.mergedData) {
@@ -226,6 +226,11 @@ fun MangaScreen(
         onFilterClicked = onFilterButtonClicked,
         onWebViewClicked = onWebViewClicked,
         onShareClicked = onShareClicked,
+        onTrackingClicked = onTrackingClicked,
+        onMigrateClicked = onMigrateClicked,
+        onEditCategoryClicked = onEditCategoryClicked,
+        onEditNotesClicked = onEditNotesClicked,
+        onSourceSettingsClicked = onClickSourceSettingsClicked,
         onDownloadActionClicked = onDownloadActionClicked,
         onDownloadChapter = onDownloadChapter,
         onTitleSearch = { query -> onSearch(query, true) },
