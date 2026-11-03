@@ -1561,3 +1561,54 @@ Règle de collaboration :
 - Aucun APK Nova n'a ete construit pendant cette mise a jour d'extensions.
   Toujours demander l'accord de l'utilisateur avant le prochain build Nova.
 
+## 67. Gel fonctionnel et point stable Git
+
+- Le 1er novembre 2026, les nouvelles fonctionnalites ont ete gelees afin de
+  consacrer les changements suivants a la stabilisation de Nova.
+- L'etat complet de l'application a ete enregistre dans le commit
+  `8df3e970c` sur la branche `nova-stable-2026-11-01`.
+- Le tag annote restaurable `nova-v101-stable-2026-11-01` pointe sur ce meme
+  commit. La suite du travail est isolee sur la branche
+  `nova-stabilization`.
+- Avant le checkpoint, `:app:compileDebugKotlin`,
+  `:app:testDebugUnitTest` et `:domain:testDebugUnitTest` ont reussi.
+- Le depot distant `origin` reste celui de Komikku. Le commit et le tag sont
+  locaux tant qu'un depot Nova explicite n'a pas ete configure et qu'aucun
+  push n'a ete demande.
+
+## 68. Premier lot de tests de non-regression
+
+- La recuperation de chapitres est couverte pour le succes direct, le
+  rafraichissement d'une URL obsolete, la recherche exacte dans le catalogue,
+  le refus d'un resultat ambigu et la conservation de l'erreur initiale. Une
+  serie homonyme n'est acceptee que si son auteur ou son artiste correspond,
+  afin d'eviter une migration vers le mauvais manga.
+- La restauration classique conserve maintenant la progression de lecture la
+  plus avancee entre la sauvegarde et la base locale. Les favoris et l'etat lu
+  restent fusionnes sans regression. La synchronisation conserve son
+  comportement autoritaire distinct.
+- La reconnaissance des telechargements est couverte pour les dossiers, les
+  archives CBZ, les anciens noms sans hash et les chapitres dont l'URL source a
+  change apres restauration. Les correspondances exactes sont attribuees en
+  premier; les anciens noms flous ne sont ensuite acceptes que par une
+  resolution globale et bijective entre les chapitres et les fichiers. Nova
+  refuse ainsi de choisir arbitrairement un telechargement ambigu pour
+  l'afficher, l'ouvrir ou le supprimer.
+- Les mises a jour de depots d'extensions sont couvertes pour la migration de
+  Keiyoushi vers Nova, le refus d'un changement inattendu de cle de signature
+  et l'indisponibilite temporaire des metadonnees distantes.
+- Le lecteur choisit maintenant les chapitres precedent et suivant a partir de
+  l'identifiant stable du chapitre. Un chapitre absent de la liste ne peut plus
+  produire artificiellement un saut vers le premier chapitre. Seule la demande
+  de chargement la plus recente peut remplacer le chapitre actif, ce qui evite
+  qu'une requete lente ramene le lecteur vers un ancien chapitre.
+- Verification finale : `:app:compileDebugKotlin`,
+  `:domain:testDebugUnitTest` et `:app:testDebugUnitTest` reussissent ensemble
+  dans un processus Gradle isole. `:domain:spotlessKotlinCheck` reussit et
+  `git diff --check` ne signale aucune erreur. Le controle Spotless de
+  l'application reste bloque par 17 fichiers d'interface deja non conformes;
+  le seul fichier touche present dans cette liste ne contient que des ecarts
+  anterieurs, hors des lignes modifiees par ce lot.
+- Aucun APK n'a ete construit pendant cette stabilisation. Toujours demander
+  l'accord de l'utilisateur avant le prochain build Nova.
+

@@ -167,23 +167,15 @@ class DownloadCache(
 
         renewCache()
 
-        val sourceDir = rootDownloadsDir.sourceDirs[sourceId]
-        if (sourceDir != null) {
-            val mangaDir = sourceDir.mangaDirs[provider.getMangaDirName(mangaTitle)]
-            if (mangaDir != null) {
-                val cachedMatch = mangaDir.chapterDirs.any { downloadedDirName ->
-                    provider.isValidChapterDirName(
-                        downloadedDirName,
-                        chapterName,
-                        chapterScanlator,
-                        chapterUrl,
-                        chapterId,
-                    )
-                }
-                if (cachedMatch) {
-                    return true
-                }
-            }
+        val cachedMatch = provider.findValidChapterDirName(
+            downloadedDirNames = getCachedChapterDirNames(mangaTitle, sourceId),
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            chapterId = chapterId,
+        ) != null
+        if (cachedMatch) {
+            return true
         }
 
         val source = sourceManager.getOrStub(sourceId)
@@ -209,44 +201,47 @@ class DownloadCache(
     ): Boolean {
         renewCache()
 
-        val mangaDirName = provider.getMangaDirName(mangaTitle)
-
-        fun SourceDirectory.hasChapter(): Boolean {
-            val mangaDir = mangaDirs[mangaDirName] ?: return false
-            return mangaDir.chapterDirs.any { downloadedDirName ->
-                provider.isValidChapterDirName(
-                    downloadedDirName,
-                    chapterName,
-                    chapterScanlator,
-                    chapterUrl,
-                    chapterId,
-                )
-            }
-        }
-
-        if (rootDownloadsDir.sourceDirs[sourceId]?.hasChapter() == true) {
+        val cachedMatch = provider.findValidChapterDirName(
+            downloadedDirNames = getCachedChapterDirNames(mangaTitle, sourceId),
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            chapterId = chapterId,
+        ) != null
+        if (cachedMatch) {
             return true
         }
 
-        return rootDownloadsDir.sourceDirs
-            .asSequence()
-            .filter { (id, _) -> id != sourceId }
-            .any { (_, sourceDir) -> sourceDir.hasChapter() } ||
-            provider.findChapterDir(
-                chapterName = chapterName,
-                chapterScanlator = chapterScanlator,
-                chapterUrl = chapterUrl,
-                mangaTitle = mangaTitle,
-                source = sourceManager.getOrStub(sourceId),
-                mangaId = mangaId,
-                chapterId = chapterId,
-            ) != null
+        return provider.findChapterDir(
+            chapterName = chapterName,
+            chapterScanlator = chapterScanlator,
+            chapterUrl = chapterUrl,
+            mangaTitle = mangaTitle,
+            source = sourceManager.getOrStub(sourceId),
+            mangaId = mangaId,
+            chapterId = chapterId,
+        ) != null
+    }
+
+    private fun getCachedChapterDirNames(mangaTitle: String, sourceId: Long): List<String> {
+        val mangaDirName = provider.getMangaDirName(mangaTitle)
+        val preferredSourceDir = rootDownloadsDir.sourceDirs[sourceId]
+        val sourceDirs = sequenceOf(preferredSourceDir).filterNotNull() +
+            rootDownloadsDir.sourceDirs
+                .asSequence()
+                .filter { (id, _) -> id != sourceId }
+                .map { (_, sourceDir) -> sourceDir }
+
+        return sourceDirs
+            .mapNotNull { sourceDir -> sourceDir.mangaDirs[mangaDirName] }
+            .flatMap { mangaDir -> mangaDir.chapterDirs.asSequence() }
+            .toList()
     }
 
     fun getDownloadedChapterDirNames(
         mangaTitles: Collection<String>,
         sourceId: Long,
-    ): Set<String> {
+    ): List<String> {
         renewCache()
 
         val mangaDirNames = mangaTitles
@@ -254,7 +249,7 @@ class DownloadCache(
             .filter { it.isNotBlank() }
             .map { provider.getMangaDirName(it) }
             .toSet()
-        if (mangaDirNames.isEmpty()) return emptySet()
+        if (mangaDirNames.isEmpty()) return emptyList()
 
         val preferredSourceDir = rootDownloadsDir.sourceDirs[sourceId]
         val sourceDirs = sequenceOf(preferredSourceDir)
@@ -268,7 +263,7 @@ class DownloadCache(
             .flatMap { sourceDir -> sourceDir.mangaDirs.asSequence() }
             .filter { (mangaDirName, _) -> mangaDirName in mangaDirNames }
             .flatMap { (_, mangaDir) -> mangaDir.chapterDirs.asSequence() }
-            .toSet()
+            .toList()
     }
 
     /**

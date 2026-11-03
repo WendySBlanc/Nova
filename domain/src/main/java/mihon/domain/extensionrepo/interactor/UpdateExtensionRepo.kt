@@ -29,7 +29,7 @@ class UpdateExtensionRepo(
         if (
             repo.signingKeyFingerprint.startsWith("NOFINGERPRINT") ||
             repo.signingKeyFingerprint == newRepo.signingKeyFingerprint ||
-            migrateToNova && newRepo.signingKeyFingerprint == NOVA_SIGNING_KEY_FINGERPRINT
+            (migrateToNova && newRepo.signingKeyFingerprint == NOVA_SIGNING_KEY_FINGERPRINT)
         ) {
             if (migrateToNova) {
                 repository.upsertRepo(newRepo)

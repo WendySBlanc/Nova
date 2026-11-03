@@ -36,6 +36,7 @@ class ChapterLoader(
     private val readerPrefs: ReaderPreferences,
     private val mergedReferences: List<MergedMangaReference>,
     private val mergedManga: Map<Long, Manga>?,
+    private val chapters: List<ReaderChapter>,
     // SY <--
 ) {
 
@@ -94,7 +95,9 @@ class ChapterLoader(
     private fun getPageLoader(chapter: ReaderChapter): PageLoader {
         val dbChapter = chapter.chapter
         val domainChapter = dbChapter.toDomainChapter()!!
-        val isDownloaded = downloadManager.isChapterDownloaded(domainChapter, manga, skipCache = true)
+        val allowRestoredMatch = canUseRestoredDownload(domainChapter, manga)
+        val isDownloaded = downloadManager.isChapterDownloaded(domainChapter, manga, skipCache = true) ||
+            hasRestoredDownload(domainChapter, manga, source, allowRestoredMatch)
         return when {
             // SY -->
             source is MergedSource -> {
@@ -104,11 +107,12 @@ class ChapterLoader(
                 val source = sourceManager.get(mangaReference.mangaSourceId)
                     ?: error("Source ${mangaReference.mangaSourceId} was null")
                 val manga = mergedManga?.get(chapter.chapter.manga_id) ?: error("Manga for merged chapter was null")
+                val allowMergedRestoredMatch = canUseRestoredDownload(domainChapter, manga)
                 val isMergedMangaDownloaded = downloadManager.isChapterDownloaded(
                     chapter = chapter.chapter.toDomainChapter()!!,
                     manga = manga,
                     skipCache = true,
-                )
+                ) || hasRestoredDownload(domainChapter, manga, source, allowMergedRestoredMatch)
                 when {
                     isMergedMangaDownloaded -> DownloadPageLoader(
                         chapter = chapter,
@@ -116,6 +120,7 @@ class ChapterLoader(
                         source = source,
                         downloadManager = downloadManager,
                         downloadProvider = downloadProvider,
+                        allowRestoredMatch = allowMergedRestoredMatch,
                     )
                     source is HttpSource -> HttpPageLoader(chapter, source)
                     source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
@@ -135,6 +140,7 @@ class ChapterLoader(
                 source,
                 downloadManager,
                 downloadProvider,
+                allowRestoredMatch,
             )
             source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
                 when (format) {
@@ -147,5 +153,49 @@ class ChapterLoader(
             source is StubSource -> error(context.stringResource(MR.strings.source_not_installed, source.toString()))
             else -> error(context.stringResource(MR.strings.loader_not_implemented_error))
         }
+    }
+
+    private fun canUseRestoredDownload(chapter: tachiyomi.domain.chapter.model.Chapter, manga: Manga): Boolean {
+        val mangaChapters = chapters
+            .asSequence()
+            .mapNotNull { it.chapter.toDomainChapter() }
+            .filter { it.mangaId == manga.id }
+            .toList()
+        return downloadProvider.isRestoredChapterIdentityUnique(chapter, mangaChapters)
+    }
+
+    private fun hasRestoredDownload(
+        chapter: tachiyomi.domain.chapter.model.Chapter,
+        manga: Manga,
+        source: Source,
+        allowRestoredMatch: Boolean,
+    ): Boolean {
+        if (!allowRestoredMatch) return false
+
+        val originalTitleDir = downloadProvider.findChapterDir(
+            chapterName = chapter.name,
+            chapterScanlator = chapter.scanlator,
+            chapterUrl = chapter.url,
+            mangaTitle = manga.ogTitle,
+            source = source,
+            mangaId = manga.id,
+            chapterId = chapter.id,
+            allowRestoredMatch = true,
+        )
+        val displayTitleDir = manga.title
+            .takeUnless { it == manga.ogTitle }
+            ?.let { title ->
+                downloadProvider.findChapterDir(
+                    chapterName = chapter.name,
+                    chapterScanlator = chapter.scanlator,
+                    chapterUrl = chapter.url,
+                    mangaTitle = title,
+                    source = source,
+                    mangaId = manga.id,
+                    chapterId = chapter.id,
+                    allowRestoredMatch = true,
+                )
+            }
+        return originalTitleDir != null || displayTitleDir != null
     }
 }

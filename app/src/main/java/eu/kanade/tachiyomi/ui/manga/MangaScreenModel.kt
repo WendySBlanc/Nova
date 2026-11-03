@@ -1174,18 +1174,18 @@ class MangaScreenModel(
     }
 
     private fun refreshCachedDownloadStates() {
-        val downloadedChapterDirNamesByMangaId = successState?.downloadedChapterDirNamesByMangaId() ?: return
+        val downloadedChapterIdsByMangaId = successState?.downloadedChapterIdsByMangaId() ?: return
 
         updateSuccessState { successState ->
             var changed = false
             val chapters = successState.chapters.map { item ->
                 val activeDownload = downloadManager.getQueuedDownloadOrNull(item.id)
                 val manga = successState.mangaForChapter(item.chapter)
-                val downloadedChapterDirNames = downloadedChapterDirNamesByMangaId[manga.id].orEmpty()
+                val downloadedChapterIds = downloadedChapterIdsByMangaId[manga.id].orEmpty()
                 val newState = when {
                     activeDownload != null -> activeDownload.status
                     manga.isLocal() -> Download.State.DOWNLOADED
-                    item.chapter.isDownloadedIn(downloadedChapterDirNames) -> Download.State.DOWNLOADED
+                    item.chapter.id in downloadedChapterIds -> Download.State.DOWNLOADED
                     else -> Download.State.NOT_DOWNLOADED
                 }
                 val newProgress = activeDownload?.progress ?: 0
@@ -1206,7 +1206,7 @@ class MangaScreenModel(
         }
     }
 
-    private fun State.Success.downloadedChapterDirNamesByMangaId(): Map<Long, Set<String>> {
+    private fun State.Success.downloadedChapterIdsByMangaId(): Map<Long, Set<Long>> {
         return chapters
             .asSequence()
             .map { mangaForChapter(it.chapter) }
@@ -1217,7 +1217,13 @@ class MangaScreenModel(
                     add(manga.ogTitle)
                     add(manga.title)
                 }
-                manga.id to downloadManager.getDownloadedChapterDirNames(mangaTitles, source, manga.id)
+                val downloadedDirNames = downloadManager.getDownloadedChapterDirNames(mangaTitles, source, manga.id)
+                val mangaChapters = chapters
+                    .asSequence()
+                    .map { it.chapter }
+                    .filter { mangaForChapter(it).id == manga.id }
+                    .toList()
+                manga.id to downloadProvider.resolveDownloadedChapterIds(mangaChapters, downloadedDirNames)
             }
     }
 
@@ -1229,22 +1235,6 @@ class MangaScreenModel(
         return when {
             this.manga.id == manga.id && source.id == manga.source -> source
             else -> mergedData?.sources?.firstOrNull { it.id == manga.source } ?: sourceManager.getOrStub(manga.source)
-        }
-    }
-
-    private fun Chapter.isDownloadedIn(downloadedChapterDirNames: Set<String>): Boolean {
-        if (downloadedChapterDirNames.isEmpty()) return false
-
-        val directNames = downloadProvider.getValidChapterDirNames(name, scanlator, url, id)
-            .asSequence()
-            .map { it.removeSuffix(".cbz") }
-            .toSet()
-        if (directNames.any { it in downloadedChapterDirNames }) {
-            return true
-        }
-
-        return downloadedChapterDirNames.any { downloadedDirName ->
-            downloadProvider.isValidChapterDirName(downloadedDirName, name, scanlator, url, id)
         }
     }
 

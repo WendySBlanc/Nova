@@ -22,6 +22,7 @@ import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.category.interactor.GetCategories
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.manga.model.Manga
@@ -43,6 +44,7 @@ class DownloadManager(
     private val getCategories: GetCategories = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
+    private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
 ) {
 
     /**
@@ -156,7 +158,12 @@ class DownloadManager(
      * @param chapter the downloaded chapter.
      * @return the list of pages from the chapter.
      */
-    fun buildPageList(source: Source, manga: Manga, chapter: Chapter): List<Page> {
+    fun buildPageList(
+        source: Source,
+        manga: Manga,
+        chapter: Chapter,
+        allowRestoredMatch: Boolean = false,
+    ): List<Page> {
         val chapterDir = provider.findChapterDir(
             chapter.name,
             chapter.scanlator,
@@ -167,6 +174,7 @@ class DownloadManager(
             source,
             manga.id,
             chapter.id,
+            allowRestoredMatch,
         ) ?: manga.title
             .takeUnless { it == manga.ogTitle }
             ?.let { title ->
@@ -178,6 +186,7 @@ class DownloadManager(
                     source,
                     manga.id,
                     chapter.id,
+                    allowRestoredMatch,
                 )
             }
         val files = chapterDir?.listFiles().orEmpty()
@@ -277,9 +286,9 @@ class DownloadManager(
         mangaTitles: Collection<String>,
         source: Source,
         mangaId: Long? = null,
-    ): Set<String> {
+    ): List<String> {
         return cache.getDownloadedChapterDirNames(mangaTitles, source.id) +
-            provider.findDownloadedChapterDirNames(mangaTitles, source, mangaId)
+            provider.findDownloadedLightNovelChapterDirNames(mangaTitles, source, mangaId)
     }
 
     /**
@@ -332,7 +341,14 @@ class DownloadManager(
 
             removeFromDownloadQueue(filteredChapters)
 
-            val (mangaDir, chapterDirs) = provider.findChapterDirs(filteredChapters, manga, source)
+            val mangaChapters = getChaptersByMangaId.await(manga.id)
+            val (mangaDir, chapterDirs) = provider.findChapterDirs(
+                chapters = filteredChapters,
+                mangaChapters = mangaChapters.ifEmpty { filteredChapters },
+                manga = manga,
+                source = source,
+                allowRestoredMatch = mangaChapters.isNotEmpty(),
+            )
             chapterDirs.forEach { it.delete() }
             cache.removeChapters(filteredChapters, manga)
 
@@ -430,7 +446,13 @@ class DownloadManager(
 
         if (removeRead) {
             val readChapters = allChapters.filter { it.read }
-            val readChapterDirs = provider.findChapterDirs(readChapters, manga, source)
+            val readChapterDirs = provider.findChapterDirs(
+                chapters = readChapters,
+                mangaChapters = allChapters,
+                manga = manga,
+                source = source,
+                allowRestoredMatch = true,
+            )
             readChapterDirs.second.forEach { it.delete() }
             cleaned += readChapterDirs.second.size
             cache.removeChapters(readChapters, manga)

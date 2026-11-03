@@ -35,6 +35,30 @@ import java.util.Date
 import kotlin.math.max
 import kotlin.math.min
 
+internal fun mergeRestoredChapter(
+    chapter: Chapter,
+    dbChapter: Chapter,
+    isSync: Boolean,
+): Chapter {
+    if (isSync) {
+        return chapter.copy(
+            id = dbChapter.id,
+            bookmark = chapter.bookmark || dbChapter.bookmark,
+            sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
+            dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
+        )
+    }
+
+    return chapter.copyFrom(dbChapter).copy(
+        id = dbChapter.id,
+        bookmark = chapter.bookmark || dbChapter.bookmark,
+        read = chapter.read || dbChapter.read,
+        lastPageRead = max(chapter.lastPageRead, dbChapter.lastPageRead),
+        sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
+        dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
+    )
+}
+
 class MangaRestorer(
     private var isSync: Boolean = false,
 
@@ -196,47 +220,13 @@ class MangaRestorer(
                 when {
                     dbChapter == null -> chapter // New chapter
                     chapter.forComparison() == dbChapter.forComparison() -> null // Same state; skip
-                    else -> updateChapterBasedOnSyncState(chapter, dbChapter) // Update existed chapter
+                    else -> mergeRestoredChapter(chapter, dbChapter, isSync) // Update existing chapter
                 }
             }
             .partition { it.id > 0 }
 
         insertNewChapters(newChapters)
         updateExistingChapters(existingChapters)
-    }
-
-    private fun updateChapterBasedOnSyncState(chapter: Chapter, dbChapter: Chapter): Chapter {
-        return if (isSync) {
-            chapter.copy(
-                id = dbChapter.id,
-                bookmark = chapter.bookmark || dbChapter.bookmark,
-                read = chapter.read,
-                lastPageRead = chapter.lastPageRead,
-                // KMK -->
-                sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
-                dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
-                // KMK <--
-            )
-        } else {
-            chapter.copyFrom(dbChapter)
-                // KMK -->
-                .copy(
-                    id = dbChapter.id,
-                    bookmark = chapter.bookmark || dbChapter.bookmark,
-                    sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
-                    dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
-                )
-                // KMK <--
-                .let {
-                    when {
-                        dbChapter.read && !it.read -> it.copy(read = true, lastPageRead = dbChapter.lastPageRead)
-                        it.lastPageRead == 0L && dbChapter.lastPageRead != 0L -> it.copy(
-                            lastPageRead = dbChapter.lastPageRead,
-                        )
-                        else -> it
-                    }
-                }
-        }
     }
 
     private fun Chapter.forComparison() =

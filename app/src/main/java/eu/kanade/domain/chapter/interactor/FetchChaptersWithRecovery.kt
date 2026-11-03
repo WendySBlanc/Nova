@@ -20,6 +20,7 @@ data class ChapterFetchResult(
  */
 suspend fun Source.getChapterListWithRecovery(manga: Manga): ChapterFetchResult {
     val localManga = manga.toSManga()
+    val storedUrl = localManga.safeUrl()
     var initialError: Throwable? = null
     val initialChapters = try {
         getChapterList(localManga)
@@ -34,7 +35,10 @@ suspend fun Source.getChapterListWithRecovery(manga: Manga): ChapterFetchResult 
     }
 
     val refreshedDetails = tryForRecovery { getMangaDetails(localManga) }
-    if (refreshedDetails != null) {
+    if (
+        refreshedDetails != null &&
+        (refreshedDetails.safeUrl() == storedUrl || refreshedDetails.hasMatchingIdentityWith(manga))
+    ) {
         tryForRecovery { getChapterList(refreshedDetails) }
             ?.takeIf { it.isNotEmpty() }
             ?.let {
@@ -68,9 +72,11 @@ suspend fun Source.getChapterListWithRecovery(manga: Manga): ChapterFetchResult 
         val candidate = exactMatches.singleOrNull() ?: continue
         val candidateUrl = candidate.safeUrl() ?: continue
         val candidateDetails = tryForRecovery { getMangaDetails(candidate) }
-        val chapterTarget = candidateDetails?.apply {
+            ?.takeIf { it.hasMatchingIdentityWith(manga) }
+            ?: continue
+        val chapterTarget = candidateDetails.apply {
             if (safeUrl().isNullOrBlank()) url = candidateUrl
-        } ?: candidate
+        }
         val chapters = tryForRecovery { getChapterList(chapterTarget) }.orEmpty()
 
         if (chapters.isNotEmpty()) {
@@ -99,6 +105,20 @@ private suspend fun <T> tryForRecovery(block: suspend () -> T): T? {
 private fun SManga.safeTitle(): String = runCatching { originalTitle }.getOrDefault("")
 
 private fun SManga.safeUrl(): String? = runCatching { url.trim() }.getOrNull()?.takeIf { it.isNotEmpty() }
+
+private fun SManga.hasMatchingIdentityWith(manga: Manga): Boolean {
+    val localContributors = listOf(manga.ogAuthor, manga.ogArtist)
+        .mapNotNull { it?.let(::normalizeTitle)?.takeIf(String::isNotEmpty) }
+        .toSet()
+    val sourceContributors = listOf(
+        runCatching { originalAuthor }.getOrNull(),
+        runCatching { originalArtist }.getOrNull(),
+    )
+        .mapNotNull { it?.let(::normalizeTitle)?.takeIf(String::isNotEmpty) }
+        .toSet()
+
+    return localContributors.isNotEmpty() && sourceContributors.any { it in localContributors }
+}
 
 private fun normalizeTitle(title: String): String {
     return title

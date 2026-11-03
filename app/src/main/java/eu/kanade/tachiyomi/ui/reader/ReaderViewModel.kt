@@ -18,7 +18,6 @@ import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
-import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
@@ -27,6 +26,7 @@ import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.data.sync.SyncDataJob
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -109,6 +109,47 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.time.Instant
 import java.util.Date
+import java.util.concurrent.atomic.AtomicLong
+
+internal class ChapterLoadRequestGate {
+    private val latestRequest = AtomicLong()
+    private val latestAdjacentRequest = AtomicLong()
+
+    @Synchronized
+    fun next(isAdjacent: Boolean = false): Long {
+        val request = latestRequest.incrementAndGet()
+        latestAdjacentRequest.set(if (isAdjacent) request else 0L)
+        return request
+    }
+
+    fun isCurrent(request: Long): Boolean = latestRequest.get() == request
+
+    fun isAdjacentLoading(): Boolean = latestAdjacentRequest.get() != 0L
+
+    fun complete(request: Long) {
+        latestAdjacentRequest.compareAndSet(request, 0L)
+    }
+}
+
+internal fun buildViewerChapters(
+    chapterList: List<ReaderChapter>,
+    currentChapter: ReaderChapter,
+): ViewerChapters {
+    val currentChapterId = currentChapter.chapter.id
+    val chapterPosition = chapterList.indexOfFirst { candidate ->
+        candidate === currentChapter ||
+            (currentChapterId != null && candidate.chapter.id == currentChapterId)
+    }
+    if (chapterPosition < 0) {
+        return ViewerChapters(currentChapter, null, null)
+    }
+
+    return ViewerChapters(
+        currChapter = currentChapter,
+        prevChapter = chapterList.getOrNull(chapterPosition - 1),
+        nextChapter = chapterList.getOrNull(chapterPosition + 1),
+    )
+}
 
 /**
  * Presenter used by the activity to perform background operations.
@@ -148,6 +189,24 @@ class ReaderViewModel @JvmOverloads constructor(
 
     private val eventChannel = Channel<Event>()
     val eventFlow = eventChannel.receiveAsFlow()
+
+    private val chapterLoadRequestGate = ChapterLoadRequestGate()
+    private val chapterLoadStateLock = Any()
+
+    private fun beginChapterLoad(isAdjacent: Boolean = false): Long = synchronized(chapterLoadStateLock) {
+        chapterLoadRequestGate.next(isAdjacent).also {
+            mutableState.update { state ->
+                state.copy(isLoadingAdjacentChapter = chapterLoadRequestGate.isAdjacentLoading())
+            }
+        }
+    }
+
+    private fun completeChapterLoad(request: Long) = synchronized(chapterLoadStateLock) {
+        chapterLoadRequestGate.complete(request)
+        mutableState.update { state ->
+            state.copy(isLoadingAdjacentChapter = chapterLoadRequestGate.isAdjacentLoading())
+        }
+    }
 
     /**
      * The manga loaded in the reader. It can be null when instantiated for a short time.
@@ -481,12 +540,14 @@ class ReaderViewModel @JvmOverloads constructor(
                         readerPrefs = readerPreferences,
                         mergedReferences = mergedReferences,
                         mergedManga = mergedManga,
+                        chapters = chapterList,
                         // SY <--
                     )
 
                     loadChapter(
                         loader!!,
                         chapterList.first { chapterId == it.chapter.id },
+                        beginChapterLoad(),
                         // SY -->
                         page,
                         // SY <--
@@ -534,20 +595,18 @@ class ReaderViewModel @JvmOverloads constructor(
     private suspend fun loadChapter(
         loader: ChapterLoader,
         chapter: ReaderChapter,
+        request: Long,
         // SY -->
         page: Int? = null,
         // SY <--
-    ): ViewerChapters {
+    ) {
         loader.loadChapter(chapter /* SY --> */, page/* SY <-- */)
 
-        val chapterPos = chapterList.indexOf(chapter)
-        val newChapters = ViewerChapters(
-            chapter,
-            chapterList.getOrNull(chapterPos - 1),
-            chapterList.getOrNull(chapterPos + 1),
-        )
+        val newChapters = buildViewerChapters(chapterList, chapter)
 
         withUIContext {
+            if (!chapterLoadRequestGate.isCurrent(request)) return@withUIContext
+
             mutableState.update {
                 // Add new references first to avoid unnecessary recycling
                 newChapters.ref()
@@ -560,7 +619,6 @@ class ReaderViewModel @JvmOverloads constructor(
                 )
             }
         }
-        return newChapters
     }
 
     /**
@@ -569,6 +627,7 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     private fun loadNewChapter(chapter: ReaderChapter) {
         val loader = loader ?: return
+        val request = beginChapterLoad()
 
         viewModelScope.launchIO {
             logcat { "Loading ${chapter.chapter.url}" }
@@ -577,7 +636,7 @@ class ReaderViewModel @JvmOverloads constructor(
             restartReadTimer()
 
             try {
-                loadChapter(loader, chapter)
+                loadChapter(loader, chapter, request)
             } catch (e: Throwable) {
                 if (e is CancellationException) {
                     throw e
@@ -599,13 +658,13 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     private suspend fun loadAdjacent(chapter: ReaderChapter) {
         val loader = loader ?: return
+        val request = beginChapterLoad(isAdjacent = true)
 
         logcat { "Loading adjacent ${chapter.chapter.url}" }
 
-        mutableState.update { it.copy(isLoadingAdjacentChapter = true) }
         try {
             withIOContext {
-                loadChapter(loader, chapter)
+                loadChapter(loader, chapter, request)
             }
         } catch (e: Throwable) {
             if (e is CancellationException) {
@@ -613,7 +672,7 @@ class ReaderViewModel @JvmOverloads constructor(
             }
             logcat(LogPriority.ERROR, e)
         } finally {
-            mutableState.update { it.copy(isLoadingAdjacentChapter = false) }
+            completeChapterLoad(request)
         }
     }
 

@@ -23,6 +23,7 @@ internal class DownloadPageLoader(
     private val source: Source,
     private val downloadManager: DownloadManager,
     private val downloadProvider: DownloadProvider,
+    private val allowRestoredMatch: Boolean,
 ) : PageLoader() {
 
     private val context: Application by injectLazy()
@@ -43,6 +44,7 @@ internal class DownloadPageLoader(
             source,
             manga.id,
             dbChapter.id,
+            allowRestoredMatch,
         )
         return if (chapterPath?.isFile == true) {
             getPagesFromArchive(chapterPath)
@@ -75,7 +77,12 @@ internal class DownloadPageLoader(
     }
 
     private fun getPagesFromDirectory(): List<ReaderPage> {
-        val pages = downloadManager.buildPageList(source, manga, chapter.chapter.toDomainChapter()!!)
+        val pages = downloadManager.buildPageList(
+            source,
+            manga,
+            chapter.chapter.toDomainChapter()!!,
+            allowRestoredMatch,
+        )
         return pages.map { page ->
             ReaderPage(page.index, page.uri?.toString().orEmpty(), page.imageUrl) {
                 context.contentResolver.openInputStream(page.uri ?: Uri.EMPTY)!!
