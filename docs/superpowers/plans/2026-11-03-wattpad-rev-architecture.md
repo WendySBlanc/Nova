@@ -126,19 +126,19 @@ Commit message: `feat: add adaptive Rev card motion module`
 - Produces: `NovaDestination.Home`, stable destination ordering, Home as initial tab, and adaptive bottom bar/rail with the same route set.
 - Consumes: existing Voyager `Tab` objects and `resolveNovaNavigationLayout`.
 
-- [ ] **Step 1: Complete the failing destination test with compact and expanded layout assertions**
+- [x] **Step 1: Complete the failing destination test with compact and expanded layout assertions**
 
 Also assert a pure `defaultNovaDestination()` or equivalent returns `Home`, so process recreation and layout changes share one start contract.
 
-- [ ] **Step 2: Implement the five-destination enum and initial-route helper**
+- [x] **Step 2: Implement the five-destination enum and initial-route helper**
 
 Set `NovaDestination.entries` to `Home, Discover, Library, Activity, Me`.
 
-- [ ] **Step 3: Change `HomeScreen.TABS` and `TabNavigator`**
+- [x] **Step 3: Change `HomeScreen.TABS` and `TabNavigator`**
 
 Use `NovaHomeTab, BrowseTab, NovaLibraryTab, NovaActivityTab, MoreTab`; initialize with `NovaHomeTab`; root Back returns to Home. Reselect Home must scroll/reset Home rather than open search.
 
-- [ ] **Step 4: Align tab indices and route mappings**
+- [x] **Step 4: Align tab indices and route mappings**
 
 Use indices Home 0, Discover 1, Library 2, Activity 3, Me 4. Preserve `HomeScreen.openTab` compatibility for existing callers and map legacy `Tab.Library` directly to `NovaLibraryTab`.
 

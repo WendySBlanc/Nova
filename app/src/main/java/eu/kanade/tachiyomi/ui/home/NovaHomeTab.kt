@@ -43,7 +43,7 @@ data object NovaHomeTab : Tab {
         }
 
     override suspend fun onReselect(navigator: Navigator) {
-        navigator.push(GlobalSearchScreen(""))
+        // Home owns its reset-to-top behavior; reselecting must never open a new route.
     }
 
     @Composable

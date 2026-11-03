@@ -102,8 +102,9 @@ object HomeScreen : Screen() {
     private const val TAB_NAVIGATOR_KEY = "HomeTabs"
 
     private val TABS = listOf(
-        NovaLibraryTab,
+        NovaHomeTab,
         BrowseTab,
+        NovaLibraryTab,
         NovaActivityTab,
         MoreTab,
     )
@@ -122,7 +123,7 @@ object HomeScreen : Screen() {
         // SY <--
 
         TabNavigator(
-            tab = NovaLibraryTab,
+            tab = NovaHomeTab,
             key = TAB_NAVIGATOR_KEY,
         ) { tabNavigator ->
             // Provide usable navigator to content screen
@@ -185,9 +186,9 @@ object HomeScreen : Screen() {
                 }
             }
 
-            val goToHomeTab = { tabNavigator.current = NovaLibraryTab }
+            val goToHomeTab = { tabNavigator.current = NovaHomeTab }
             BackHandler(
-                enabled = tabNavigator.current != NovaLibraryTab,
+                enabled = tabNavigator.current != NovaHomeTab,
                 onBack = goToHomeTab,
             )
 

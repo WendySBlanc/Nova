@@ -1,8 +1,9 @@
 package eu.kanade.presentation.home
 
 enum class NovaDestination {
-    Library,
+    Home,
     Discover,
+    Library,
     Activity,
     Me,
 }
@@ -19,6 +20,8 @@ enum class NovaScreenMotion {
 
 fun resolveNovaNavigationLayout(windowWidthDp: Int): NovaNavigationLayout =
     if (windowWidthDp >= 600) NovaNavigationLayout.Rail else NovaNavigationLayout.BottomBar
+
+fun defaultNovaDestination(): NovaDestination = NovaDestination.Home
 
 fun resolveNovaScreenMotion(
     initialIsTitleDetail: Boolean,

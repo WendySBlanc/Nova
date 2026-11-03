@@ -7,13 +7,19 @@ import org.junit.jupiter.api.Test
 class NovaNavigationTest {
 
     @Test
-    fun `Nova exposes four stable primary destinations`() {
+    fun `Nova exposes five stable primary destinations`() {
         NovaDestination.entries shouldContainExactly listOf(
-            NovaDestination.Library,
+            NovaDestination.Home,
             NovaDestination.Discover,
+            NovaDestination.Library,
             NovaDestination.Activity,
             NovaDestination.Me,
         )
+    }
+
+    @Test
+    fun `Nova starts on Home`() {
+        defaultNovaDestination() shouldBe NovaDestination.Home
     }
 
     @Test

@@ -36,7 +36,7 @@ data object NovaActivityTab : Tab {
     override val options: TabOptions
         @Composable
         get() = TabOptions(
-            index = 2u,
+            index = 3u,
             title = stringResource(MR.strings.nova_activity),
             icon = rememberVectorPainter(Icons.Outlined.Notifications),
         )
