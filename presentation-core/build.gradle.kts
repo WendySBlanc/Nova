@@ -45,6 +45,9 @@ dependencies {
     implementation(compose.ui.tooling.preview)
     implementation(compose.ui.util)
 
+    testImplementation(libs.bundles.test)
+    testRuntimeOnly(libs.junit.platform.launcher)
+
     implementation(androidx.paging.runtime)
     implementation(androidx.paging.compose)
     implementation(kotlinx.immutables)
