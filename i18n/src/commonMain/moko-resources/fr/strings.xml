@@ -303,6 +303,7 @@
     <string name="logout_success">Vous êtes maintenant déconnecté(e)</string>
     <string name="paused">En pause</string>
     <string name="label_more">Moi</string>
+    <string name="nova_activity">Activite</string>
     <string name="action_sort_latest_chapter">Dernier chapitre</string>
     <string name="action_view_chapters">Voir les chapitres</string>
     <string name="action_cancel_all">Tout annuler</string>

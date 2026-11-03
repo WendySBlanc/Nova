@@ -256,12 +256,12 @@ object SettingsMainScreen : Screen() {
         val title: String,
         val accent: Color,
     ) {
-        Reading("Lecture et apparence", NovaVikiColors.Accent),
-        Library("Biblioth\u00e8que et contenu", NovaVikiColors.AccentGold),
-        Services("Services", NovaVikiColors.Success),
-        Data("Donn\u00e9es et confidentialit\u00e9", NovaVikiColors.AccentWarm),
+        Reading("Lecture et apparence", Color(0xFF006B5B)),
+        Library("Biblioth\u00e8que et contenu", Color(0xFF586500)),
+        Services("Services", Color(0xFF2E7D32)),
+        Data("Donn\u00e9es et confidentialit\u00e9", Color(0xFFA13A2A)),
         Advanced("Avanc\u00e9", Color(0xFFB9A5FF)),
-        Application("Application", NovaVikiColors.TextSecondary),
+        Application("Application", Color(0xFF727973)),
     }
 
     @Composable

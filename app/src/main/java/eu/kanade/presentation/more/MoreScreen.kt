@@ -700,5 +700,7 @@ private fun NovaMoreIcon(
     }
 }
 
-private val NovaMoreRow = NovaVikiColors.SurfaceRaised
-private val NovaMoreAccent = NovaVikiColors.Accent
+private val NovaMoreRow: Color
+    @Composable get() = NovaVikiColors.SurfaceRaised
+private val NovaMoreAccent: Color
+    @Composable get() = NovaVikiColors.Accent

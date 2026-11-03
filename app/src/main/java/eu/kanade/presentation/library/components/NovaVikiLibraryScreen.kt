@@ -66,6 +66,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -80,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -218,12 +221,13 @@ fun NovaVikiLibraryScreen(
                         .widthIn(max = NovaVikiDimensions.GridContentMaxWidth)
                         .fillMaxSize(),
                 ) {
-                    val columns = when {
-                        maxWidth < 600.dp -> 3
-                        maxWidth < 840.dp -> 4
-                        maxWidth < 1200.dp -> 5
-                        else -> 6
+                    val minimumCardWidth = when {
+                        maxWidth < 360.dp -> 92.dp
+                        maxWidth < 600.dp -> 104.dp
+                        maxWidth < 840.dp -> 124.dp
+                        else -> 148.dp
                     }
+                    val loadingColumns = (maxWidth / minimumCardWidth).toInt().coerceAtLeast(2)
                     val horizontalPadding = when {
                         maxWidth < 360.dp -> 8.dp
                         maxWidth < 600.dp -> 12.dp
@@ -239,14 +243,10 @@ fun NovaVikiLibraryScreen(
                         maxWidth < 600.dp -> 18.dp
                         else -> 22.dp
                     }
-                    val cardWidthFraction = when {
-                        maxWidth < 360.dp -> 0.88f
-                        maxWidth < 600.dp -> 0.8f
-                        else -> 0.76f
-                    }
+                    val cardWidthFraction = 1f
 
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
+                        columns = GridCells.Adaptive(minSize = minimumCardWidth),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -273,7 +273,7 @@ fun NovaVikiLibraryScreen(
                         }
                         if (!isLibraryReady) {
                             items(
-                                count = columns * 2,
+                                count = loadingColumns * 2,
                                 key = { index -> "library_loading_$index" },
                                 contentType = { "library_loading_card" },
                             ) {
@@ -703,6 +703,12 @@ private fun NovaLibraryGridCard(
     val progressPercent = item.progress
         ?.coerceIn(0f, 1f)
         ?.let { (it * 100f).roundToInt() }
+    val saturation = coverSaturation(item.progress)
+    val coverColorFilter = remember(saturation) {
+        ColorFilter.colorMatrix(
+            ColorMatrix().apply { setToSaturation(saturation) },
+        )
+    }
     val readingState = when {
         item.remainingChapters > 1L -> "${item.remainingChapters} chapitres à lire"
         item.remainingChapters == 1L -> "1 chapitre à lire"
@@ -741,6 +747,7 @@ private fun NovaLibraryGridCard(
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     filterQuality = FilterQuality.High,
+                    colorFilter = coverColorFilter,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

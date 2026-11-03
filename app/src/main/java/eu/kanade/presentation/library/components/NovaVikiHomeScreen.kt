@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -70,23 +71,7 @@ import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.i18n.stringResource
 import androidx.compose.foundation.lazy.grid.items as gridItems
 
-@Immutable
-data class NovaVikiManga(
-    val id: Long,
-    val title: String,
-    val subtitle: String,
-    val tag: String,
-    val coverData: Any? = null,
-    val colors: List<Color> = listOf(Color(0xFF10233E), Color(0xFF2B8CFF), Color(0xFF9FE7FF)),
-    val progress: Float? = null,
-    val remainingChapters: Long = 0L,
-    val totalChapters: Long = 0L,
-    val lastRead: Long = 0L,
-    val dateAdded: Long = 0L,
-    val latestUpload: Long = 0L,
-    val chapterFetchedAt: Long = 0L,
-    val categoryIds: Set<Long> = emptySet(),
-)
+typealias NovaVikiManga = NovaLibraryEntry
 
 @Composable
 fun NovaVikiHomeScreen(

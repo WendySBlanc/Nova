@@ -17,8 +17,9 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
-import eu.kanade.presentation.library.components.NovaVikiLibraryScreen
-import eu.kanade.presentation.library.components.NovaVikiManga
+import eu.kanade.presentation.library.NovaLibraryEntry
+import eu.kanade.presentation.library.NovaLibraryScreen
+import eu.kanade.presentation.library.NovaMediaType
 import eu.kanade.presentation.library.components.NovaLibraryCategory
 import eu.kanade.presentation.util.Tab
 import eu.kanade.presentation.util.isLikelyLightNovel
@@ -137,7 +138,9 @@ data object NovaLibraryTab : Tab {
         val lightNovelItems = remember(favoriteItems, categoryNamesById) {
             favoriteItems
                 .filter { item -> item.isLightNovel(categoryNamesById) }
-                .mapIndexed { index, item -> item.toNovaManga(index) }
+                .mapIndexed { index, item ->
+                    item.toNovaManga(index, mediaType = NovaMediaType.LightNovel)
+                }
         }
         val heroItems = remember(favoriteItems, nextChapterLabelsSnapshot) {
             favoriteItems
@@ -154,7 +157,7 @@ data object NovaLibraryTab : Tab {
             return started
         }
 
-        NovaVikiLibraryScreen(
+        NovaLibraryScreen(
             libraryItems = libraryItems,
             lightNovelItems = lightNovelItems,
             heroItems = heroItems,
@@ -177,10 +180,14 @@ data object NovaLibraryTab : Tab {
         }
     }
 
-    private fun LibraryItem.toNovaManga(index: Int, subtitle: String? = null): NovaVikiManga {
+    private fun LibraryItem.toNovaManga(
+        index: Int,
+        subtitle: String? = null,
+        mediaType: NovaMediaType = NovaMediaType.Manhwa,
+    ): NovaLibraryEntry {
         val manga = libraryManga.manga
         val unreadCount = libraryManga.unreadCount.coerceAtLeast(0L)
-        return NovaVikiManga(
+        return NovaLibraryEntry(
             id = manga.id,
             title = manga.title,
             subtitle = subtitle ?: when {
@@ -203,6 +210,7 @@ data object NovaLibraryTab : Tab {
             dateAdded = manga.dateAdded,
             latestUpload = libraryManga.latestUpload,
             chapterFetchedAt = libraryManga.chapterFetchedAt,
+            mediaType = mediaType,
             categoryIds = libraryManga.categories
                 .asSequence()
                 .filterNot { it == 0L }

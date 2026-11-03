@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -59,12 +60,15 @@ import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
-import eu.kanade.presentation.theme.NovaVikiColors
-import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.theme.NovaVikiMotion
+import eu.kanade.presentation.home.NovaNavigationLayout
+import eu.kanade.presentation.home.resolveNovaNavigationLayout
+import eu.kanade.presentation.theme.NovaSignalDimensions
+import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
+import eu.kanade.tachiyomi.ui.activity.NovaActivitySection
+import eu.kanade.tachiyomi.ui.activity.NovaActivityTab
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
@@ -94,18 +98,21 @@ object HomeScreen : Screen() {
     private val openTabEvent = Channel<Tab>()
     private val showBottomNavEvent = Channel<Boolean>()
 
-    private const val TAB_FADE_DURATION = NovaVikiMotion.Content
+    private const val TAB_FADE_DURATION = NovaSignalMotion.Content
     private const val TAB_NAVIGATOR_KEY = "HomeTabs"
 
     private val TABS = listOf(
         NovaLibraryTab,
         BrowseTab,
+        NovaActivityTab,
         MoreTab,
     )
 
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val windowWidthDp = LocalConfiguration.current.screenWidthDp
+        val navigationLayout = resolveNovaNavigationLayout(windowWidthDp)
 
         // SY -->
         val scope = rememberCoroutineScope()
@@ -122,10 +129,10 @@ object HomeScreen : Screen() {
             CompositionLocalProvider(LocalNavigator provides navigator) {
                 Scaffold(
                     startBar = {
-                        if (isTabletUi()) {
+                        if (navigationLayout == NovaNavigationLayout.Rail) {
                             NavigationRail(
-                                containerColor = NovaVikiColors.Surface,
-                                contentColor = NovaVikiColors.TextSecondary,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ) {
                                 TABS
                                     // SY -->
@@ -138,7 +145,7 @@ object HomeScreen : Screen() {
                         }
                     },
                     bottomBar = {
-                        if (!isTabletUi()) {
+                        if (navigationLayout == NovaNavigationLayout.BottomBar) {
                             val bottomNavVisible by produceState(initialValue = true) {
                                 showBottomNavEvent.receiveAsFlow().collectLatest { value = it }
                             }
@@ -147,7 +154,7 @@ object HomeScreen : Screen() {
                                 enter = expandVertically(),
                                 exit = shrinkVertically(),
                             ) {
-                                NovaVikiNavigationBar(alwaysShowLabel)
+                                NovaNavigationBar(alwaysShowLabel)
                             }
                         }
                     },
@@ -195,25 +202,35 @@ object HomeScreen : Screen() {
                     openTabEvent.receiveAsFlow().collectLatest {
                         tabNavigator.current = when (it) {
                             is Tab.Library -> NovaLibraryTab
-                            Tab.Updates -> UpdatesTab
-                            Tab.History -> HistoryTab
+                            Tab.Updates -> {
+                                NovaActivityTab.showSection(NovaActivitySection.Updates)
+                                NovaActivityTab
+                            }
+                            Tab.History -> {
+                                NovaActivityTab.showSection(NovaActivitySection.History)
+                                NovaActivityTab
+                            }
                             is Tab.Browse -> {
                                 if (it.toExtensions) {
                                     BrowseTab.showExtension()
                                 }
                                 BrowseTab
                             }
-                            is Tab.More -> MoreTab
+                            is Tab.More -> {
+                                if (it.toDownloads) {
+                                    NovaActivityTab.showSection(NovaActivitySection.Downloads)
+                                    NovaActivityTab
+                                } else {
+                                    MoreTab
+                                }
+                            }
                         }
 
                         if (it is Tab.Library && it.mangaIdToOpen != null) {
                             navigator.push(MangaScreen(it.mangaIdToOpen))
                         }
                         if (it is Tab.More) {
-                            if (it.toDownloads) {
-                                navigator.push(DownloadQueueScreen)
-                                // KMK -->
-                            } else if (it.toLibraryUpdateErrors) {
+                            if (it.toLibraryUpdateErrors) {
                                 navigator.push(LibraryUpdateErrorScreen())
                                 // KMK <--
                             }
@@ -288,17 +305,17 @@ object HomeScreen : Screen() {
             },
             alwaysShowLabel = /* SY --> */alwaysShowLabel, /* SY <-- */
             colors = androidx.compose.material3.NavigationRailItemDefaults.colors(
-                selectedIconColor = NovaVikiColors.Accent,
-                selectedTextColor = NovaVikiColors.Accent,
-                indicatorColor = NovaVikiColors.SurfaceInteractive,
-                unselectedIconColor = NovaVikiColors.TextSecondary,
-                unselectedTextColor = NovaVikiColors.TextSecondary,
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
         )
     }
 
     @Composable
-    private fun NovaVikiNavigationBar(alwaysShowLabel: Boolean) {
+    private fun NovaNavigationBar(alwaysShowLabel: Boolean) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = NovaVikiNavBarBackground,
@@ -306,7 +323,7 @@ object HomeScreen : Screen() {
             tonalElevation = 0.dp,
         ) {
             Column {
-                HorizontalDivider(color = NovaVikiColors.Outline)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -318,7 +335,7 @@ object HomeScreen : Screen() {
                     TABS
                         .fastFilter { it.isEnabled() }
                         .fastForEach {
-                            NovaVikiNavigationBarItem(it, alwaysShowLabel)
+                            NovaNavigationBarItem(it, alwaysShowLabel)
                         }
                 }
             }
@@ -326,7 +343,7 @@ object HomeScreen : Screen() {
     }
 
     @Composable
-    private fun RowScope.NovaVikiNavigationBarItem(
+    private fun RowScope.NovaNavigationBarItem(
         tab: eu.kanade.presentation.util.Tab,
         alwaysShowLabel: Boolean,
     ) {
@@ -336,12 +353,12 @@ object HomeScreen : Screen() {
         val selected = tabNavigator.current::class == tab::class
         val itemColor by animateColorAsState(
             targetValue = if (selected) NovaVikiNavBarActive else NovaVikiNavBarInactive,
-            animationSpec = tween(NovaVikiMotion.Standard),
+            animationSpec = tween(NovaSignalMotion.Control),
             label = "navigationItemColor",
         )
         val indicatorWidth by animateFloatAsState(
             targetValue = if (selected) 0.34f else 0f,
-            animationSpec = tween(NovaVikiMotion.Standard),
+            animationSpec = tween(NovaSignalMotion.Control),
             label = "navigationIndicator",
         )
 
@@ -473,11 +490,14 @@ object HomeScreen : Screen() {
         showBottomNavEvent.send(show)
     }
 
-    private val NovaVikiNavBarHeight = NovaVikiDimensions.NavigationBarHeight
+    private val NovaVikiNavBarHeight = NovaSignalDimensions.NavigationBarHeight
     private val NovaVikiNavBarIconSize = 24.dp
-    private val NovaVikiNavBarBackground = NovaVikiColors.Surface
-    private val NovaVikiNavBarActive = NovaVikiColors.Accent
-    private val NovaVikiNavBarInactive = NovaVikiColors.TextSecondary
+    private val NovaVikiNavBarBackground: Color
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainer
+    private val NovaVikiNavBarActive: Color
+        @Composable get() = MaterialTheme.colorScheme.primary
+    private val NovaVikiNavBarInactive: Color
+        @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
     sealed interface Tab {
         data class Library(val mangaIdToOpen: Long? = null) : Tab

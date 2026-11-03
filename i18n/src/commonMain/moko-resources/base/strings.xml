@@ -22,6 +22,7 @@
 
     <!-- Screen titles -->
     <string name="label_more">Me</string>
+    <string name="nova_activity">Activity</string>
     <string name="label_settings">Settings</string>
     <string name="label_download_queue">Download queue</string>
     <string name="label_home_nova">Home</string>

@@ -2,51 +2,71 @@ package eu.kanade.presentation.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object NovaVikiColors {
-    val Background = Color(0xFF07090D)
-    val Surface = Color(0xFF0D1117)
-    val SurfaceRaised = Color(0xFF151B24)
-    val SurfaceStrong = Color(0xFF1D2632)
-    val SurfaceInteractive = Color(0xFF253141)
-    val Outline = Color(0xFF2B3747)
-    val OutlineStrong = Color(0xFF647A96)
-    val TextPrimary = Color(0xFFF7F9FC)
-    val TextSecondary = Color(0xFFA9B4C2)
-    val TextMuted = Color(0xFF7C8999)
-    val Accent = Color(0xFF4CC9FF)
-    val AccentSoft = Color(0xFF123A4D)
-    val AccentWarm = Color(0xFFFF7694)
-    val AccentGold = Color(0xFFF7C95C)
-    val Success = Color(0xFF68D7A7)
-    val Danger = Color(0xFFFF8A80)
-    val Scrim = Color(0xFF030406)
+    val Background: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
+    val Surface: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainer
+    val SurfaceRaised: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+    val SurfaceStrong: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHighest
+    val SurfaceInteractive: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primaryContainer
+    val Outline: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outlineVariant
+    val OutlineStrong: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.outline
+    val TextPrimary: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface
+    val TextSecondary: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
+    val TextMuted: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f)
+    val Accent: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
+    val AccentSoft: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primaryContainer
+    val AccentWarm: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.secondary
+    val AccentGold: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.tertiary
+    val Success: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.tertiary
+    val Danger: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.error
+    val Scrim: Color
+        @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.scrim
 }
 
 object NovaVikiDimensions {
-    val CompactHorizontalPadding = 10.dp
-    val HorizontalPadding = 14.dp
-    val ExpandedHorizontalPadding = 20.dp
-    val MinimumTouchTarget = 48.dp
-    val ListRowMinHeight = 64.dp
-    val NavigationBarHeight = 56.dp
-    val SectionSpacing = 20.dp
-    val CompactContentMaxWidth = 760.dp
-    val WideContentMaxWidth = 1200.dp
-    val GridContentMaxWidth = 1440.dp
-    val CardCorner = 6.dp
-    val ControlCorner = 8.dp
+    val CompactHorizontalPadding = NovaSignalDimensions.CompactHorizontalPadding
+    val HorizontalPadding = NovaSignalDimensions.CompactHorizontalPadding
+    val ExpandedHorizontalPadding = NovaSignalDimensions.ExpandedHorizontalPadding
+    val MinimumTouchTarget = NovaSignalDimensions.MinimumTouchTarget
+    val ListRowMinHeight = NovaSignalDimensions.ListRowMinHeight
+    val NavigationBarHeight = NovaSignalDimensions.NavigationBarHeight
+    val SectionSpacing = NovaSignalDimensions.SectionSpacing
+    val CompactContentMaxWidth = NovaSignalDimensions.CompactContentMaxWidth
+    val WideContentMaxWidth = NovaSignalDimensions.WideContentMaxWidth
+    val GridContentMaxWidth = NovaSignalDimensions.GridContentMaxWidth
+    val CardCorner = NovaSignalDimensions.ContentCorner
+    val ControlCorner = NovaSignalDimensions.ControlCorner
 }
 
 object NovaVikiMotion {
-    const val Fast = 120
-    const val Standard = 180
-    const val Content = 220
+    const val Fast = NovaSignalMotion.Feedback
+    const val Standard = NovaSignalMotion.Control
+    const val Content = NovaSignalMotion.Content
 }
 
 val NovaVikiShapes = Shapes(
