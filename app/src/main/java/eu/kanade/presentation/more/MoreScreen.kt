@@ -38,8 +38,6 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.GetApp
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
@@ -68,7 +66,6 @@ import exh.pref.DelegateSourcePreferences
 import exh.source.ExhPreferences
 import tachiyomi.core.common.Constants
 import tachiyomi.i18n.MR
-import tachiyomi.i18n.kmk.KMR
 import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -83,20 +80,11 @@ fun MoreScreen(
     onDownloadedOnlyChange: (Boolean) -> Unit,
     incognitoMode: Boolean,
     onIncognitoModeChange: (Boolean) -> Unit,
-    // SY -->
-    showNavUpdates: Boolean,
-    showNavHistory: Boolean,
-    // SY <--
     onClickDownloadQueue: () -> Unit,
     onClickCategories: () -> Unit,
     onClickStats: () -> Unit,
     onClickSettings: () -> Unit,
     onClickBatchAdd: () -> Unit,
-    onClickUpdates: () -> Unit,
-    onClickHistory: () -> Unit,
-    // KMK -->
-    onClickLibraryUpdateErrors: () -> Unit,
-    // KMK <--
 ) {
     val uriHandler = LocalUriHandler.current
     // SY -->
@@ -193,24 +181,14 @@ fun MoreScreen(
                                         incognitoMode = incognitoMode,
                                         onIncognitoModeChange = onIncognitoModeChange,
                                     )
-                                    if (!showNavUpdates || !showNavHistory) {
-                                        NovaActivitySection(
-                                            showNavUpdates = showNavUpdates,
-                                            showNavHistory = showNavHistory,
-                                            onClickUpdates = onClickUpdates,
-                                            onClickHistory = onClickHistory,
-                                        )
-                                    }
                                 }
                                 Column(
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                                 ) {
-                                    NovaLibraryToolsSection(
-                                        showBatchAdd = showBatchAdd,
-                                        onClickLibraryUpdateErrors = onClickLibraryUpdateErrors,
-                                        onClickBatchAdd = onClickBatchAdd,
-                                    )
+                                    if (showBatchAdd) {
+                                        NovaLibraryToolsSection(onClickBatchAdd = onClickBatchAdd)
+                                    }
                                     NovaApplicationSection(
                                         onClickHelp = { uriHandler.openUri(Constants.URL_HELP) },
                                     )
@@ -227,19 +205,9 @@ fun MoreScreen(
                                     incognitoMode = incognitoMode,
                                     onIncognitoModeChange = onIncognitoModeChange,
                                 )
-                                if (!showNavUpdates || !showNavHistory) {
-                                    NovaActivitySection(
-                                        showNavUpdates = showNavUpdates,
-                                        showNavHistory = showNavHistory,
-                                        onClickUpdates = onClickUpdates,
-                                        onClickHistory = onClickHistory,
-                                    )
+                                if (showBatchAdd) {
+                                    NovaLibraryToolsSection(onClickBatchAdd = onClickBatchAdd)
                                 }
-                                NovaLibraryToolsSection(
-                                    showBatchAdd = showBatchAdd,
-                                    onClickLibraryUpdateErrors = onClickLibraryUpdateErrors,
-                                    onClickBatchAdd = onClickBatchAdd,
-                                )
                                 NovaApplicationSection(
                                     onClickHelp = { uriHandler.openUri(Constants.URL_HELP) },
                                 )
@@ -492,50 +460,15 @@ private fun NovaReadingModesSection(
 }
 
 @Composable
-private fun NovaActivitySection(
-    showNavUpdates: Boolean,
-    showNavHistory: Boolean,
-    onClickUpdates: () -> Unit,
-    onClickHistory: () -> Unit,
-) {
-    NovaMoreSection(title = "Activit\u00e9") {
-        if (!showNavUpdates) {
-            NovaMoreActionRow(
-                title = stringResource(MR.strings.label_recent_updates),
-                icon = Icons.Outlined.NewReleases,
-                onClick = onClickUpdates,
-            )
-        }
-        if (!showNavHistory) {
-            NovaMoreActionRow(
-                title = stringResource(MR.strings.label_recent_manga),
-                icon = Icons.Outlined.History,
-                onClick = onClickHistory,
-            )
-        }
-    }
-}
-
-@Composable
 private fun NovaLibraryToolsSection(
-    showBatchAdd: Boolean,
-    onClickLibraryUpdateErrors: () -> Unit,
     onClickBatchAdd: () -> Unit,
 ) {
     NovaMoreSection(title = stringResource(MR.strings.label_library)) {
         NovaMoreActionRow(
-            title = stringResource(KMR.strings.option_label_library_update_errors),
-            icon = Icons.Outlined.NewReleases,
-            accent = NovaVikiColors.AccentWarm,
-            onClick = onClickLibraryUpdateErrors,
+            title = stringResource(SYMR.strings.eh_batch_add),
+            icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+            onClick = onClickBatchAdd,
         )
-        if (showBatchAdd) {
-            NovaMoreActionRow(
-                title = stringResource(SYMR.strings.eh_batch_add),
-                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-                onClick = onClickBatchAdd,
-            )
-        }
     }
 }
 

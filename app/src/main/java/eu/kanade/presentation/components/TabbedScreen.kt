@@ -14,7 +14,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -117,7 +117,7 @@ fun TabbedScreen(
                     .zIndex(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                PrimaryTabRow(
+                PrimaryScrollableTabRow(
                     selectedTabIndex = state.currentPage,
                     modifier = Modifier
                         .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
@@ -125,6 +125,7 @@ fun TabbedScreen(
                     containerColor = NovaVikiColors.Background,
                     contentColor = NovaVikiColors.TextPrimary,
                     divider = {},
+                    edgePadding = androidx.compose.ui.unit.Dp.Hairline,
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         Tab(

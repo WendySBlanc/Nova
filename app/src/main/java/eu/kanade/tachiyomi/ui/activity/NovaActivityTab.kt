@@ -2,12 +2,14 @@ package eu.kanade.tachiyomi.ui.activity
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Button
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -15,12 +17,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
+import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreen
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import soup.compose.material.motion.animation.materialFadeThroughIn
@@ -52,16 +58,18 @@ data object NovaActivityTab : Tab {
     @Composable
     override fun Content() {
         val section by selectedSection.collectAsState()
+        val navigator = LocalNavigator.currentOrThrow
 
         Column(modifier = Modifier.fillMaxSize()) {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = androidx.compose.ui.unit.Dp.Unspecified,
             ) {
-                PrimaryTabRow(
+                PrimaryScrollableTabRow(
                     selectedTabIndex = section.ordinal,
                     containerColor = MaterialTheme.colorScheme.surface,
                     contentColor = MaterialTheme.colorScheme.primary,
+                    edgePadding = androidx.compose.ui.unit.Dp.Hairline,
                 ) {
                     NovaActivitySection.entries.forEach { item ->
                         Tab(
@@ -73,6 +81,7 @@ data object NovaActivityTab : Tab {
                                         NovaActivitySection.Updates -> stringResource(MR.strings.label_recent_updates)
                                         NovaActivitySection.Downloads -> stringResource(MR.strings.label_download_queue)
                                         NovaActivitySection.History -> stringResource(MR.strings.label_recent_manga)
+                                        NovaActivitySection.Problems -> "Problèmes"
                                     },
                                 )
                             },
@@ -92,6 +101,16 @@ data object NovaActivityTab : Tab {
                     NovaActivitySection.Updates -> UpdatesTab.Content()
                     NovaActivitySection.Downloads -> DownloadQueueScreen.Content()
                     NovaActivitySection.History -> HistoryTab.Content()
+                    NovaActivitySection.Problems -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Button(onClick = { navigator.push(LibraryUpdateErrorScreen()) }) {
+                                Text("Voir les problèmes de mise à jour")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -102,4 +121,5 @@ enum class NovaActivitySection {
     Updates,
     Downloads,
     History,
+    Problems,
 }

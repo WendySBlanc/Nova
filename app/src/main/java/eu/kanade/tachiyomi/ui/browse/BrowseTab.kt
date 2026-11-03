@@ -136,7 +136,12 @@ data object BrowseTab : Tab {
         )
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow()
-                .collectLatest { state.scrollToPage(/* SY --> */2/* SY <-- */) }
+                .collectLatest {
+                    val extensionIndex = tabs.indexOfFirst { tab -> tab.titleRes == MR.strings.label_extensions }
+                    if (extensionIndex >= 0) {
+                        state.scrollToPage(extensionIndex)
+                    }
+                }
         }
 
         LaunchedEffect(Unit) {

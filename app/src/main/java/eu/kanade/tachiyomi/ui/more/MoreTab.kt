@@ -19,7 +19,6 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.base.BasePreferences
-import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.more.MoreScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
@@ -28,11 +27,8 @@ import eu.kanade.tachiyomi.data.connections.discord.DiscordScreen
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
-import eu.kanade.tachiyomi.ui.history.HistoryTab
-import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.stats.StatsScreen
-import eu.kanade.tachiyomi.ui.updates.UpdatesTab
 import exh.ui.batchadd.BatchAddScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,22 +70,13 @@ data object MoreTab : Tab {
             onDownloadedOnlyChange = { screenModel.downloadedOnly = it },
             incognitoMode = screenModel.incognitoMode,
             onIncognitoModeChange = { screenModel.incognitoMode = it },
-            // SY -->
-            showNavUpdates = screenModel.showNavUpdates,
-            showNavHistory = screenModel.showNavHistory,
-            // SY <--
             onClickDownloadQueue = { navigator.push(DownloadQueueScreen) },
             onClickCategories = { navigator.push(CategoryScreen()) },
             onClickStats = { navigator.push(StatsScreen()) },
             onClickSettings = { navigator.push(SettingsScreen()) },
             // SY -->
             onClickBatchAdd = { navigator.push(BatchAddScreen()) },
-            onClickUpdates = { navigator.push(UpdatesTab) },
-            onClickHistory = { navigator.push(HistoryTab) },
             // SY <--
-            // KMK -->
-            onClickLibraryUpdateErrors = { navigator.push(LibraryUpdateErrorScreen()) },
-            // KMK <--
         )
 
         // AM (DISCORD) -->
@@ -105,18 +92,10 @@ data object MoreTab : Tab {
 private class MoreScreenModel(
     private val downloadManager: DownloadManager = Injekt.get(),
     preferences: BasePreferences = Injekt.get(),
-    // SY -->
-    uiPreferences: UiPreferences = Injekt.get(),
-    // SY <--
 ) : ScreenModel {
 
     var downloadedOnly by preferences.downloadedOnly().asState(screenModelScope)
     var incognitoMode by preferences.incognitoMode().asState(screenModelScope)
-
-    // SY -->
-    val showNavUpdates by uiPreferences.showNavUpdates().asState(screenModelScope)
-    val showNavHistory by uiPreferences.showNavHistory().asState(screenModelScope)
-    // SY <--
 
     private var _downloadQueueState: MutableStateFlow<DownloadQueueState> = MutableStateFlow(DownloadQueueState.Stopped)
     val downloadQueueState: StateFlow<DownloadQueueState> = _downloadQueueState.asStateFlow()
