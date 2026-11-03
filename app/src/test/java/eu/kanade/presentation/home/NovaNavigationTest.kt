@@ -26,4 +26,23 @@ class NovaNavigationTest {
         resolveNovaNavigationLayout(windowWidthDp = 600) shouldBe NovaNavigationLayout.Rail
         resolveNovaNavigationLayout(windowWidthDp = 840) shouldBe NovaNavigationLayout.Rail
     }
+
+    @Test
+    fun `title details open upward and return along the same path`() {
+        resolveNovaScreenMotion(
+            initialIsTitleDetail = false,
+            targetIsTitleDetail = true,
+            isPop = false,
+        ) shouldBe NovaScreenMotion.TitleForward
+        resolveNovaScreenMotion(
+            initialIsTitleDetail = true,
+            targetIsTitleDetail = false,
+            isPop = true,
+        ) shouldBe NovaScreenMotion.TitleBackward
+        resolveNovaScreenMotion(
+            initialIsTitleDetail = false,
+            targetIsTitleDetail = false,
+            isPop = false,
+        ) shouldBe NovaScreenMotion.SharedAxis
+    }
 }

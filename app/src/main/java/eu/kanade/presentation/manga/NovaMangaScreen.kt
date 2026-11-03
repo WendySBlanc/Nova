@@ -3,6 +3,7 @@ package eu.kanade.presentation.manga
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -57,6 +58,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,6 +99,8 @@ import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.presentation.util.isLikelyLightNovel
+import eu.kanade.presentation.util.novaMangaSharedArtwork
+import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.manga.ChapterList
@@ -190,6 +194,12 @@ fun NovaMangaScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
             ) {
+                Box(
+                    modifier = Modifier
+                        .novaMangaSharedSurface(state.manga.id)
+                        .fillMaxSize()
+                        .background(NovaVikiColors.Background),
+                )
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -330,6 +340,15 @@ private fun NovaMangaHero(
         )
     }
     var moreActionsExpanded by remember { mutableStateOf(false) }
+    var contentEntered by remember(manga.id) { mutableStateOf(false) }
+    LaunchedEffect(manga.id) {
+        contentEntered = true
+    }
+    val entryProgress by animateFloatAsState(
+        targetValue = if (contentEntered) 1f else 0f,
+        animationSpec = tween(durationMillis = 220, delayMillis = 60),
+        label = "manga-hero-entry",
+    )
     val artworkScale by animateFloatAsState(
         targetValue = 1f + scrollProgress * 0.05f,
         label = "manga-hero-artwork-scale",
@@ -387,6 +406,7 @@ private fun NovaMangaHero(
                 contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.High,
                 modifier = Modifier
+                    .novaMangaSharedArtwork(manga.id)
                     .fillMaxWidth()
                     .height(backdropHeight)
                     .graphicsLayer {
@@ -496,8 +516,8 @@ private fun NovaMangaHero(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .graphicsLayer {
-                        alpha = heroContentAlpha
-                        translationY = scrollProgress * 18f
+                        alpha = heroContentAlpha * entryProgress
+                        translationY = ((1f - entryProgress) * 24f) + (scrollProgress * 18f)
                     }
                     .padding(horizontal = 14.dp, vertical = if (compact) 14.dp else 18.dp),
                 verticalAlignment = Alignment.Bottom,
@@ -957,171 +977,171 @@ private fun NovaEpisodeRow(
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-            Box(
-                modifier = Modifier
-                    .width(previewWidth)
-                    .height(previewHeight)
-                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                    .background(NovaVikiColors.SurfaceStrong),
-            ) {
-                if (isLightNovel) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(3.dp)
-                            .background(readStateColor),
-                    )
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 6.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = "LN",
-                            color = readStateColor,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black,
+                Box(
+                    modifier = Modifier
+                        .width(previewWidth)
+                        .height(previewHeight)
+                        .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                        .background(NovaVikiColors.SurfaceStrong),
+                ) {
+                    if (isLightNovel) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(3.dp)
+                                .background(readStateColor),
                         )
-                        Text(
-                            text = item.chapter.chapterNumber
-                                .takeIf { it > 0.0 }
-                                ?.let(::formatChapterNumber)
-                                ?: "TXT",
-                            color = NovaVikiColors.TextPrimary,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                } else {
-                    AsyncImage(
-                        model = previewRequest,
-                        contentDescription = title,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = if (item.chapter.read) grayscaleFilter else null,
-                        filterQuality = FilterQuality.High,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    if (remainingFraction != null && remainingFraction > 0f) {
-                        AsyncImage(
-                            model = previewRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            colorFilter = grayscaleFilter,
-                            filterQuality = FilterQuality.High,
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RemainingProgressShape(remainingFraction)),
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f)),
-                                ),
-                            ),
-                    )
-                    if (!item.chapter.read) {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .size(if (compact) 26.dp else 32.dp),
-                        )
-                    }
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    color = if (item.chapter.read) NovaVikiColors.TextSecondary else NovaVikiColors.TextPrimary,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (item.chapter.read) FontWeight.Medium else FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    NovaChapterReadStatus(
-                        isRead = item.chapter.read,
-                        label = readStateLabel,
-                        color = readStateColor,
-                    )
-                    if (metadata.isNotBlank()) {
-                        Text(
-                            text = metadata,
-                            color = NovaVikiColors.TextSecondary,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-            if (onDownloadChapter != null) {
-                ChapterDownloadIndicator(
-                    enabled = true,
-                    downloadStateProvider = { item.downloadState },
-                    downloadProgressProvider = { item.downloadProgress },
-                    onClick = { action -> onDownloadChapter(listOf(item), action) },
-                )
-            }
-            Box {
-                DropdownMenu(
-                    expanded = chapterMenuExpanded,
-                    onDismissRequest = { chapterMenuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = {
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
                             Text(
-                                if (item.chapter.read) {
-                                    "Marquer comme non lu"
-                                } else {
-                                    "Marquer comme lu"
-                                },
+                                text = "LN",
+                                color = readStateColor,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
                             )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (item.chapter.read) {
-                                    Icons.Outlined.RemoveDone
-                                } else {
-                                    Icons.Outlined.Done
-                                },
+                            Text(
+                                text = item.chapter.chapterNumber
+                                    .takeIf { it > 0.0 }
+                                    ?.let(::formatChapterNumber)
+                                    ?: "TXT",
+                                color = NovaVikiColors.TextPrimary,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = previewRequest,
+                            contentDescription = title,
+                            contentScale = ContentScale.Crop,
+                            colorFilter = if (item.chapter.read) grayscaleFilter else null,
+                            filterQuality = FilterQuality.High,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        if (remainingFraction != null && remainingFraction > 0f) {
+                            AsyncImage(
+                                model = previewRequest,
                                 contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                colorFilter = grayscaleFilter,
+                                filterQuality = FilterQuality.High,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RemainingProgressShape(remainingFraction)),
                             )
-                        },
-                        onClick = {
-                            chapterMenuExpanded = false
-                            onToggleRead(!item.chapter.read)
-                        },
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f)),
+                                    ),
+                                ),
+                        )
+                        if (!item.chapter.read) {
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(if (compact) 26.dp else 32.dp),
+                            )
+                        }
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        color = if (item.chapter.read) NovaVikiColors.TextSecondary else NovaVikiColors.TextPrimary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (item.chapter.read) FontWeight.Medium else FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    DropdownMenuItem(
-                        text = { Text("Marquer les chapitres précédents comme lus") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.DoneAll,
-                                contentDescription = null,
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NovaChapterReadStatus(
+                            isRead = item.chapter.read,
+                            label = readStateLabel,
+                            color = readStateColor,
+                        )
+                        if (metadata.isNotBlank()) {
+                            Text(
+                                text = metadata,
+                                color = NovaVikiColors.TextSecondary,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
                             )
-                        },
-                        onClick = {
-                            chapterMenuExpanded = false
-                            onMarkPreviousRead()
-                        },
+                        }
+                    }
+                }
+                if (onDownloadChapter != null) {
+                    ChapterDownloadIndicator(
+                        enabled = true,
+                        downloadStateProvider = { item.downloadState },
+                        downloadProgressProvider = { item.downloadProgress },
+                        onClick = { action -> onDownloadChapter(listOf(item), action) },
                     )
                 }
-            }
+                Box {
+                    DropdownMenu(
+                        expanded = chapterMenuExpanded,
+                        onDismissRequest = { chapterMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (item.chapter.read) {
+                                        "Marquer comme non lu"
+                                    } else {
+                                        "Marquer comme lu"
+                                    },
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (item.chapter.read) {
+                                        Icons.Outlined.RemoveDone
+                                    } else {
+                                        Icons.Outlined.Done
+                                    },
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                chapterMenuExpanded = false
+                                onToggleRead(!item.chapter.read)
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Marquer les chapitres précédents comme lus") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.DoneAll,
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                chapterMenuExpanded = false
+                                onMarkPreviousRead()
+                            },
+                        )
+                    }
+                }
             }
         }
         Box(

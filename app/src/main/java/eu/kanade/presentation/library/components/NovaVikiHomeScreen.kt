@@ -60,9 +60,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.library.NovaLibraryEntry
+import eu.kanade.presentation.util.LocalNovaSharedTransitionState
+import eu.kanade.presentation.util.novaMangaSharedArtwork
+import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -321,6 +324,7 @@ internal fun NovaVikiHero(
     onOpenManga: (Long) -> Unit,
     compactLayout: Boolean = false,
 ) {
+    val selectedTransitionMangaId = LocalNovaSharedTransitionState.current?.selectedMangaId
     val pageCount = heroes.size.coerceAtLeast(1)
     val pagerState = rememberPagerState(pageCount = { pageCount })
     val pagerIsDragged by pagerState.interactionSource.collectIsDraggedAsState()
@@ -369,6 +373,7 @@ internal fun NovaVikiHero(
                         modifier = Modifier.width(slideWidth),
                         onPlay = onPlay,
                         onOpenManga = onOpenManga,
+                        sharedTransitionActive = heroes.getOrNull(index)?.id == selectedTransitionMangaId,
                     )
                 }
             }
@@ -385,6 +390,7 @@ private fun NovaHeroSlide(
     modifier: Modifier,
     onPlay: (Long?) -> Unit,
     onOpenManga: (Long) -> Unit,
+    sharedTransitionActive: Boolean,
 ) {
     val title = hero?.title ?: "Your Manhwa"
     val subtitle = hero?.subtitle ?: "Find your next chapter"
@@ -429,12 +435,20 @@ private fun NovaHeroSlide(
         }
 
         if (hero?.coverData != null) {
+            Box(
+                modifier = Modifier
+                    .novaMangaSharedSurface(hero.id, enabled = sharedTransitionActive)
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(hero.colors)),
+            )
             AsyncImage(
                 model = coverRequest,
                 contentDescription = hero.title,
                 contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.High,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .novaMangaSharedArtwork(hero.id, enabled = sharedTransitionActive)
+                    .fillMaxSize(),
             )
             Box(
                 modifier = Modifier

@@ -81,9 +81,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.library.coverSaturation
+import eu.kanade.presentation.util.LocalNovaSharedTransitionState
+import eu.kanade.presentation.util.novaMangaSharedArtwork
+import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -116,6 +119,25 @@ fun NovaVikiLibraryScreen(
     var sortDescending by rememberSaveable { mutableStateOf(true) }
     var selectedCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
+    val sharedTransitionState = LocalNovaSharedTransitionState.current
+    val transitionItemsById = remember(libraryItems, lightNovelItems, heroItems) {
+        (libraryItems + lightNovelItems + heroItems).associateBy { it.id }
+    }
+    val selectedTransitionMangaId = sharedTransitionState?.selectedMangaId
+    val openMangaWithTransition: (Long) -> Unit = { mangaId ->
+        transitionItemsById[mangaId]?.let { item ->
+            sharedTransitionState?.selectManga(item.id, item.coverData, item.title)
+        }
+        onOpenManga(mangaId)
+    }
+    val playWithTransition: (Long?) -> Unit = { mangaId ->
+        mangaId?.let { id ->
+            transitionItemsById[id]?.let { item ->
+                sharedTransitionState?.selectManga(item.id, item.coverData, item.title)
+            }
+        }
+        onPlay(mangaId)
+    }
     val gridState = rememberLazyGridState()
     val hasScrolled by remember {
         derivedStateOf {
@@ -266,8 +288,8 @@ fun NovaVikiLibraryScreen(
                             ) {
                                 NovaVikiHero(
                                     heroes = spotlightItems,
-                                    onPlay = onPlay,
-                                    onOpenManga = onOpenManga,
+                                    onPlay = playWithTransition,
+                                    onOpenManga = openMangaWithTransition,
                                     compactLayout = true,
                                 )
                             }
@@ -320,14 +342,15 @@ fun NovaVikiLibraryScreen(
                                     NovaLibraryGridCard(
                                         item = item,
                                         widthFraction = cardWidthFraction,
+                                        sharedTransitionActive = selectedTransitionMangaId == item.id,
                                         onClick = {
                                             if (item.id >= 0L) {
-                                                onOpenManga(item.id)
+                                                openMangaWithTransition(item.id)
                                             }
                                         },
                                         onLongClick = {
                                             if (item.id >= 0L) {
-                                                onPlay(item.id)
+                                                playWithTransition(item.id)
                                             }
                                         },
                                     )
@@ -688,6 +711,7 @@ private fun NovaLibrarySortActions(
 private fun NovaLibraryGridCard(
     item: NovaVikiManga,
     widthFraction: Float,
+    sharedTransitionActive: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -749,6 +773,12 @@ private fun NovaLibraryGridCard(
                 .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
                 .background(Brush.linearGradient(item.colors)),
         ) {
+            Box(
+                modifier = Modifier
+                    .novaMangaSharedSurface(item.id, enabled = sharedTransitionActive)
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(item.colors)),
+            )
             if (item.coverData != null) {
                 AsyncImage(
                     model = coverRequest,
@@ -756,7 +786,9 @@ private fun NovaLibraryGridCard(
                     contentScale = ContentScale.Crop,
                     filterQuality = FilterQuality.High,
                     colorFilter = coverColorFilter,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .novaMangaSharedArtwork(item.id, enabled = sharedTransitionActive)
+                        .fillMaxSize(),
                 )
             }
             Box(

@@ -51,6 +51,7 @@ import eu.kanade.presentation.manga.ChapterSettingsDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.manga.EditCoverAction
 import eu.kanade.presentation.manga.MangaScreen
+import eu.kanade.presentation.manga.NovaMangaTransitionLoading
 import eu.kanade.presentation.manga.components.ClearMangaDialog
 import eu.kanade.presentation.manga.components.DeleteChaptersDialog
 import eu.kanade.presentation.manga.components.MangaCoverDialog
@@ -59,6 +60,7 @@ import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.more.settings.screen.SettingsEhScreen
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.presentation.util.AssistContentScreen
+import eu.kanade.presentation.util.NovaTitleDetailScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -129,7 +131,7 @@ class MangaScreen(
      */
     val fromSource: Boolean = false,
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
-) : Screen(), AssistContentScreen {
+) : Screen(), AssistContentScreen, NovaTitleDetailScreen {
 
     private var assistUrl: String? = null
 
@@ -138,7 +140,7 @@ class MangaScreen(
     @Composable
     override fun Content() {
         if (!ifSourcesLoaded()) {
-            LoadingScreen()
+            NovaMangaTransitionLoading(mangaId)
             return
         }
 
@@ -159,7 +161,7 @@ class MangaScreen(
         val state by screenModel.state.collectAsStateWithLifecycle()
 
         if (state is MangaScreenModel.State.Loading) {
-            LoadingScreen()
+            NovaMangaTransitionLoading(mangaId)
             return
         }
 
