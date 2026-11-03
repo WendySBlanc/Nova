@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,16 +31,20 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,18 +69,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
@@ -108,6 +112,12 @@ fun NovaVikiLibraryScreen(
     var sortDescending by rememberSaveable { mutableStateOf(true) }
     var selectedCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
+    val gridState = rememberLazyGridState()
+    val hasScrolled by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0
+        }
+    }
     val tabItems = remember(selectedTab, libraryItems, lightNovelItems) {
         if (selectedTab == 0) libraryItems else lightNovelItems
     }
@@ -149,6 +159,11 @@ fun NovaVikiLibraryScreen(
             selectedCategoryId = null
         }
     }
+    LaunchedEffect(selectedTab, selectedCategoryId, sortOption, sortDescending) {
+        if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
+            gridState.scrollToItem(0)
+        }
+    }
 
     PullRefresh(
         refreshing = isRefreshing,
@@ -174,6 +189,26 @@ fun NovaVikiLibraryScreen(
                 subtitle = librarySummary,
                 onSearch = onSearch,
             )
+            NovaLibraryControlBand(
+                selectedTab = selectedTab,
+                allSeriesCount = libraryItems.size,
+                lightNovelCount = lightNovelItems.size,
+                categories = categories,
+                categoryCounts = categoryCounts,
+                selectedCategoryId = selectedCategoryId,
+                sortOption = sortOption,
+                sortDescending = sortDescending,
+                elevated = hasScrolled,
+                onSelectTab = { selectedTab = it },
+                onSelectCategory = { selectedCategoryId = it },
+                onSortOptionSelected = { sortOption = it },
+                onToggleDirection = { sortDescending = !sortDescending },
+            )
+            val dividerColor by animateColorAsState(
+                targetValue = if (hasScrolled) NovaVikiColors.Outline else Color.Transparent,
+                label = "library_controls_divider",
+            )
+            HorizontalDivider(color = dividerColor)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
@@ -212,9 +247,11 @@ fun NovaVikiLibraryScreen(
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
+                        state = gridState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             start = horizontalPadding,
+                            top = 8.dp,
                             end = horizontalPadding,
                             bottom = 24.dp,
                         ),
@@ -233,25 +270,6 @@ fun NovaVikiLibraryScreen(
                                     compactLayout = true,
                                 )
                             }
-                        }
-                        item(
-                            key = "library_controls",
-                            span = { GridItemSpan(maxLineSpan) },
-                        ) {
-                            NovaLibraryControlBand(
-                                selectedTab = selectedTab,
-                                allSeriesCount = libraryItems.size,
-                                lightNovelCount = lightNovelItems.size,
-                                categories = categories,
-                                categoryCounts = categoryCounts,
-                                selectedCategoryId = selectedCategoryId,
-                                sortOption = sortOption,
-                                sortDescending = sortDescending,
-                                onSelectTab = { selectedTab = it },
-                                onSelectCategory = { selectedCategoryId = it },
-                                onSortOptionSelected = { sortOption = it },
-                                onToggleDirection = { sortDescending = !sortDescending },
-                            )
                         }
                         if (!isLibraryReady) {
                             items(
@@ -327,18 +345,25 @@ private fun NovaLibraryControlBand(
     selectedCategoryId: Long?,
     sortOption: NovaLibrarySortOption,
     sortDescending: Boolean,
+    elevated: Boolean,
     onSelectTab: (Int) -> Unit,
     onSelectCategory: (Long?) -> Unit,
     onSortOptionSelected: (NovaLibrarySortOption) -> Unit,
     onToggleDirection: () -> Unit,
 ) {
+    val background by animateColorAsState(
+        targetValue = if (elevated) NovaVikiColors.Surface else NovaVikiColors.Background,
+        label = "library_controls_background",
+    )
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NovaVikiColors.Background),
+            .background(background),
+        contentAlignment = Alignment.TopCenter,
     ) {
         val compact = maxWidth < 360.dp
         val expandedLayout = maxWidth >= 600.dp
+        val showCompactSortLabel = !compact && maxWidth >= 520.dp
         val activeTotalCount = if (selectedTab == 0) allSeriesCount else lightNovelCount
         val horizontalPadding = when {
             compact -> 10.dp
@@ -347,18 +372,20 @@ private fun NovaLibraryControlBand(
         }
         Column(
             modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.GridContentMaxWidth)
                 .fillMaxWidth()
                 .padding(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 10.dp,
+                    top = 6.dp,
                     bottom = 8.dp,
                 ),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Box(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterStart,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 NovaLibraryModeSelector(
                     selectedTab = selectedTab,
@@ -368,30 +395,48 @@ private fun NovaLibraryControlBand(
                     modifier = if (expandedLayout) {
                         Modifier
                             .widthIn(max = 460.dp)
-                            .fillMaxWidth()
+                            .weight(1f)
+                    } else if (categories.isEmpty()) {
+                        Modifier.weight(1f)
                     } else {
                         Modifier.fillMaxWidth()
                     },
                 )
+                if (expandedLayout || categories.isEmpty()) {
+                    NovaLibrarySortActions(
+                        sortOption = sortOption,
+                        sortDescending = sortDescending,
+                        showSortLabel = expandedLayout,
+                        onSortOptionSelected = onSortOptionSelected,
+                        onToggleDirection = onToggleDirection,
+                    )
+                }
             }
             if (categories.isNotEmpty()) {
-                NovaLibraryCategoryFilters(
-                    categories = categories,
-                    categoryCounts = categoryCounts,
-                    allCount = activeTotalCount,
-                    selectedCategoryId = selectedCategoryId,
-                    onSelectCategory = onSelectCategory,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                )
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NovaLibraryCategoryFilters(
+                        categories = categories,
+                        categoryCounts = categoryCounts,
+                        allCount = activeTotalCount,
+                        selectedCategoryId = selectedCategoryId,
+                        onSelectCategory = onSelectCategory,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (!expandedLayout) {
+                        NovaLibrarySortActions(
+                            sortOption = sortOption,
+                            sortDescending = sortDescending,
+                            showSortLabel = showCompactSortLabel,
+                            onSortOptionSelected = onSortOptionSelected,
+                            onToggleDirection = onToggleDirection,
+                        )
+                    }
+                }
             }
-            NovaLibrarySortActions(
-                sortOption = sortOption,
-                sortDescending = sortDescending,
-                showSortLabel = !compact,
-                onSortOptionSelected = onSortOptionSelected,
-                onToggleDirection = onToggleDirection,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
@@ -550,19 +595,10 @@ private fun NovaLibrarySortActions(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
-        modifier = modifier.height(NovaVikiDimensions.MinimumTouchTarget),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "Trier par",
-            color = NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
         Box {
             Row(
                 modifier = Modifier
@@ -573,13 +609,16 @@ private fun NovaLibrarySortActions(
                         role = Role.Button,
                         onClick = { expanded = true },
                     )
+                    .semantics {
+                        contentDescription = "Tri: ${sortOption.label}"
+                    }
                     .padding(horizontal = if (showSortLabel) 12.dp else 14.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.SortByAlpha,
-                    contentDescription = "Trier la bibliothèque",
+                    contentDescription = null,
                     tint = NovaVikiColors.TextPrimary,
                     modifier = Modifier.size(18.dp),
                 )
@@ -610,6 +649,17 @@ private fun NovaLibrarySortActions(
                         onClick = {
                             onSortOptionSelected(option)
                             expanded = false
+                        },
+                        trailingIcon = if (option == sortOption) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    tint = NovaVikiColors.Accent,
+                                )
+                            }
+                        } else {
+                            null
                         },
                     )
                 }
@@ -653,6 +703,12 @@ private fun NovaLibraryGridCard(
     val progressPercent = item.progress
         ?.coerceIn(0f, 1f)
         ?.let { (it * 100f).roundToInt() }
+    val readingState = when {
+        item.remainingChapters > 1L -> "${item.remainingChapters} chapitres à lire"
+        item.remainingChapters == 1L -> "1 chapitre à lire"
+        progressPercent != null -> "progression $progressPercent pour cent"
+        else -> "à jour"
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth(widthFraction)
@@ -661,7 +717,9 @@ private fun NovaLibraryGridCard(
                 scaleY = scale
             }
             .semantics(mergeDescendants = true) {
-                contentDescription = "${item.title}, ${item.subtitle}"
+                contentDescription = listOf(item.title, item.subtitle, readingState)
+                    .filter { it.isNotBlank() }
+                    .joinToString()
             }
             .clickable(
                 interactionSource = interactionSource,
