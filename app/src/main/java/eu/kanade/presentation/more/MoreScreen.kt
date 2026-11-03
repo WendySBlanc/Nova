@@ -1,11 +1,13 @@
 package eu.kanade.presentation.more
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -54,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -292,6 +295,7 @@ private fun NovaMeIdentity(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 108.dp)
+            .animateContentSize()
             .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
             .background(NovaVikiColors.Surface)
             .border(1.dp, NovaVikiColors.Outline, RoundedCornerShape(NovaVikiDimensions.ControlCorner)),
@@ -427,7 +431,7 @@ private fun NovaQuickAction(
             .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
             .background(NovaVikiColors.SurfaceStrong)
             .border(1.dp, NovaVikiColors.Outline, RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -586,7 +590,7 @@ private fun NovaMoreActionRow(
         subtitle = subtitle,
         icon = icon,
         accent = accent,
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(role = Role.Button, onClick = onClick),
         trailing = {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
@@ -611,7 +615,11 @@ private fun NovaMoreToggleRow(
         subtitle = subtitle,
         icon = icon,
         accent = if (checked) NovaMoreAccent else NovaVikiColors.TextSecondary,
-        modifier = Modifier.clickable { onCheckedChanged(!checked) },
+        modifier = Modifier.toggleable(
+            value = checked,
+            role = Role.Switch,
+            onValueChange = onCheckedChanged,
+        ),
         trailing = {
             Switch(
                 checked = checked,
@@ -630,7 +638,11 @@ private fun NovaMoreBaseRow(
     modifier: Modifier = Modifier,
     trailing: @Composable () -> Unit,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
