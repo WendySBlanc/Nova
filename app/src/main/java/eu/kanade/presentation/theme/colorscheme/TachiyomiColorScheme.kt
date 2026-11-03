@@ -1,9 +1,7 @@
 package eu.kanade.presentation.theme.colorscheme
 
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.ui.graphics.Color
-import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.novaSignalDarkColorScheme
+import eu.kanade.presentation.theme.novaSignalLightColorScheme
 
 /**
  * Colors for Default theme
@@ -17,75 +15,7 @@ import eu.kanade.presentation.theme.NovaVikiColors
  */
 internal object TachiyomiColorScheme : BaseColorScheme() {
 
-    override val darkScheme = darkColorScheme(
-        primary = NovaVikiColors.Accent,
-        onPrimary = Color(0xFF002638),
-        primaryContainer = NovaVikiColors.AccentSoft,
-        onPrimaryContainer = Color(0xFFBCE5FF),
-        inversePrimary = Color(0xFF00658C),
-        secondary = NovaVikiColors.AccentWarm, // Unread badge
-        onSecondary = Color(0xFF5D1023), // Unread badge text
-        secondaryContainer = Color(0xFF76273A), // Navigation bar selector pill & pro
-        onSecondaryContainer = Color(0xFFFFD9DE), // Navigation bar selector icon
-        tertiary = NovaVikiColors.Success, // Downloaded badge
-        onTertiary = Color(0xFF003920), // Downloaded badge text
-        tertiaryContainer = Color(0xFF145233),
-        onTertiaryContainer = Color(0xFFA5F2C5),
-        background = NovaVikiColors.Background,
-        onBackground = NovaVikiColors.TextPrimary,
-        surface = NovaVikiColors.Surface,
-        onSurface = NovaVikiColors.TextPrimary,
-        surfaceVariant = NovaVikiColors.SurfaceRaised, // Navigation bar background (ThemePrefWidget)
-        onSurfaceVariant = NovaVikiColors.TextSecondary,
-        surfaceTint = NovaVikiColors.Accent,
-        inverseSurface = Color(0xFFE2E6EB),
-        inverseOnSurface = Color(0xFF171A1F),
-        error = NovaVikiColors.Danger,
-        onError = Color(0xFF690005),
-        errorContainer = Color(0xFF93000A),
-        onErrorContainer = Color(0xFFFFDAD6),
-        outline = NovaVikiColors.OutlineStrong,
-        outlineVariant = NovaVikiColors.Outline,
-        surfaceContainerLowest = NovaVikiColors.Background,
-        surfaceContainerLow = NovaVikiColors.Surface,
-        surfaceContainer = NovaVikiColors.Surface, // Navigation bar background
-        surfaceContainerHigh = NovaVikiColors.SurfaceRaised,
-        surfaceContainerHighest = NovaVikiColors.SurfaceStrong,
-    )
+    override val darkScheme = novaSignalDarkColorScheme()
 
-    override val lightScheme = lightColorScheme(
-        primary = Color(0xFF0058CA),
-        onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFFD9E2FF),
-        onPrimaryContainer = Color(0xFF001945),
-        inversePrimary = Color(0xFFB0C6FF),
-        secondary = Color(0xFF0058CA), // Unread badge
-        onSecondary = Color(0xFFFFFFFF), // Unread badge text
-        secondaryContainer = Color(0xFFD9E2FF), // Navigation bar selector pill & progress indicator (remaining)
-        onSecondaryContainer = Color(0xFF001945), // Navigation bar selector icon
-        tertiary = Color(0xFF006E1B), // Downloaded badge
-        onTertiary = Color(0xFFFFFFFF), // Downloaded badge text
-        tertiaryContainer = Color(0xFF95F990),
-        onTertiaryContainer = Color(0xFF002203),
-        background = Color(0xFFFEFBFF),
-        onBackground = Color(0xFF1B1B1F),
-        surface = Color(0xFFFEFBFF),
-        onSurface = Color(0xFF1B1B1F),
-        surfaceVariant = Color(0xFFF3EDF7), // Navigation bar background (ThemePrefWidget)
-        onSurfaceVariant = Color(0xFF44464F),
-        surfaceTint = Color(0xFF0058CA),
-        inverseSurface = Color(0xFF303034),
-        inverseOnSurface = Color(0xFFF2F0F4),
-        error = Color(0xFFBA1A1A),
-        onError = Color(0xFFFFFFFF),
-        errorContainer = Color(0xFFFFDAD6),
-        onErrorContainer = Color(0xFF410002),
-        outline = Color(0xFF757780),
-        outlineVariant = Color(0xFFC5C6D0),
-        surfaceContainerLowest = Color(0xFFF5F1F8),
-        surfaceContainerLow = Color(0xFFF7F2FA),
-        surfaceContainer = Color(0xFFF3EDF7), // Navigation bar background
-        surfaceContainerHigh = Color(0xFFFCF7FF),
-        surfaceContainerHighest = Color(0xFFFCF7FF),
-    )
+    override val lightScheme = novaSignalLightColorScheme()
 }
