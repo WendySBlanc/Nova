@@ -91,6 +91,7 @@ import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.category.interactor.GetCategories
+import tachiyomi.domain.category.interactor.CreateCategoryWithName
 import tachiyomi.domain.category.interactor.SetMangaCategories
 import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.category.model.Category.Companion.UNCATEGORIZED_ID
@@ -131,6 +132,7 @@ import tachiyomi.domain.source.model.Source as DomainSource
 class LibraryScreenModel(
     private val getLibraryManga: GetLibraryManga = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
+    private val createCategoryWithName: CreateCategoryWithName = Injekt.get(),
     private val getTracksPerManga: GetTracksPerManga = Injekt.get(),
     private val getNextChapters: GetNextChapters = Injekt.get(),
     private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
@@ -1193,6 +1195,40 @@ class LibraryScreenModel(
 
                 setMangaCategories.await(manga.id, categoryIds)
             }
+        }
+    }
+
+    fun setNovaArchived(mangaId: Long, archived: Boolean) {
+        screenModelScope.launchNonCancellable {
+            var archiveCategory = getCategories.await()
+                .filter { category ->
+                    category.name.equals(
+                        eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME,
+                        ignoreCase = true,
+                    )
+                }
+                .minByOrNull { category -> category.id }
+
+            if (archived && archiveCategory == null) {
+                createCategoryWithName.await(eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME)
+                archiveCategory = getCategories.await()
+                    .filter { category ->
+                        category.name.equals(
+                            eu.kanade.presentation.library.NOVA_ARCHIVE_CATEGORY_NAME,
+                            ignoreCase = true,
+                        )
+                    }
+                    .minByOrNull { category -> category.id }
+            }
+
+            val archiveId = archiveCategory?.id ?: return@launchNonCancellable
+            val existingIds = getCategories.await(mangaId).mapTo(linkedSetOf()) { category -> category.id }
+            if (archived) {
+                existingIds += archiveId
+            } else {
+                existingIds -= archiveId
+            }
+            setMangaCategories.await(mangaId, existingIds.toList())
         }
     }
 

@@ -40,6 +40,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.BookmarkRemove
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SortByAlpha
@@ -82,6 +84,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.library.coverSaturation
+import eu.kanade.presentation.library.filterNovaLibraryShelf
+import eu.kanade.presentation.library.findNovaArchiveCategory
+import eu.kanade.presentation.library.novaCollectionCategories
+import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
@@ -104,23 +110,25 @@ data class NovaLibraryCategory(
 fun NovaVikiLibraryScreen(
     libraryItems: List<NovaVikiManga>,
     lightNovelItems: List<NovaVikiManga>,
-    heroItems: List<NovaVikiManga>,
     categories: List<NovaLibraryCategory>,
     isLibraryReady: Boolean,
     onPlay: (Long?) -> Unit,
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
+    onSetArchived: (Long, Boolean) -> Unit,
     onRefresh: () -> Boolean,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedShelfIndex by rememberSaveable { mutableIntStateOf(NovaLibraryShelf.Current.ordinal) }
+    val selectedShelf = NovaLibraryShelf.entries[selectedShelfIndex]
     var isRefreshing by remember { mutableStateOf(false) }
     var sortOption by rememberSaveable { mutableStateOf(NovaLibrarySortOption.LastRead) }
     var sortDescending by rememberSaveable { mutableStateOf(true) }
     var selectedCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val sharedTransitionState = LocalNovaSharedTransitionState.current
-    val transitionItemsById = remember(libraryItems, lightNovelItems, heroItems) {
-        (libraryItems + lightNovelItems + heroItems).associateBy { it.id }
+    val transitionItemsById = remember(libraryItems, lightNovelItems) {
+        (libraryItems + lightNovelItems).associateBy { it.id }
     }
     val selectedTransitionMangaId = sharedTransitionState?.selectedMangaId
     val openMangaWithTransition: (Long) -> Unit = { mangaId ->
@@ -139,24 +147,33 @@ fun NovaVikiLibraryScreen(
     val tabItems = remember(selectedTab, libraryItems, lightNovelItems) {
         if (selectedTab == 0) libraryItems else lightNovelItems
     }
-    val categoryCounts = remember(tabItems, categories) {
-        categories.associate { category ->
-            category.id to tabItems.count { item -> category.id in item.categoryIds }
+    val archiveCategory = remember(categories) { findNovaArchiveCategory(categories) }
+    val collectionCategories = remember(categories) { novaCollectionCategories(categories) }
+    val currentItems = remember(tabItems, archiveCategory) {
+        filterNovaLibraryShelf(tabItems, NovaLibraryShelf.Current, archiveCategory?.id)
+    }
+    val archivedItems = remember(tabItems, archiveCategory) {
+        filterNovaLibraryShelf(tabItems, NovaLibraryShelf.Archive, archiveCategory?.id)
+    }
+    val shelfItems = remember(tabItems, selectedShelf, archiveCategory) {
+        filterNovaLibraryShelf(tabItems, selectedShelf, archiveCategory?.id)
+    }
+    val categoryCounts = remember(shelfItems, collectionCategories) {
+        collectionCategories.associate { category ->
+            category.id to shelfItems.count { item -> category.id in item.categoryIds }
         }
     }
-    val visibleItems = remember(tabItems, selectedCategoryId) {
-        selectedCategoryId?.let { categoryId ->
-            tabItems.filter { item -> categoryId in item.categoryIds }
-        } ?: tabItems
+    val visibleItems = remember(shelfItems, selectedShelf, selectedCategoryId) {
+        if (selectedShelf == NovaLibraryShelf.Collections) {
+            selectedCategoryId?.let { categoryId ->
+                shelfItems.filter { item -> categoryId in item.categoryIds }
+            } ?: shelfItems
+        } else {
+            shelfItems
+        }
     }
     val sortedVisibleItems = remember(visibleItems, sortOption, sortDescending) {
         visibleItems.sortedForLibrary(sortOption, sortDescending)
-    }
-    val spotlightItems = remember(heroItems, visibleItems) {
-        val visibleIds = visibleItems.mapTo(mutableSetOf()) { item -> item.id }
-        heroItems
-            .filter { item -> item.id in visibleIds }
-            .ifEmpty { visibleItems.take(5) }
     }
     val unreadChapterCount = remember(libraryItems) {
         libraryItems.sumOf { it.remainingChapters.coerceAtLeast(0L) }
@@ -171,13 +188,17 @@ fun NovaVikiLibraryScreen(
             "Bibliothèque à jour"
         }
     }
-    LaunchedEffect(categories) {
+    LaunchedEffect(collectionCategories, selectedShelf) {
+        if (selectedShelf != NovaLibraryShelf.Collections) {
+            selectedCategoryId = null
+            return@LaunchedEffect
+        }
         val selectedId = selectedCategoryId ?: return@LaunchedEffect
-        if (categories.none { category -> category.id == selectedId }) {
+        if (collectionCategories.none { category -> category.id == selectedId }) {
             selectedCategoryId = null
         }
     }
-    LaunchedEffect(selectedTab, selectedCategoryId, sortOption, sortDescending) {
+    LaunchedEffect(selectedTab, selectedShelfIndex, selectedCategoryId, sortOption, sortDescending) {
         if (gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0) {
             gridState.scrollToItem(0)
         }
@@ -208,15 +229,22 @@ fun NovaVikiLibraryScreen(
                 onSearch = onSearch,
             )
             NovaLibraryControlBand(
+                selectedShelf = selectedShelf,
+                currentCount = currentItems.size,
+                archiveCount = archivedItems.size,
                 selectedTab = selectedTab,
                 allSeriesCount = libraryItems.size,
                 lightNovelCount = lightNovelItems.size,
-                categories = categories,
+                categories = collectionCategories,
                 categoryCounts = categoryCounts,
                 selectedCategoryId = selectedCategoryId,
                 sortOption = sortOption,
                 sortDescending = sortDescending,
                 elevated = hasScrolled,
+                onSelectShelf = { shelf ->
+                    selectedShelfIndex = shelf.ordinal
+                    selectedCategoryId = null
+                },
                 onSelectTab = { selectedTab = it },
                 onSelectCategory = { selectedCategoryId = it },
                 onSortOptionSelected = { sortOption = it },
@@ -273,19 +301,6 @@ fun NovaVikiLibraryScreen(
                         horizontalArrangement = Arrangement.spacedBy(horizontalGap),
                         verticalArrangement = Arrangement.spacedBy(verticalGap),
                     ) {
-                        if (isLibraryReady && visibleItems.isNotEmpty()) {
-                            item(
-                                key = "library_hero",
-                                span = { GridItemSpan(maxLineSpan) },
-                            ) {
-                                NovaVikiHero(
-                                    heroes = spotlightItems,
-                                    onPlay = playManga,
-                                    onOpenManga = openMangaWithTransition,
-                                    compactLayout = true,
-                                )
-                            }
-                        }
                         if (!isLibraryReady) {
                             items(
                                 count = loadingColumns * 2,
@@ -333,6 +348,7 @@ fun NovaVikiLibraryScreen(
                                 ) {
                                     NovaLibraryGridCard(
                                         item = item,
+                                        archived = archiveCategory?.id?.let(item.categoryIds::contains) == true,
                                         widthFraction = cardWidthFraction,
                                         sharedTransitionActive = selectedTransitionMangaId == item.id,
                                         onClick = {
@@ -343,6 +359,12 @@ fun NovaVikiLibraryScreen(
                                         onLongClick = {
                                             if (item.id >= 0L) {
                                                 playManga(item.id)
+                                            }
+                                        },
+                                        onArchive = {
+                                            if (item.id >= 0L) {
+                                                val isArchived = archiveCategory?.id?.let(item.categoryIds::contains) == true
+                                                onSetArchived(item.id, !isArchived)
                                             }
                                         },
                                     )
@@ -358,6 +380,9 @@ fun NovaVikiLibraryScreen(
 
 @Composable
 private fun NovaLibraryControlBand(
+    selectedShelf: NovaLibraryShelf,
+    currentCount: Int,
+    archiveCount: Int,
     selectedTab: Int,
     allSeriesCount: Int,
     lightNovelCount: Int,
@@ -367,6 +392,7 @@ private fun NovaLibraryControlBand(
     sortOption: NovaLibrarySortOption,
     sortDescending: Boolean,
     elevated: Boolean,
+    onSelectShelf: (NovaLibraryShelf) -> Unit,
     onSelectTab: (Int) -> Unit,
     onSelectCategory: (Long?) -> Unit,
     onSortOptionSelected: (NovaLibrarySortOption) -> Unit,
@@ -385,6 +411,7 @@ private fun NovaLibraryControlBand(
         val compact = maxWidth < 360.dp
         val expandedLayout = maxWidth >= 600.dp
         val showCompactSortLabel = !compact && maxWidth >= 520.dp
+        val showCollections = selectedShelf == NovaLibraryShelf.Collections && categories.isNotEmpty()
         val activeTotalCount = if (selectedTab == 0) allSeriesCount else lightNovelCount
         val horizontalPadding = when {
             compact -> 10.dp
@@ -403,6 +430,12 @@ private fun NovaLibraryControlBand(
                 ),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            NovaLibraryShelfSelector(
+                selectedShelf = selectedShelf,
+                currentCount = currentCount,
+                archiveCount = archiveCount,
+                onSelectShelf = onSelectShelf,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -417,13 +450,13 @@ private fun NovaLibraryControlBand(
                         Modifier
                             .widthIn(max = 460.dp)
                             .weight(1f)
-                    } else if (categories.isEmpty()) {
+                    } else if (!showCollections) {
                         Modifier.weight(1f)
                     } else {
                         Modifier.fillMaxWidth()
                     },
                 )
-                if (expandedLayout || categories.isEmpty()) {
+                if (expandedLayout || !showCollections) {
                     NovaLibrarySortActions(
                         sortOption = sortOption,
                         sortDescending = sortDescending,
@@ -433,7 +466,7 @@ private fun NovaLibraryControlBand(
                     )
                 }
             }
-            if (categories.isNotEmpty()) {
+            if (showCollections) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -457,6 +490,53 @@ private fun NovaLibraryControlBand(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NovaLibraryShelfSelector(
+    selectedShelf: NovaLibraryShelf,
+    currentCount: Int,
+    archiveCount: Int,
+    onSelectShelf: (NovaLibraryShelf) -> Unit,
+) {
+    val shelves = listOf(
+        Triple(NovaLibraryShelf.Current, "En cours", currentCount),
+        Triple(NovaLibraryShelf.Archive, "Archives", archiveCount),
+        Triple(NovaLibraryShelf.Collections, "Collections", currentCount),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(NovaVikiDimensions.MinimumTouchTarget)
+            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
+            .background(NovaVikiColors.Surface)
+            .selectableGroup(),
+    ) {
+        shelves.forEach { (shelf, label, count) ->
+            val selected = selectedShelf == shelf
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .background(if (selected) NovaVikiColors.SurfaceInteractive else Color.Transparent)
+                    .selectable(
+                        selected = selected,
+                        role = Role.Tab,
+                        onClick = { onSelectShelf(shelf) },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "$label  $count",
+                    color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -702,10 +782,12 @@ private fun NovaLibrarySortActions(
 @Composable
 private fun NovaLibraryGridCard(
     item: NovaVikiManga,
+    archived: Boolean,
     widthFraction: Float,
     sharedTransitionActive: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onArchive: () -> Unit,
 ) {
     val coverRequest = rememberHighQualityImageRequest(
         data = item.coverData,
@@ -837,6 +919,21 @@ private fun NovaLibraryGridCard(
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .height(4.dp)
                         .background(NovaVikiColors.Accent),
+                )
+            }
+            IconButton(
+                onClick = onArchive,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.64f)),
+            ) {
+                Icon(
+                    imageVector = if (archived) Icons.Outlined.BookmarkRemove else Icons.Outlined.BookmarkAdd,
+                    contentDescription = if (archived) "Retirer des archives" else "Archiver",
+                    tint = Color.White,
                 )
             }
         }

@@ -6,7 +6,6 @@ import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -31,7 +30,6 @@ import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
-import kotlinx.coroutines.launch
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -68,52 +66,6 @@ data object NovaLibraryTab : Tab {
         } else {
             emptyList()
         }
-        val startedFavoriteItems = remember(favoriteItems) {
-            favoriteItems
-                .filter { item -> item.libraryManga.hasStarted }
-                .sortedByDescending { item -> item.libraryManga.lastRead }
-        }
-        val nextChapterLookupItems = remember(startedFavoriteItems) {
-            startedFavoriteItems.take(NEXT_CHAPTER_LOOKUP_LIMIT)
-        }
-        val nextChapterLabels = remember { mutableStateMapOf<Long, String>() }
-        val nextChapterKey = remember(nextChapterLookupItems) {
-            nextChapterLookupItems.joinToString("|") { item ->
-                "${item.id}:${item.libraryManga.readCount}:${item.libraryManga.unreadCount}:${item.libraryManga.lastRead}"
-            }
-        }
-
-        LaunchedEffect(libraryData.isInitialized, nextChapterKey) {
-            if (!libraryData.isInitialized) {
-                nextChapterLabels.clear()
-                return@LaunchedEffect
-            }
-
-            val activeIds = nextChapterLookupItems.map { it.id }.toSet()
-            nextChapterLabels.keys
-                .toList()
-                .filterNot(activeIds::contains)
-                .forEach(nextChapterLabels::remove)
-
-            nextChapterLookupItems.forEach { item ->
-                launch {
-                    val nextChapter = runCatching {
-                        libraryScreenModel.getNextUnreadChapter(item)
-                    }.getOrNull()
-                    nextChapterLabels[item.id] = nextChapter?.name ?: "Tous les chapitres lus"
-                }
-            }
-        }
-        val nextChapterLabelsSnapshot = nextChapterLabels.toMap()
-
-        fun nextChapterSubtitle(item: LibraryItem): String {
-            return when {
-                !item.libraryManga.hasStarted -> "Prêt à lire"
-                item.libraryManga.unreadCount <= 0L -> "Tous les chapitres lus"
-                else -> nextChapterLabelsSnapshot[item.id]?.let { chapter -> "À suivre : $chapter" }
-                    ?: "Prochain chapitre"
-            }
-        }
         val categoryNamesById = remember(libraryData.categories) {
             libraryData.categories.associate { it.id to it.name }
         }
@@ -142,15 +94,6 @@ data object NovaLibraryTab : Tab {
                     item.toNovaManga(index, mediaType = NovaMediaType.LightNovel)
                 }
         }
-        val heroItems = remember(favoriteItems, nextChapterLabelsSnapshot) {
-            favoriteItems
-                .filter { item -> item.libraryManga.lastRead > 0L }
-                .sortedByDescending { item -> item.libraryManga.lastRead }
-                .take(5)
-                .mapIndexed { index, item ->
-                    item.toNovaManga(index, subtitle = nextChapterSubtitle(item))
-                }
-        }
         fun refreshLibrary(): Boolean {
             val started = LibraryUpdateJob.startNow(context, forceUpdate = true)
             context.toast(if (started) MR.strings.updating_library else MR.strings.update_already_running)
@@ -160,7 +103,6 @@ data object NovaLibraryTab : Tab {
         NovaLibraryScreen(
             libraryItems = libraryItems,
             lightNovelItems = lightNovelItems,
-            heroItems = heroItems,
             categories = libraryCategories,
             isLibraryReady = libraryData.isInitialized,
             onPlay = { mangaId ->
@@ -172,6 +114,7 @@ data object NovaLibraryTab : Tab {
             },
             onSearch = { navigator.push(GlobalSearchScreen("")) },
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
+            onSetArchived = libraryScreenModel::setNovaArchived,
             onRefresh = ::refreshLibrary,
         )
 
@@ -217,8 +160,6 @@ data object NovaLibraryTab : Tab {
                 .toSet(),
         )
     }
-
-    private const val NEXT_CHAPTER_LOOKUP_LIMIT = 8
 
     private fun LibraryItem.isLightNovel(categoryNamesById: Map<Long, String>): Boolean {
         return libraryManga.manga.isLikelyLightNovel(

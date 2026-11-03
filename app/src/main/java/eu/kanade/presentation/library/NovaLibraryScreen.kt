@@ -8,23 +8,23 @@ import eu.kanade.presentation.library.components.NovaVikiLibraryScreen
 fun NovaLibraryScreen(
     libraryItems: List<NovaLibraryEntry>,
     lightNovelItems: List<NovaLibraryEntry>,
-    heroItems: List<NovaLibraryEntry>,
     categories: List<NovaLibraryCategory>,
     isLibraryReady: Boolean,
     onPlay: (Long?) -> Unit,
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
+    onSetArchived: (Long, Boolean) -> Unit,
     onRefresh: () -> Boolean,
 ) {
     NovaVikiLibraryScreen(
         libraryItems = libraryItems,
         lightNovelItems = lightNovelItems,
-        heroItems = heroItems,
         categories = categories,
         isLibraryReady = isLibraryReady,
         onPlay = onPlay,
         onSearch = onSearch,
         onOpenManga = onOpenManga,
+        onSetArchived = onSetArchived,
         onRefresh = onRefresh,
     )
 }
