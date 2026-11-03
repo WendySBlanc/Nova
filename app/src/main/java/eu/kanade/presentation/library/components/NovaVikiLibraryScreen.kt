@@ -8,6 +8,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -322,6 +323,11 @@ fun NovaVikiLibraryScreen(
                                         onClick = {
                                             if (item.id >= 0L) {
                                                 onOpenManga(item.id)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (item.id >= 0L) {
+                                                onPlay(item.id)
                                             }
                                         },
                                     )
@@ -683,6 +689,7 @@ private fun NovaLibraryGridCard(
     item: NovaVikiManga,
     widthFraction: Float,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val coverRequest = rememberHighQualityImageRequest(
         data = item.coverData,
@@ -727,11 +734,12 @@ private fun NovaLibraryGridCard(
                     .filter { it.isNotBlank() }
                     .joinToString()
             }
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 role = Role.Button,
                 onClick = onClick,
+                onLongClick = onLongClick,
             ),
     ) {
         Box(
