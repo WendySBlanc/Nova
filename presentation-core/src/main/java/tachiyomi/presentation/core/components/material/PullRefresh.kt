@@ -1,8 +1,6 @@
 package tachiyomi.presentation.core.components.material
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,20 +52,6 @@ fun PullRefresh(
     val motionProvider = remember(state, refreshing) {
         { resolvePullRefreshMotion(state.distanceFraction, refreshing) }
     }
-    val refreshScale by animateFloatAsState(
-        targetValue = if (refreshing) 1f else 0.84f,
-        animationSpec = if (refreshing) {
-            keyframes {
-                durationMillis = 220
-                0.84f at 0
-                1.08f at 120
-                1f at 220
-            }
-        } else {
-            tween(durationMillis = 90)
-        },
-        label = "pull_refresh_scale",
-    )
     val indicatorContainerColor by animateColorAsState(
         targetValue = if (refreshing) {
             MaterialTheme.colorScheme.primaryContainer
@@ -116,8 +100,8 @@ fun PullRefresh(
                         }
                         PullRefreshMotion.Refreshing -> {
                             alpha = 1f
-                            scaleX = refreshScale
-                            scaleY = refreshScale
+                            scaleX = 1f
+                            scaleY = 1f
                         }
                     }
                 },

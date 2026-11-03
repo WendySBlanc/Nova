@@ -5,12 +5,6 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,6 +22,7 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.ScreenTransitionContent
 import eu.kanade.presentation.home.NovaScreenMotion
 import eu.kanade.presentation.home.resolveNovaScreenMotion
+import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +32,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.plus
 import logcat.LogPriority
 import logcat.logcat
+import soup.compose.material.motion.animation.materialFadeThroughIn
+import soup.compose.material.motion.animation.materialFadeThroughOut
 import soup.compose.material.motion.animation.materialSharedAxisX
 import soup.compose.material.motion.animation.rememberSlideDistance
 
@@ -115,11 +112,9 @@ fun ScreenTransition(
                         resolveNovaScreenMotion(
                             initialIsTitleDetail = initialState is NovaTitleDetailScreen,
                             targetIsTitleDetail = targetState is NovaTitleDetailScreen,
-                            isPop = navigator.lastEvent == StackEvent.Pop,
                         )
                     ) {
-                        NovaScreenMotion.TitleForward -> titleDetailForwardTransform()
-                        NovaScreenMotion.TitleBackward -> titleDetailBackwardTransform()
+                        NovaScreenMotion.TitleDetail -> titleDetailTransform()
                         NovaScreenMotion.SharedAxis -> transition()
                     }
                 },
@@ -140,30 +135,8 @@ fun ScreenTransition(
     }
 }
 
-private fun AnimatedContentTransitionScope<Screen>.titleDetailForwardTransform(): ContentTransform =
-    (
-        fadeIn(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        ) + slideInVertically(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioLowBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-            initialOffsetY = { height -> height / 7 },
-        )
-        ) togetherWith fadeOut()
-
-private fun AnimatedContentTransitionScope<Screen>.titleDetailBackwardTransform(): ContentTransform =
-    fadeIn() togetherWith
-        (
-            fadeOut() + slideOutVertically(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-                targetOffsetY = { height -> height / 7 },
-            )
-            )
+private fun AnimatedContentTransitionScope<Screen>.titleDetailTransform(): ContentTransform =
+    materialFadeThroughIn(
+        initialScale = 1f,
+        durationMillis = NovaSignalMotion.Content,
+    ) togetherWith materialFadeThroughOut(durationMillis = NovaSignalMotion.Content)

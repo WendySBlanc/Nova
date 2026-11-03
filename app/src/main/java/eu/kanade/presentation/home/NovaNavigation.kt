@@ -14,8 +14,7 @@ enum class NovaNavigationLayout {
 
 enum class NovaScreenMotion {
     SharedAxis,
-    TitleForward,
-    TitleBackward,
+    TitleDetail,
 }
 
 fun resolveNovaNavigationLayout(windowWidthDp: Int): NovaNavigationLayout =
@@ -24,9 +23,7 @@ fun resolveNovaNavigationLayout(windowWidthDp: Int): NovaNavigationLayout =
 fun resolveNovaScreenMotion(
     initialIsTitleDetail: Boolean,
     targetIsTitleDetail: Boolean,
-    isPop: Boolean,
 ): NovaScreenMotion = when {
-    !initialIsTitleDetail && targetIsTitleDetail && !isPop -> NovaScreenMotion.TitleForward
-    initialIsTitleDetail && !targetIsTitleDetail && isPop -> NovaScreenMotion.TitleBackward
+    initialIsTitleDetail != targetIsTitleDetail -> NovaScreenMotion.TitleDetail
     else -> NovaScreenMotion.SharedAxis
 }

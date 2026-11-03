@@ -2,8 +2,6 @@ package eu.kanade.presentation.manga
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -12,8 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,7 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,8 +53,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,7 +70,6 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -100,7 +92,6 @@ import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.presentation.util.isLikelyLightNovel
 import eu.kanade.presentation.util.novaMangaSharedArtwork
-import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.manga.ChapterList
@@ -168,16 +159,6 @@ fun NovaMangaScreen(
             DownloadAction.ALL_CHAPTERS to downloadable.size,
         )
     }
-    val listState = rememberLazyListState()
-    val heroScrollProgress by remember {
-        derivedStateOf {
-            if (listState.firstVisibleItemIndex > 0) {
-                1f
-            } else {
-                (listState.firstVisibleItemScrollOffset / 520f).coerceIn(0f, 1f)
-            }
-        }
-    }
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
@@ -194,14 +175,7 @@ fun NovaMangaScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                Box(
-                    modifier = Modifier
-                        .novaMangaSharedSurface(state.manga.id)
-                        .fillMaxSize()
-                        .background(NovaVikiColors.Background),
-                )
                 LazyColumn(
-                    state = listState,
                     modifier = Modifier
                         .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
                         .fillMaxSize(),
@@ -224,7 +198,6 @@ fun NovaMangaScreen(
                             onSourceSettingsClicked = onSourceSettingsClicked,
                             onTitleSearch = onTitleSearch,
                             onSourceSearch = onSourceSearch,
-                            scrollProgress = heroScrollProgress,
                         )
                     }
                     stickyHeader(
@@ -297,7 +270,6 @@ fun NovaMangaScreen(
                             chapterSwipeStartAction = chapterSwipeStartAction,
                             chapterSwipeEndAction = chapterSwipeEndAction,
                             onChapterSwipe = { action -> onChapterSwipe(item, action) },
-                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -323,7 +295,6 @@ private fun NovaMangaHero(
     onSourceSettingsClicked: (() -> Unit)?,
     onTitleSearch: (String) -> Unit,
     onSourceSearch: (String) -> Unit,
-    scrollProgress: Float,
 ) {
     val manga = state.manga
     val coverRequest = rememberHighQualityImageRequest(manga)
@@ -340,23 +311,6 @@ private fun NovaMangaHero(
         )
     }
     var moreActionsExpanded by remember { mutableStateOf(false) }
-    var contentEntered by remember(manga.id) { mutableStateOf(false) }
-    LaunchedEffect(manga.id) {
-        contentEntered = true
-    }
-    val entryProgress by animateFloatAsState(
-        targetValue = if (contentEntered) 1f else 0f,
-        animationSpec = tween(durationMillis = 220, delayMillis = 60),
-        label = "manga-hero-entry",
-    )
-    val artworkScale by animateFloatAsState(
-        targetValue = 1f + scrollProgress * 0.05f,
-        label = "manga-hero-artwork-scale",
-    )
-    val heroContentAlpha by animateFloatAsState(
-        targetValue = 1f - scrollProgress * 0.32f,
-        label = "manga-hero-content-alpha",
-    )
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -408,11 +362,7 @@ private fun NovaMangaHero(
                 modifier = Modifier
                     .novaMangaSharedArtwork(manga.id)
                     .fillMaxWidth()
-                    .height(backdropHeight)
-                    .graphicsLayer {
-                        scaleX = artworkScale
-                        scaleY = artworkScale
-                    },
+                    .height(backdropHeight),
             )
             Box(
                 modifier = Modifier
@@ -515,10 +465,6 @@ private fun NovaMangaHero(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .graphicsLayer {
-                        alpha = heroContentAlpha * entryProgress
-                        translationY = ((1f - entryProgress) * 24f) + (scrollProgress * 18f)
-                    }
                     .padding(horizontal = 14.dp, vertical = if (compact) 14.dp else 18.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
@@ -857,7 +803,6 @@ private fun NovaEpisodeRow(
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     var chapterMenuExpanded by remember { mutableStateOf(false) }
     val title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
@@ -867,7 +812,7 @@ private fun NovaEpisodeRow(
     }
     val previewRequest = rememberHighQualityImageRequest(preview ?: manga)
     BoxWithConstraints(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(NovaVikiColors.Background),
     ) {
@@ -944,12 +889,6 @@ private fun NovaEpisodeRow(
                 onSwipe = { onChapterSwipe(chapterSwipeEndAction) },
             )
         }
-        val interactionSource = remember { MutableInteractionSource() }
-        val pressed by interactionSource.collectIsPressedAsState()
-        val rowScale by animateFloatAsState(
-            targetValue = if (pressed) 0.985f else 1f,
-            label = "chapter-row-press",
-        )
         SwipeableActionsBox(
             modifier = Modifier
                 .fillMaxWidth()
@@ -962,13 +901,7 @@ private fun NovaEpisodeRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer {
-                        scaleX = rowScale
-                        scaleY = rowScale
-                    }
                     .combinedClickable(
-                        interactionSource = interactionSource,
-                        indication = null,
                         onClick = onClick,
                         onLongClick = { chapterMenuExpanded = true },
                     )

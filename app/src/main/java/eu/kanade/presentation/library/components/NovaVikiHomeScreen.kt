@@ -65,7 +65,6 @@ import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
-import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -435,12 +434,6 @@ private fun NovaHeroSlide(
         }
 
         if (hero?.coverData != null) {
-            Box(
-                modifier = Modifier
-                    .novaMangaSharedSurface(hero.id, enabled = sharedTransitionActive)
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(hero.colors)),
-            )
             AsyncImage(
                 model = coverRequest,
                 contentDescription = hero.title,

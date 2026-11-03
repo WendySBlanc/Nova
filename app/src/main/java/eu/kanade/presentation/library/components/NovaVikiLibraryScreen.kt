@@ -86,7 +86,6 @@ import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
-import eu.kanade.presentation.util.novaMangaSharedSurface
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -130,14 +129,7 @@ fun NovaVikiLibraryScreen(
         }
         onOpenManga(mangaId)
     }
-    val playWithTransition: (Long?) -> Unit = { mangaId ->
-        mangaId?.let { id ->
-            transitionItemsById[id]?.let { item ->
-                sharedTransitionState?.selectManga(item.id, item.coverData, item.title)
-            }
-        }
-        onPlay(mangaId)
-    }
+    val playManga: (Long?) -> Unit = onPlay
     val gridState = rememberLazyGridState()
     val hasScrolled by remember {
         derivedStateOf {
@@ -288,7 +280,7 @@ fun NovaVikiLibraryScreen(
                             ) {
                                 NovaVikiHero(
                                     heroes = spotlightItems,
-                                    onPlay = playWithTransition,
+                                    onPlay = playManga,
                                     onOpenManga = openMangaWithTransition,
                                     compactLayout = true,
                                 )
@@ -350,7 +342,7 @@ fun NovaVikiLibraryScreen(
                                         },
                                         onLongClick = {
                                             if (item.id >= 0L) {
-                                                playWithTransition(item.id)
+                                                playManga(item.id)
                                             }
                                         },
                                     )
@@ -724,10 +716,10 @@ private fun NovaLibraryGridCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.965f else 1f,
+        targetValue = if (isPressed) 0.985f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
+            stiffness = Spring.StiffnessMedium,
         ),
         label = "library_card_scale",
     )
@@ -749,10 +741,6 @@ private fun NovaLibraryGridCard(
     Column(
         modifier = Modifier
             .fillMaxWidth(widthFraction)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
             .semantics(mergeDescendants = true) {
                 contentDescription = listOf(item.title, item.subtitle, readingState)
                     .filter { it.isNotBlank() }
@@ -770,15 +758,13 @@ private fun NovaLibraryGridCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.72f)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
                 .background(Brush.linearGradient(item.colors)),
         ) {
-            Box(
-                modifier = Modifier
-                    .novaMangaSharedSurface(item.id, enabled = sharedTransitionActive)
-                    .fillMaxSize()
-                    .background(Brush.linearGradient(item.colors)),
-            )
             if (item.coverData != null) {
                 AsyncImage(
                     model = coverRequest,

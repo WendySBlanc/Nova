@@ -16,7 +16,6 @@ import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
-import eu.kanade.presentation.util.novaMangaSharedSurface
 
 @Composable
 fun NovaMangaTransitionLoading(mangaId: Long) {
@@ -30,12 +29,6 @@ fun NovaMangaTransitionLoading(mangaId: Long) {
             .background(NovaVikiColors.Background),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .novaMangaSharedSurface(mangaId, enabled = transitionActive)
-                .fillMaxSize()
-                .background(NovaVikiColors.Background),
-        )
         if (transitionActive && coverData != null) {
             AsyncImage(
                 model = coverData,

@@ -45,55 +45,31 @@ val LocalNovaSharedTransitionState = compositionLocalOf<NovaSharedTransitionStat
 internal val LocalNovaSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 internal val LocalNovaAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
-private data class NovaMangaSharedKey(
-    val mangaId: Long,
-    val element: String,
-)
+private data class NovaMangaArtworkKey(val mangaId: Long)
 
-private val MangaBoundsTransform = BoundsTransform { _, _ ->
+private val MangaArtworkBoundsTransform = BoundsTransform { _, _ ->
     spring(
-        dampingRatio = Spring.DampingRatioLowBouncy,
+        dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
     )
 }
 
 @Composable
-fun Modifier.novaMangaSharedSurface(
-    mangaId: Long,
-    enabled: Boolean = true,
-): Modifier = novaMangaSharedBounds(
-    mangaId = mangaId,
-    element = "surface",
-    enabled = enabled,
-)
-
-@Composable
 fun Modifier.novaMangaSharedArtwork(
     mangaId: Long,
     enabled: Boolean = true,
-): Modifier = novaMangaSharedBounds(
-    mangaId = mangaId,
-    element = "artwork",
-    enabled = enabled,
-)
-
-@Composable
-private fun Modifier.novaMangaSharedBounds(
-    mangaId: Long,
-    element: String,
-    enabled: Boolean,
 ): Modifier {
     if (!enabled) return this
     val sharedScope = LocalNovaSharedTransitionScope.current ?: return this
     val visibilityScope = LocalNovaAnimatedVisibilityScope.current ?: return this
 
     return with(sharedScope) {
-        this@novaMangaSharedBounds.sharedBounds(
+        this@novaMangaSharedArtwork.sharedBounds(
             sharedContentState = rememberSharedContentState(
-                key = NovaMangaSharedKey(mangaId, element),
+                key = NovaMangaArtworkKey(mangaId),
             ),
             animatedVisibilityScope = visibilityScope,
-            boundsTransform = MangaBoundsTransform,
+            boundsTransform = MangaArtworkBoundsTransform,
         )
     }
 }

@@ -28,21 +28,18 @@ class NovaNavigationTest {
     }
 
     @Test
-    fun `title details open upward and return along the same path`() {
+    fun `title details use one focused transition in both directions`() {
         resolveNovaScreenMotion(
             initialIsTitleDetail = false,
             targetIsTitleDetail = true,
-            isPop = false,
-        ) shouldBe NovaScreenMotion.TitleForward
+        ) shouldBe NovaScreenMotion.TitleDetail
         resolveNovaScreenMotion(
             initialIsTitleDetail = true,
             targetIsTitleDetail = false,
-            isPop = true,
-        ) shouldBe NovaScreenMotion.TitleBackward
+        ) shouldBe NovaScreenMotion.TitleDetail
         resolveNovaScreenMotion(
             initialIsTitleDetail = false,
             targetIsTitleDetail = false,
-            isPop = false,
         ) shouldBe NovaScreenMotion.SharedAxis
     }
 }
