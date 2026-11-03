@@ -2,6 +2,7 @@ package eu.kanade.presentation.manga
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -10,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +57,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -69,6 +75,7 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -84,6 +91,8 @@ import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
+import eu.kanade.presentation.manga.components.getSwipeAction
+import eu.kanade.presentation.manga.components.swipeActionThreshold
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.formatChapterNumber
@@ -93,7 +102,9 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.manga.ChapterList
 import eu.kanade.tachiyomi.ui.manga.MangaScreenModel
 import eu.kanade.tachiyomi.ui.manga.PagePreviewState
+import me.saket.swipe.SwipeableActionsBox
 import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
@@ -125,6 +136,9 @@ fun NovaMangaScreen(
     onSourceSearch: (String) -> Unit,
     onMarkChaptersRead: (List<Chapter>, markAsRead: Boolean) -> Unit,
     onMarkPreviousChaptersRead: (Chapter) -> Unit,
+    chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
+    chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
+    onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,
 ) {
     val allChapters = state.chapters
     val chapters = remember(state) { state.processedChapters }
@@ -150,6 +164,16 @@ fun NovaMangaScreen(
             DownloadAction.ALL_CHAPTERS to downloadable.size,
         )
     }
+    val listState = rememberLazyListState()
+    val heroScrollProgress by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) {
+                1f
+            } else {
+                (listState.firstVisibleItemScrollOffset / 520f).coerceIn(0f, 1f)
+            }
+        }
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
@@ -167,6 +191,7 @@ fun NovaMangaScreen(
                 contentAlignment = Alignment.TopCenter,
             ) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
                         .fillMaxSize(),
@@ -189,6 +214,7 @@ fun NovaMangaScreen(
                             onSourceSettingsClicked = onSourceSettingsClicked,
                             onTitleSearch = onTitleSearch,
                             onSourceSearch = onSourceSearch,
+                            scrollProgress = heroScrollProgress,
                         )
                     }
                     stickyHeader(
@@ -258,6 +284,10 @@ fun NovaMangaScreen(
                             onMarkPreviousRead = {
                                 onMarkPreviousChaptersRead(item.chapter)
                             },
+                            chapterSwipeStartAction = chapterSwipeStartAction,
+                            chapterSwipeEndAction = chapterSwipeEndAction,
+                            onChapterSwipe = { action -> onChapterSwipe(item, action) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -283,6 +313,7 @@ private fun NovaMangaHero(
     onSourceSettingsClicked: (() -> Unit)?,
     onTitleSearch: (String) -> Unit,
     onSourceSearch: (String) -> Unit,
+    scrollProgress: Float,
 ) {
     val manga = state.manga
     val coverRequest = rememberHighQualityImageRequest(manga)
@@ -299,6 +330,14 @@ private fun NovaMangaHero(
         )
     }
     var moreActionsExpanded by remember { mutableStateOf(false) }
+    val artworkScale by animateFloatAsState(
+        targetValue = 1f + scrollProgress * 0.05f,
+        label = "manga-hero-artwork-scale",
+    )
+    val heroContentAlpha by animateFloatAsState(
+        targetValue = 1f - scrollProgress * 0.32f,
+        label = "manga-hero-content-alpha",
+    )
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -349,7 +388,11 @@ private fun NovaMangaHero(
                 filterQuality = FilterQuality.High,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(backdropHeight),
+                    .height(backdropHeight)
+                    .graphicsLayer {
+                        scaleX = artworkScale
+                        scaleY = artworkScale
+                    },
             )
             Box(
                 modifier = Modifier
@@ -452,6 +495,10 @@ private fun NovaMangaHero(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
+                    .graphicsLayer {
+                        alpha = heroContentAlpha
+                        translationY = scrollProgress * 18f
+                    }
                     .padding(horizontal = 14.dp, vertical = if (compact) 14.dp else 18.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
@@ -787,6 +834,10 @@ private fun NovaEpisodeRow(
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
     onToggleRead: (Boolean) -> Unit,
     onMarkPreviousRead: () -> Unit,
+    chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
+    chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
+    onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var chapterMenuExpanded by remember { mutableStateOf(false) }
     val title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
@@ -796,7 +847,7 @@ private fun NovaEpisodeRow(
     }
     val previewRequest = rememberHighQualityImageRequest(preview ?: manga)
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(NovaVikiColors.Background),
     ) {
@@ -842,18 +893,70 @@ private fun NovaEpisodeRow(
                     .takeIf { !item.chapter.read && it > 0L }
                     ?.let { "Page ${it + 1}" },
         ).joinToString(" | ")
-        Row(
+        val swipeBackground = MaterialTheme.colorScheme.primaryContainer
+        val swipeStart = remember(
+            chapterSwipeStartAction,
+            item.chapter.read,
+            item.chapter.bookmark,
+            item.downloadState,
+        ) {
+            getSwipeAction(
+                action = chapterSwipeStartAction,
+                read = item.chapter.read,
+                bookmark = item.chapter.bookmark,
+                downloadState = item.downloadState,
+                background = swipeBackground,
+                onSwipe = { onChapterSwipe(chapterSwipeStartAction) },
+            )
+        }
+        val swipeEnd = remember(
+            chapterSwipeEndAction,
+            item.chapter.read,
+            item.chapter.bookmark,
+            item.downloadState,
+        ) {
+            getSwipeAction(
+                action = chapterSwipeEndAction,
+                read = item.chapter.read,
+                bookmark = item.chapter.bookmark,
+                downloadState = item.downloadState,
+                background = swipeBackground,
+                onSwipe = { onChapterSwipe(chapterSwipeEndAction) },
+            )
+        }
+        val interactionSource = remember { MutableInteractionSource() }
+        val pressed by interactionSource.collectIsPressedAsState()
+        val rowScale by animateFloatAsState(
+            targetValue = if (pressed) 0.985f else 1f,
+            label = "chapter-row-press",
+        )
+        SwipeableActionsBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = { chapterMenuExpanded = true },
-                )
-                .semantics { stateDescription = readStateLabel }
-                .padding(horizontal = if (compact) 10.dp else 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .clipToBounds(),
+            startActions = listOfNotNull(swipeStart),
+            endActions = listOfNotNull(swipeEnd),
+            swipeThreshold = swipeActionThreshold,
+            backgroundUntilSwipeThreshold = MaterialTheme.colorScheme.surfaceContainerLowest,
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = rowScale
+                        scaleY = rowScale
+                    }
+                    .combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onClick,
+                        onLongClick = { chapterMenuExpanded = true },
+                    )
+                    .semantics { stateDescription = readStateLabel }
+                    .padding(horizontal = if (compact) 10.dp else 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
             Box(
                 modifier = Modifier
                     .width(previewWidth)
@@ -1018,6 +1121,7 @@ private fun NovaEpisodeRow(
                         },
                     )
                 }
+            }
             }
         }
         Box(

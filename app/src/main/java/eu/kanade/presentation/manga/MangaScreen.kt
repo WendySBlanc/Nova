@@ -237,6 +237,9 @@ fun MangaScreen(
         onSourceSearch = { query -> onSearch(query, true) },
         onMarkChaptersRead = onMultiMarkAsReadClicked,
         onMarkPreviousChaptersRead = onMarkPreviousAsReadClicked,
+        chapterSwipeStartAction = chapterSwipeStartAction,
+        chapterSwipeEndAction = chapterSwipeEndAction,
+        onChapterSwipe = onChapterSwipe,
     )
 }
 
