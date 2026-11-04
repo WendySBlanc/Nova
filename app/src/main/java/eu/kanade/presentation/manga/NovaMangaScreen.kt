@@ -203,6 +203,8 @@ fun NovaMangaScreen(
                     tertiary = coverGradient.tertiary,
                     wireColor = coverGradient.outline,
                     wireAlpha = 0.05f,
+                    planeAlpha = 0.13f,
+                    colorIntensity = 3.8f,
                 ),
         ) {
             Box(
@@ -307,6 +309,7 @@ fun NovaMangaScreen(
                             chapterSwipeStartAction = chapterSwipeStartAction,
                             chapterSwipeEndAction = chapterSwipeEndAction,
                             onChapterSwipe = { action -> onChapterSwipe(item, action) },
+                            coverGradient = coverGradient,
                         )
                     }
                 }
@@ -405,7 +408,8 @@ private fun NovaMangaHero(
                     tertiary = coverGradient.tertiary,
                     wireColor = coverGradient.outline,
                     wireAlpha = 0.035f,
-                    planeAlpha = 0.045f,
+                    planeAlpha = 0.1f,
+                    colorIntensity = 2.8f,
                     showMark = false,
                 ),
         ) {
@@ -727,7 +731,8 @@ private fun NovaMangaTabs(
                 tertiary = coverGradient.tertiary,
                 wireColor = coverGradient.outline,
                 wireAlpha = 0.08f,
-                planeAlpha = 0.025f,
+                planeAlpha = 0.06f,
+                colorIntensity = 2.8f,
                 showMark = false,
             )
             .border(
@@ -853,6 +858,7 @@ private fun NovaEpisodeRow(
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
+    coverGradient: NovaCoverGradientPalette,
 ) {
     var chapterMenuExpanded by remember { mutableStateOf(false) }
     val title = if (manga.displayMode == Manga.CHAPTER_DISPLAY_NUMBER) {
@@ -864,7 +870,7 @@ private fun NovaEpisodeRow(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NovaVikiColors.Background),
+            .background(NovaVikiColors.Background.copy(alpha = 0.76f)),
     ) {
         val compact = maxWidth < 380.dp
         val previewWidth = when {
@@ -1132,7 +1138,7 @@ private fun NovaEpisodeRow(
                 .align(Alignment.BottomEnd)
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(NovaVikiColors.Outline.copy(alpha = 0.5f)),
+                .background(coverGradient.outline.copy(alpha = 0.28f)),
         )
     }
 }

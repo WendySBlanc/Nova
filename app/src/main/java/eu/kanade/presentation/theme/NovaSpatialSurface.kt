@@ -24,15 +24,17 @@ fun Modifier.novaSpatialBackdrop(
     wireColor: Color,
     wireAlpha: Float = 0.12f,
     planeAlpha: Float = 0.1f,
+    colorIntensity: Float = 1f,
     showMark: Boolean = true,
 ): Modifier = drawWithCache {
+    val boundedColorIntensity = colorIntensity.coerceIn(0f, 4f)
     val mesh = Brush.linearGradient(
         colorStops = arrayOf(
             0f to background,
-            0.28f to primary.copy(alpha = 0.11f),
+            0.28f to primary.copy(alpha = 0.11f * boundedColorIntensity),
             0.54f to background,
-            0.76f to secondary.copy(alpha = 0.08f),
-            1f to tertiary.copy(alpha = 0.07f),
+            0.76f to secondary.copy(alpha = 0.08f * boundedColorIntensity),
+            1f to tertiary.copy(alpha = 0.07f * boundedColorIntensity),
         ),
         start = Offset.Zero,
         end = Offset(size.width, size.height),
