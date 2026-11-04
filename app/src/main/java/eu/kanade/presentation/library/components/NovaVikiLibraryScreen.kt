@@ -910,7 +910,10 @@ private fun NovaLibraryGridCard(
     val progressPercent = item.progress
         ?.coerceIn(0f, 1f)
         ?.let { (it * 100f).roundToInt() }
-    val saturation = coverSaturation(item.progress)
+    val saturation = coverSaturation(
+        progress = item.progress,
+        remainingChapters = item.remainingChapters,
+    )
     val coverColorFilter = remember(saturation) {
         ColorFilter.colorMatrix(
             ColorMatrix().apply { setToSaturation(saturation) },

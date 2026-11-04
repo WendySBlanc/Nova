@@ -32,7 +32,14 @@ data class NovaLibraryEntry(
     val categoryIds: Set<Long> = emptySet(),
 )
 
-fun coverSaturation(progress: Float?): Float = 1f - (progress ?: 0f).coerceIn(0f, 1f)
+fun coverSaturation(
+    progress: Float?,
+    remainingChapters: Long = 0L,
+): Float = if (remainingChapters > 0L) {
+    1f
+} else {
+    1f - (progress ?: 0f).coerceIn(0f, 1f)
+}
 
 fun filterNovaLibraryEntries(
     entries: List<NovaLibraryEntry>,

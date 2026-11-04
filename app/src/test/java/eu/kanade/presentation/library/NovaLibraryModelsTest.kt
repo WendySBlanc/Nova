@@ -15,6 +15,12 @@ class NovaLibraryModelsTest {
     }
 
     @Test
+    fun `an unread chapter restores the cover to full color`() {
+        coverSaturation(progress = 0.995f, remainingChapters = 1L).shouldBeExactly(1f)
+        coverSaturation(progress = 1f, remainingChapters = 3L).shouldBeExactly(1f)
+    }
+
+    @Test
     fun `library filtering keeps media type and user category independent`() {
         val entries = listOf(
             entry(id = 1L, mediaType = NovaMediaType.Manhwa, categories = setOf(10L)),
