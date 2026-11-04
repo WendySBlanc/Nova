@@ -3,6 +3,7 @@ package eu.kanade.presentation.more.settings.widget
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,9 +47,21 @@ internal fun BasePreferenceWidget(
 ) {
     val highlighted = LocalPreferenceHighlighted.current
     val minHeight = LocalPreferenceMinHeight.current
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
     Row(
         modifier = modifier
             .highlightBackground(highlighted)
+            .drawWithCache {
+                onDrawWithContent {
+                    drawContent()
+                    drawLine(
+                        color = dividerColor.copy(alpha = 0.72f),
+                        start = Offset(0f, size.height - 1f),
+                        end = Offset(size.width, size.height - 1f),
+                        strokeWidth = 1f,
+                    )
+                }
+            }
             .sizeIn(minHeight = minHeight)
             .clickable(enabled = onClick != null, onClick = { onClick?.invoke() })
             .fillMaxWidth()
@@ -57,8 +73,13 @@ internal fun BasePreferenceWidget(
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
+                        shape = RoundedCornerShape(4.dp),
+                    )
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                        RoundedCornerShape(4.dp),
                     ),
                 contentAlignment = Alignment.Center,
                 content = { icon() },
@@ -81,6 +102,7 @@ internal fun BasePreferenceWidget(
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                 )
             }
             subcomponent?.invoke(this)

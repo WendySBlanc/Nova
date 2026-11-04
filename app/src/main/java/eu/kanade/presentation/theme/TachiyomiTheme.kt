@@ -115,6 +115,13 @@ private fun getThemeColorScheme(
     isDark: Boolean,
     isAmoled: Boolean,
 ): ColorScheme {
+    if (appTheme == AppTheme.DEFAULT) {
+        return if (isDark) {
+            novaSignalDarkColorScheme(isAmoled)
+        } else {
+            novaSignalLightColorScheme()
+        }
+    }
     val colorScheme = when (appTheme) {
         AppTheme.MONET -> {
             MonetColorScheme(context)

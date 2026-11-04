@@ -140,6 +140,7 @@ import kotlin.math.roundToInt
 fun MangaScreen(
     state: MangaScreenModel.State.Success,
     snackbarHostState: SnackbarHostState,
+    useCoverGradient: Boolean,
     nextUpdate: Instant?,
     isTabletUi: Boolean,
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
@@ -218,6 +219,7 @@ fun MangaScreen(
         sourceName = remember(state.source, state.mergedData) {
             state.source.getNameForMangaInfo(state.mergedData?.sources)
         },
+        useCoverGradient = useCoverGradient,
         navigateUp = navigateUp,
         onChapterClicked = onChapterClicked,
         onContinueReading = onContinueReading,
@@ -240,6 +242,7 @@ fun MangaScreen(
         chapterSwipeStartAction = chapterSwipeStartAction,
         chapterSwipeEndAction = chapterSwipeEndAction,
         onChapterSwipe = onChapterSwipe,
+        onCoverLoaded = onCoverLoaded,
     )
 }
 

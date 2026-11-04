@@ -2,29 +2,28 @@ package eu.kanade.presentation.more.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import eu.kanade.presentation.more.settings.screen.SearchableSettings
 import eu.kanade.presentation.more.settings.widget.PreferenceGroupHeader
+import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import kotlinx.coroutines.delay
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import kotlin.time.Duration.Companion.seconds
@@ -54,7 +53,17 @@ fun PreferenceScreen(
     }
 
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Background,
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.055f,
+                planeAlpha = 0.022f,
+            ),
         contentAlignment = Alignment.TopCenter,
     ) {
         ScrollbarLazyColumn(
@@ -76,21 +85,14 @@ fun PreferenceScreen(
                                     modifier = Modifier
                                         .padding(horizontal = 12.dp)
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                                        .background(MaterialTheme.colorScheme.outlineVariant)
                                         .border(
                                             width = 1.dp,
                                             color = MaterialTheme.colorScheme.outlineVariant,
-                                            shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-                                        ),
-                                    verticalArrangement = Arrangement.spacedBy(1.dp),
+                                        )
+                                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f)),
                                 ) {
                                     preference.preferenceItems.forEach { item ->
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(MaterialTheme.colorScheme.surfaceContainer),
-                                        ) {
+                                        Box(modifier = Modifier.fillMaxWidth()) {
                                             PreferenceItem(
                                                 item = item,
                                                 highlightKey = highlightKey,
@@ -109,8 +111,8 @@ fun PreferenceScreen(
                             modifier = Modifier
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f)),
                         ) {
                             PreferenceItem(
                                 item = preference,

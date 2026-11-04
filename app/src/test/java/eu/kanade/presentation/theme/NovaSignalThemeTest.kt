@@ -1,6 +1,7 @@
 package eu.kanade.presentation.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
@@ -55,5 +56,43 @@ class NovaSignalThemeTest {
 
         scheme.background shouldBe Color.Black
         scheme.surface shouldNotBe scheme.surfaceContainerHigh
+    }
+
+    @Test
+    fun `cover gradient changes decorative surfaces while preserving the stable background`() {
+        val background = Color(0xFF050607)
+        val redPalette = novaCoverGradientPalette(
+            seedColor = Color(0xFFE53935),
+            background = background,
+            fallbackAccent = Color(0xFFD9FF52),
+            secondaryAccent = Color(0xFF62D8FF),
+            tertiaryAccent = Color(0xFFAE8BFF),
+        )
+        val bluePalette = novaCoverGradientPalette(
+            seedColor = Color(0xFF2962FF),
+            background = background,
+            fallbackAccent = Color(0xFFD9FF52),
+            secondaryAccent = Color(0xFF62D8FF),
+            tertiaryAccent = Color(0xFFAE8BFF),
+        )
+
+        redPalette.primary shouldNotBe bluePalette.primary
+        redPalette.secondary shouldNotBe bluePalette.secondary
+        redPalette.background shouldBe background
+        bluePalette.background shouldBe background
+    }
+
+    @Test
+    fun `cover gradient keeps bright covers dark enough for fixed light text`() {
+        val palette = novaCoverGradientPalette(
+            seedColor = Color.White,
+            background = Color(0xFF050607),
+            fallbackAccent = Color(0xFFD9FF52),
+            secondaryAccent = Color(0xFF62D8FF),
+            tertiaryAccent = Color(0xFFAE8BFF),
+        )
+
+        (palette.primary.luminance() < 0.35f) shouldBe true
+        palette.contentScrim shouldBe Color.Black.copy(alpha = 0.82f)
     }
 }

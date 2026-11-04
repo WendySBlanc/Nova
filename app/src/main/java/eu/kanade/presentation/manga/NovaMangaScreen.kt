@@ -40,9 +40,7 @@ import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.RemoveDone
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -87,8 +85,11 @@ import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
 import eu.kanade.presentation.manga.components.getSwipeAction
 import eu.kanade.presentation.manga.components.swipeActionThreshold
+import eu.kanade.presentation.theme.NovaCoverGradientPalette
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaCoverGradientPalette
+import eu.kanade.presentation.theme.novaCoverHeroGradient
 import eu.kanade.presentation.theme.novaGlassSurface
 import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.formatChapterNumber
@@ -103,6 +104,8 @@ import me.saket.swipe.SwipeableActionsBox
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.model.MangaCover
+import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -114,6 +117,7 @@ fun NovaMangaScreen(
     state: MangaScreenModel.State.Success,
     snackbarHostState: SnackbarHostState,
     sourceName: String,
+    useCoverGradient: Boolean,
     navigateUp: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onContinueReading: () -> Unit,
@@ -136,6 +140,7 @@ fun NovaMangaScreen(
     chapterSwipeStartAction: LibraryPreferences.ChapterSwipeAction,
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,
+    onCoverLoaded: (MangaCover) -> Unit,
 ) {
     val allChapters = state.chapters
     val chapters = remember(state) { state.processedChapters }
@@ -161,6 +166,26 @@ fun NovaMangaScreen(
             DownloadAction.ALL_CHAPTERS to downloadable.size,
         )
     }
+    val background = NovaVikiColors.Background
+    val fallbackAccent = NovaVikiColors.Accent
+    val secondaryAccent = NovaVikiColors.AccentWarm
+    val tertiaryAccent = NovaVikiColors.AccentGold
+    val coverGradient = remember(
+        state.seedColor,
+        useCoverGradient,
+        background,
+        fallbackAccent,
+        secondaryAccent,
+        tertiaryAccent,
+    ) {
+        novaCoverGradientPalette(
+            seedColor = state.seedColor.takeIf { useCoverGradient },
+            background = background,
+            fallbackAccent = fallbackAccent,
+            secondaryAccent = secondaryAccent,
+            tertiaryAccent = tertiaryAccent,
+        )
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
@@ -172,11 +197,11 @@ fun NovaMangaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .novaSpatialBackdrop(
-                    background = NovaVikiColors.Background,
-                    primary = NovaVikiColors.Accent,
-                    secondary = NovaVikiColors.AccentWarm,
-                    tertiary = NovaVikiColors.AccentGold,
-                    wireColor = NovaVikiColors.OutlineStrong,
+                    background = coverGradient.background,
+                    primary = coverGradient.primary,
+                    secondary = coverGradient.secondary,
+                    tertiary = coverGradient.tertiary,
+                    wireColor = coverGradient.outline,
                     wireAlpha = 0.05f,
                 ),
         ) {
@@ -207,6 +232,8 @@ fun NovaMangaScreen(
                             onSourceSettingsClicked = onSourceSettingsClicked,
                             onTitleSearch = onTitleSearch,
                             onSourceSearch = onSourceSearch,
+                            coverGradient = coverGradient,
+                            onCoverLoaded = onCoverLoaded,
                         )
                     }
                     stickyHeader(
@@ -231,6 +258,7 @@ fun NovaMangaScreen(
                             }.takeIf {
                                 allChapters.any { it.chapter.read || it.chapter.lastPageRead > 0L }
                             },
+                            coverGradient = coverGradient,
                         )
                     }
                     if (chapters.isEmpty()) {
@@ -304,9 +332,14 @@ private fun NovaMangaHero(
     onSourceSettingsClicked: (() -> Unit)?,
     onTitleSearch: (String) -> Unit,
     onSourceSearch: (String) -> Unit,
+    coverGradient: NovaCoverGradientPalette,
+    onCoverLoaded: (MangaCover) -> Unit,
 ) {
     val manga = state.manga
     val coverRequest = rememberHighQualityImageRequest(manga)
+    var paletteRequested by remember(manga.id, manga.thumbnailUrl, manga.coverLastModified) {
+        mutableStateOf(false)
+    }
     val hasStartedReading = remember(state.chapters) {
         state.chapters.any { item ->
             item.chapter.read || item.chapter.lastPageRead > 0L
@@ -346,9 +379,13 @@ private fun NovaMangaHero(
         val topButtonSize = NovaVikiDimensions.MinimumTouchTarget
         val topButtonModifier = Modifier
             .size(topButtonSize)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
             .background(NovaVikiColors.Surface.copy(alpha = 0.78f))
-            .border(1.dp, NovaVikiColors.OutlineStrong.copy(alpha = 0.8f), CircleShape)
+            .border(
+                1.dp,
+                NovaVikiColors.OutlineStrong.copy(alpha = 0.8f),
+                RoundedCornerShape(NovaVikiDimensions.CardCorner),
+            )
         val titleStyle = if (tablet) {
             MaterialTheme.typography.headlineMedium
         } else {
@@ -361,13 +398,28 @@ private fun NovaMangaHero(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(heroHeight)
-                .background(NovaVikiColors.Background),
+                .novaSpatialBackdrop(
+                    background = coverGradient.background,
+                    primary = coverGradient.primary,
+                    secondary = coverGradient.secondary,
+                    tertiary = coverGradient.tertiary,
+                    wireColor = coverGradient.outline,
+                    wireAlpha = 0.035f,
+                    planeAlpha = 0.045f,
+                    showMark = false,
+                ),
         ) {
             AsyncImage(
                 model = coverRequest,
                 contentDescription = manga.title,
                 contentScale = ContentScale.Crop,
                 filterQuality = FilterQuality.High,
+                onSuccess = {
+                    if (!paletteRequested) {
+                        paletteRequested = true
+                        onCoverLoaded(manga.asMangaCover())
+                    }
+                },
                 modifier = Modifier
                     .novaMangaSharedArtwork(manga.id)
                     .fillMaxWidth()
@@ -377,21 +429,7 @@ private fun NovaMangaHero(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(backdropHeight)
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to NovaVikiColors.Scrim.copy(alpha = 0.82f),
-                            0.58f to NovaVikiColors.Scrim.copy(alpha = 0.24f),
-                            1f to Color.Transparent,
-                        ),
-                    )
-                    .background(
-                        Brush.verticalGradient(
-                            0f to NovaVikiColors.Scrim.copy(alpha = 0.16f),
-                            0.48f to NovaVikiColors.Scrim.copy(alpha = 0.28f),
-                            0.82f to NovaVikiColors.Background.copy(alpha = 0.82f),
-                            1f to NovaVikiColors.Background,
-                        ),
-                    ),
+                    .novaCoverHeroGradient(coverGradient),
             )
             Row(
                 modifier = Modifier
@@ -412,35 +450,22 @@ private fun NovaMangaHero(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                onWebViewClicked?.let { openWebView ->
-                    IconButton(
-                        onClick = openWebView,
-                        modifier = topButtonModifier,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Public,
-                            contentDescription = stringResource(MR.strings.action_open_in_web_view),
-                            tint = Color.White,
-                        )
-                    }
-                }
-                onShareClicked?.let { share ->
-                    IconButton(
-                        onClick = share,
-                        modifier = topButtonModifier,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Share,
-                            contentDescription = stringResource(MR.strings.action_share),
-                            tint = Color.White,
-                        )
-                    }
-                }
                 Box {
                     DropdownMenu(
                         expanded = moreActionsExpanded,
                         onDismissRequest = { moreActionsExpanded = false },
                     ) {
+                        onWebViewClicked?.let { action ->
+                            NovaMangaActionItem(
+                                stringResource(MR.strings.action_open_in_web_view),
+                                action,
+                            ) { moreActionsExpanded = false }
+                        }
+                        onShareClicked?.let { action ->
+                            NovaMangaActionItem(stringResource(MR.strings.action_share), action) {
+                                moreActionsExpanded = false
+                            }
+                        }
                         NovaMangaActionItem("Suivi", onTrackingClicked) { moreActionsExpanded = false }
                         onEditCategoryClicked?.let { action ->
                             NovaMangaActionItem("Catégories", action) { moreActionsExpanded = false }
@@ -478,7 +503,7 @@ private fun NovaMangaHero(
                     .padding(horizontal = 12.dp, vertical = if (compact) 12.dp else 16.dp)
                     .novaGlassSurface(
                         color = NovaVikiColors.SurfaceRaised,
-                        outline = NovaVikiColors.OutlineStrong,
+                        outline = coverGradient.outline,
                     )
                     .padding(12.dp),
                 verticalAlignment = Alignment.Bottom,
@@ -493,7 +518,7 @@ private fun NovaMangaHero(
                             .background(NovaVikiColors.SurfaceStrong)
                             .border(
                                 width = 1.dp,
-                                color = NovaVikiColors.OutlineStrong,
+                                color = coverGradient.outline,
                                 shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                             ),
                     ) {
@@ -687,6 +712,7 @@ private fun NovaMangaTabs(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onMarkAllReadClicked: (() -> Unit)?,
     onMarkAllUnreadClicked: (() -> Unit)?,
+    coverGradient: NovaCoverGradientPalette,
 ) {
     var downloadExpanded by remember { mutableStateOf(false) }
     var readStatusExpanded by remember { mutableStateOf(false) }
@@ -696,11 +722,13 @@ private fun NovaMangaTabs(
             .height(64.dp)
             .novaSpatialBackdrop(
                 background = NovaVikiColors.SurfaceRaised,
-                primary = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                tertiary = NovaVikiColors.AccentGold,
-                wireColor = NovaVikiColors.OutlineStrong,
+                primary = coverGradient.primary,
+                secondary = coverGradient.secondary,
+                tertiary = coverGradient.tertiary,
+                wireColor = coverGradient.outline,
                 wireAlpha = 0.08f,
+                planeAlpha = 0.025f,
+                showMark = false,
             )
             .border(
                 width = 1.dp,

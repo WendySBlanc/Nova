@@ -269,6 +269,13 @@ internal fun NovaVikiSearchHeader(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
+                    text = "NOVA / INDEX",
+                    color = NovaVikiColors.Accent,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(
                     text = title,
                     color = NovaVikiColors.TextPrimary,
                     style = MaterialTheme.typography.titleLarge,
@@ -288,14 +295,13 @@ internal fun NovaVikiSearchHeader(
             }
             Row(
                 modifier = Modifier
-                    .height(NovaVikiDimensions.MinimumTouchTarget)
-                    .width(if (compact) NovaVikiDimensions.MinimumTouchTarget else 144.dp)
+                    .size(NovaVikiDimensions.MinimumTouchTarget)
                     .novaGlassSurface(
                         color = NovaVikiColors.SurfaceStrong,
-                        outline = NovaVikiColors.Outline,
+                        outline = NovaVikiColors.Accent.copy(alpha = 0.52f),
+                        corner = NovaVikiDimensions.CardCorner,
                     )
-                    .clickable(role = Role.Button, onClick = onSearch)
-                    .padding(horizontal = if (compact) 0.dp else 12.dp),
+                    .clickable(role = Role.Button, onClick = onSearch),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -305,17 +311,6 @@ internal fun NovaVikiSearchHeader(
                     tint = NovaVikiColors.TextPrimary,
                     modifier = Modifier.size(20.dp),
                 )
-                if (!compact) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(MR.strings.action_search),
-                        color = NovaVikiColors.TextPrimary,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
         }
     }
@@ -788,9 +783,9 @@ private fun NovaSpatialSectionHeader(
         Spacer(Modifier.width(9.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = section.title,
+                text = "// ${section.title.uppercase()}",
                 color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1209,40 +1204,6 @@ private fun NovaPosterCard(
             overflow = TextOverflow.Ellipsis,
         )
     }
-}
-
-@Composable
-internal fun NovaChapterBadges(
-    item: NovaVikiManga,
-    modifier: Modifier = Modifier,
-) {
-    if (item.remainingChapters <= 0L) return
-
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(Color.Black.copy(alpha = 0.72f))
-                .padding(horizontal = 7.dp, vertical = 3.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = item.remainingChapters.toRemainingChapterText(),
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-private fun Long.toRemainingChapterText(): String {
-    return if (this > 99L) "99+" else toString()
 }
 
 @Composable

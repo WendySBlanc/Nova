@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -72,9 +73,13 @@ fun EmptyScreen(
         verticalArrangement = Arrangement.Center,
     ) {
         Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.84f),
             contentColor = MaterialTheme.colorScheme.primary,
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            ),
         ) {
             Box(
                 modifier = Modifier.size(64.dp),

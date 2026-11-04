@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -16,13 +17,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import cafe.adriel.voyager.navigator.Navigator
+import androidx.compose.ui.text.font.FontWeight
 import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
@@ -60,14 +64,26 @@ data object NovaActivityTab : Tab {
         val section by selectedSection.collectAsState()
         val navigator = LocalNavigator.currentOrThrow
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .novaSpatialBackdrop(
+                    background = NovaVikiColors.Background,
+                    primary = NovaVikiColors.Accent,
+                    secondary = NovaVikiColors.AccentWarm,
+                    tertiary = NovaVikiColors.AccentGold,
+                    wireColor = NovaVikiColors.OutlineStrong,
+                    wireAlpha = 0.06f,
+                    planeAlpha = 0.025f,
+                ),
+        ) {
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = androidx.compose.ui.unit.Dp.Unspecified,
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+                tonalElevation = androidx.compose.ui.unit.Dp.Hairline,
             ) {
                 PrimaryScrollableTabRow(
                     selectedTabIndex = section.ordinal,
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = androidx.compose.ui.unit.Dp.Hairline,
                 ) {
@@ -77,18 +93,21 @@ data object NovaActivityTab : Tab {
                             onClick = { selectedSection.value = item },
                             text = {
                                 Text(
-                                    text = when (item) {
+                                    text = "0${item.ordinal + 1} / " + when (item) {
                                         NovaActivitySection.Updates -> stringResource(MR.strings.label_recent_updates)
                                         NovaActivitySection.Downloads -> stringResource(MR.strings.label_download_queue)
                                         NovaActivitySection.History -> stringResource(MR.strings.label_recent_manga)
                                         NovaActivitySection.Problems -> "Problèmes"
-                                    },
+                                    }.uppercase(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
                                 )
                             },
                         )
                     }
                 }
             }
+            HorizontalDivider(color = NovaVikiColors.Outline)
 
             AnimatedContent(
                 targetState = section,

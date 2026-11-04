@@ -7,7 +7,6 @@ import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -29,7 +28,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -60,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.more.DownloadQueueState
 import exh.pref.DelegateSourcePreferences
@@ -123,7 +123,15 @@ fun MoreScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(NovaVikiColors.Background),
+                .novaSpatialBackdrop(
+                    background = NovaVikiColors.Background,
+                    primary = NovaVikiColors.Accent,
+                    secondary = NovaVikiColors.AccentWarm,
+                    tertiary = NovaVikiColors.AccentGold,
+                    wireColor = NovaVikiColors.OutlineStrong,
+                    wireAlpha = 0.08f,
+                    planeAlpha = 0.035f,
+                ),
         ) {
             NovaMeTopBar()
             BoxWithConstraints(
@@ -226,8 +234,17 @@ private fun NovaMeTopBar() {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .height(56.dp)
-            .background(NovaVikiColors.Background),
+            .height(72.dp)
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Background.copy(alpha = 0.96f),
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.05f,
+                planeAlpha = 0.02f,
+                showMark = false,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Row(
@@ -237,13 +254,22 @@ private fun NovaMeTopBar() {
                 .padding(horizontal = NovaVikiDimensions.HorizontalPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "Moi",
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-            )
+            Column {
+                Text(
+                    text = "05 / PROFILE",
+                    color = NovaVikiColors.Accent,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Text(
+                    text = "Moi",
+                    color = NovaVikiColors.TextPrimary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -264,9 +290,9 @@ private fun NovaMeIdentity(
             .fillMaxWidth()
             .heightIn(min = 108.dp)
             .animateContentSize()
-            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(NovaVikiColors.Surface)
-            .border(1.dp, NovaVikiColors.Outline, RoundedCornerShape(NovaVikiDimensions.ControlCorner)),
+            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+            .background(NovaVikiColors.Surface.copy(alpha = 0.88f))
+            .border(1.dp, NovaVikiColors.OutlineStrong, RoundedCornerShape(NovaVikiDimensions.CardCorner)),
     ) {
         Box(
             modifier = Modifier
@@ -283,13 +309,17 @@ private fun NovaMeIdentity(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(CircleShape)
-                    .background(NovaVikiColors.SurfaceStrong)
-                    .border(1.dp, NovaVikiColors.Accent.copy(alpha = 0.72f), CircleShape),
+                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                    .background(NovaVikiColors.SurfaceStrong.copy(alpha = 0.82f))
+                    .border(
+                        1.dp,
+                        NovaVikiColors.Accent.copy(alpha = 0.72f),
+                        RoundedCornerShape(NovaVikiDimensions.CardCorner),
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "N",
+                    text = "N/",
                     color = NovaVikiColors.TextPrimary,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Black,
@@ -330,9 +360,9 @@ private fun NovaQuickActions(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "Acc\u00e8s rapides",
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.titleMedium,
+            text = "// ACC\u00c8S RAPIDES",
+            color = NovaVikiColors.Accent,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             maxLines = 1,
         )
@@ -396,9 +426,9 @@ private fun NovaQuickAction(
     Column(
         modifier = modifier
             .height(88.dp)
-            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(NovaVikiColors.SurfaceStrong)
-            .border(1.dp, NovaVikiColors.Outline, RoundedCornerShape(NovaVikiDimensions.ControlCorner))
+            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+            .background(NovaVikiColors.SurfaceStrong.copy(alpha = 0.86f))
+            .border(1.dp, accent.copy(alpha = 0.44f), RoundedCornerShape(NovaVikiDimensions.CardCorner))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.SpaceBetween,
@@ -494,9 +524,9 @@ private fun NovaMoreSection(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            text = title,
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.titleMedium,
+            text = "// ${title.uppercase()}",
+            color = NovaVikiColors.Accent,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
             maxLines = 1,
         )

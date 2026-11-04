@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.theme.NovaSignalMotion
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
@@ -117,7 +117,16 @@ fun ReaderAppBars(
                 Column {
                     ReaderTopBar(
                         modifier = Modifier
-                            .background(backgroundColor),
+                            .novaSpatialBackdrop(
+                                background = backgroundColor,
+                                primary = NovaVikiColors.Accent,
+                                secondary = NovaVikiColors.AccentWarm,
+                                tertiary = NovaVikiColors.AccentGold,
+                                wireColor = NovaVikiColors.OutlineStrong,
+                                wireAlpha = 0.055f,
+                                planeAlpha = 0.02f,
+                                showMark = false,
+                            ),
                         mangaTitle = mangaTitle,
                         chapterTitle = chapterTitle,
                         navigateUp = navigateUp,
@@ -167,16 +176,17 @@ fun ReaderAppBars(
                 ) {
                     Surface(
                         modifier = Modifier
-                            .widthIn(max = 600.dp)
+                            .widthIn(max = 680.dp)
                             .fillMaxWidth()
                             .border(
                                 width = 1.dp,
-                                color = NovaVikiColors.OutlineStrong,
-                                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                                color = NovaVikiColors.Accent.copy(alpha = 0.38f),
+                                shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
                             ),
-                        shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                        shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
                         color = backgroundColor,
-                        shadowElevation = 4.dp,
+                        shadowElevation = 0.dp,
+                        tonalElevation = 0.dp,
                     ) {
                         ReaderBottomBar(
                             onPreviousChapter = onPreviousChapter,
@@ -197,6 +207,5 @@ fun ReaderAppBars(
                 }
             }
         }
-
     }
 }

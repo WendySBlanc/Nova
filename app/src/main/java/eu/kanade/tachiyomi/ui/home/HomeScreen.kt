@@ -141,6 +141,8 @@ object HomeScreen : Screen() {
                                     tertiary = NovaVikiColors.AccentGold,
                                     wireColor = NovaVikiColors.OutlineStrong,
                                     wireAlpha = 0.09f,
+                                    planeAlpha = 0.025f,
+                                    showMark = false,
                                 ),
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -339,6 +341,8 @@ object HomeScreen : Screen() {
                     tertiary = NovaVikiColors.AccentGold,
                     wireColor = NovaVikiColors.OutlineStrong,
                     wireAlpha = 0.08f,
+                    planeAlpha = 0.025f,
+                    showMark = false,
                 ),
             ) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

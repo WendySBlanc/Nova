@@ -207,10 +207,7 @@ class MangaScreen(
             }
         }
 
-        val seedColor = successState.seedColor
-        TachiyomiTheme(
-            seedColor = seedColor.takeIf { screenModel.themeCoverBased },
-        ) {
+        TachiyomiTheme {
             content()
         }
 
@@ -272,6 +269,7 @@ class MangaScreen(
         MangaScreen(
             state = successState,
             snackbarHostState = screenModel.snackbarHostState,
+            useCoverGradient = screenModel.themeCoverBased,
             nextUpdate = successState.manga.expectedNextUpdate,
             isTabletUi = isTabletUi(),
             chapterSwipeStartAction = screenModel.chapterSwipeStartAction,

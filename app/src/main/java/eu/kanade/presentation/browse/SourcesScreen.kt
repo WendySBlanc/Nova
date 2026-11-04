@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import eu.kanade.domain.source.model.installedExtension
 import eu.kanade.presentation.browse.components.BaseSourceItem
+import eu.kanade.presentation.browse.components.NovaBrowseHudHeader
 import eu.kanade.presentation.components.AnimatedFloatingSearchBox
 import eu.kanade.presentation.components.SOURCE_SEARCH_BOX_HEIGHT
 import eu.kanade.presentation.theme.NovaVikiDimensions
@@ -111,6 +112,18 @@ fun SourcesScreen(
                 contentPadding = PaddingValues(top = searchBoxHeight),
                 // KMK <--
             ) {
+                item(
+                    key = "sources-hud-header",
+                    contentType = "hud_header",
+                ) {
+                    val sourceCount = state.items.count { it is SourceUiModel.Item }
+                    NovaBrowseHudHeader(
+                        code = "01 / SOURCES",
+                        title = stringResource(MR.strings.label_sources),
+                        metric = sourceCount.toString().padStart(2, '0') + " ONLINE",
+                        modifier = Modifier.animateItemFastScroll(),
+                    )
+                }
                 state.items.forEach { model ->
                     when (model) {
                         is SourceUiModel.Header -> {
@@ -194,9 +207,9 @@ private fun SourceHeader(
         },
         // SY <--
         modifier = modifier
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = 12.dp),
         color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
     )
 }

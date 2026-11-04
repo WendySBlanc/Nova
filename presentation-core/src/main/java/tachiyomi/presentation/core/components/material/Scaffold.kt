@@ -18,6 +18,7 @@
 
 package tachiyomi.presentation.core.components.material
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.MutableWindowInsets
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
@@ -41,6 +43,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -133,16 +137,47 @@ fun Scaffold(
         color = containerColor,
         contentColor = contentColor,
     ) {
-        ScaffoldLayout(
-            fabPosition = floatingActionButtonPosition,
-            topBar = { topBar(topBarScrollBehavior) },
-            startBar = startBar,
-            bottomBar = bottomBar,
-            content = content,
-            snackbar = snackbarHost,
-            contentWindowInsets = remainingWindowInsets,
-            fab = floatingActionButton,
-        )
+        val gridColor = MaterialTheme.colorScheme.outlineVariant
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val step = 56.dp.toPx()
+                    onDrawBehind {
+                        var x = 0f
+                        while (x <= size.width) {
+                            drawLine(
+                                color = gridColor.copy(alpha = 0.2f),
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = 1f,
+                            )
+                            x += step
+                        }
+                        var y = 0f
+                        while (y <= size.height) {
+                            drawLine(
+                                color = gridColor.copy(alpha = 0.16f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 1f,
+                            )
+                            y += step
+                        }
+                    }
+                },
+        ) {
+            ScaffoldLayout(
+                fabPosition = floatingActionButtonPosition,
+                topBar = { topBar(topBarScrollBehavior) },
+                startBar = startBar,
+                bottomBar = bottomBar,
+                content = content,
+                snackbar = snackbarHost,
+                contentWindowInsets = remainingWindowInsets,
+                fab = floatingActionButton,
+            )
+        }
     }
 }
 

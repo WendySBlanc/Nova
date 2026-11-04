@@ -30,6 +30,7 @@ import androidx.compose.ui.zIndex
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.tachiyomi.ui.browse.BulkFavoriteScreenModel
 import eu.kanade.tachiyomi.ui.browse.feed.FeedScreenModel
 import kotlinx.collections.immutable.ImmutableList
@@ -103,7 +104,15 @@ fun TabbedScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(NovaVikiColors.Background)
+                .novaSpatialBackdrop(
+                    background = NovaVikiColors.Background,
+                    primary = NovaVikiColors.Accent,
+                    secondary = NovaVikiColors.AccentWarm,
+                    tertiary = NovaVikiColors.AccentGold,
+                    wireColor = NovaVikiColors.OutlineStrong,
+                    wireAlpha = 0.08f,
+                    planeAlpha = 0.035f,
+                )
                 .padding(
                     top = contentPadding.calculateTopPadding(),
                     start = contentPadding.calculateStartPadding(LocalLayoutDirection.current),
@@ -113,7 +122,7 @@ fun TabbedScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(NovaVikiColors.Background)
+                    .background(NovaVikiColors.Background.copy(alpha = 0.9f))
                     .zIndex(1f),
                 contentAlignment = Alignment.Center,
             ) {

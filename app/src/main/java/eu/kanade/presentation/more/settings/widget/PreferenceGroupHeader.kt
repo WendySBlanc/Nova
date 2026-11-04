@@ -1,8 +1,11 @@
 package eu.kanade.presentation.more.settings.widget
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,18 +16,34 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun PreferenceGroupHeader(title: String) {
-    Box(
-        contentAlignment = Alignment.CenterStart,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp, top = 20.dp),
+            .padding(
+                start = PrefsHorizontalPadding,
+                top = 24.dp,
+                end = PrefsHorizontalPadding,
+                bottom = 10.dp,
+            ),
     ) {
         Text(
-            text = title,
+            text = "//",
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = PrefsHorizontalPadding),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = title.uppercase(),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.width(12.dp))
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant,
         )
     }
 }

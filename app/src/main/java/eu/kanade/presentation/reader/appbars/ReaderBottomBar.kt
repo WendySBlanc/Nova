@@ -44,10 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import eu.kanade.presentation.theme.NovaVikiColors
-import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.reader.readerDestinationFromSlider
 import eu.kanade.presentation.reader.resolveNovaReaderProgress
+import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.R
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Slider
@@ -79,7 +79,7 @@ fun ReaderBottomBar(
 
     Column(
         modifier = modifier
-            .widthIn(max = 440.dp)
+            .widthIn(max = 560.dp)
             .fillMaxWidth()
             .pointerInput(Unit) {},
     ) {
@@ -115,9 +115,13 @@ fun ReaderBottomBar(
                 tint = iconColor,
             )
             Surface(
-                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-                color = NovaVikiColors.Accent.copy(alpha = 0.16f),
+                shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
+                color = NovaVikiColors.Accent.copy(alpha = 0.12f),
                 contentColor = NovaVikiColors.Accent,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    NovaVikiColors.Accent.copy(alpha = 0.5f),
+                ),
             ) {
                 ReaderDockButton(
                     iconRes = R.drawable.ic_format_align_right_24dp,
@@ -166,7 +170,7 @@ private fun ReaderProgressSlider(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = NovaVikiDimensions.MinimumTouchTarget)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ReaderProgressLabel(

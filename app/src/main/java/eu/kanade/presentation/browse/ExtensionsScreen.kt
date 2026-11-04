@@ -1,6 +1,7 @@
 package eu.kanade.presentation.browse
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,6 +51,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.browse.components.BaseBrowseItem
 import eu.kanade.presentation.browse.components.ExtensionIcon
+import eu.kanade.presentation.browse.components.NovaBrowseHudHeader
 import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.presentation.manga.components.DotSeparatorNoSpaceText
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionReposScreen
@@ -74,7 +78,6 @@ import tachiyomi.presentation.core.icons.FlagEmoji
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.EmptyScreenAction
 import tachiyomi.presentation.core.screens.LoadingScreen
-import tachiyomi.presentation.core.theme.header
 import tachiyomi.presentation.core.util.plus
 import tachiyomi.presentation.core.util.secondaryItemAlpha
 import tachiyomi.presentation.core.util.selectedBackground
@@ -181,6 +184,19 @@ private fun ExtensionContent(
                 .fillMaxSize(),
             contentPadding = contentPadding + topSmallPaddingValues,
         ) {
+            item(
+                key = "extensions-hud-header",
+                contentType = "hud_header",
+            ) {
+                val extensionCount = state.items.values.sumOf { items -> items.size }
+                NovaBrowseHudHeader(
+                    code = "03 / REGISTRY",
+                    title = stringResource(MR.strings.label_extensions),
+                    metric = extensionCount.toString().padStart(2, '0') + " MODULES",
+                    modifier = Modifier.animateItemFastScroll(),
+                )
+            }
+
             if (!installGranted && state.installer?.requiresSystemPermission == true) {
                 item(key = "extension-permissions-warning") {
                     WarningBanner(
@@ -202,35 +218,37 @@ private fun ExtensionContent(
                             val action: @Composable RowScope.() -> Unit =
                                 if (selectionMode) {
                                     {}
-                                } else when (header.textRes) {
-                                    MR.strings.ext_updates_pending -> {
-                                        {
-                                            Button(onClick = { onClickUpdateAll() }) {
-                                                Text(
-                                                    text = stringResource(MR.strings.ext_update_all),
-                                                    style = LocalTextStyle.current.copy(
-                                                        color = MaterialTheme.colorScheme.onPrimary,
-                                                    ),
-                                                )
+                                } else {
+                                    when (header.textRes) {
+                                        MR.strings.ext_updates_pending -> {
+                                            {
+                                                Button(onClick = { onClickUpdateAll() }) {
+                                                    Text(
+                                                        text = stringResource(MR.strings.ext_update_all),
+                                                        style = LocalTextStyle.current.copy(
+                                                            color = MaterialTheme.colorScheme.onPrimary,
+                                                        ),
+                                                    )
+                                                }
                                             }
                                         }
-                                    }
-                                    // KMK -->
-                                    KMR.strings.extensions_page_more -> {
-                                        {
-                                            Button(onClick = { navigator?.push(ExtensionReposScreen()) }) {
-                                                Text(
-                                                    text = stringResource(MR.strings.action_add_repo),
-                                                    style = LocalTextStyle.current.copy(
-                                                        color = MaterialTheme.colorScheme.onPrimary,
-                                                    ),
-                                                )
+                                        // KMK -->
+                                        KMR.strings.extensions_page_more -> {
+                                            {
+                                                Button(onClick = { navigator?.push(ExtensionReposScreen()) }) {
+                                                    Text(
+                                                        text = stringResource(MR.strings.action_add_repo),
+                                                        style = LocalTextStyle.current.copy(
+                                                            color = MaterialTheme.colorScheme.onPrimary,
+                                                        ),
+                                                    )
+                                                }
                                             }
                                         }
-                                    }
-                                    // KMK <--
-                                    else -> {
-                                        {}
+                                        // KMK <--
+                                        else -> {
+                                            {}
+                                        }
                                     }
                                 }
                             ExtensionHeader(
@@ -588,15 +606,24 @@ private fun ExtensionHeader(
     action: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier = modifier.padding(horizontal = MaterialTheme.padding.medium),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.padding.medium, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = text,
+        Box(
             modifier = Modifier
-                .padding(vertical = 8.dp)
+                .size(width = 3.dp, height = 20.dp)
+                .background(MaterialTheme.colorScheme.primary),
+        )
+        Text(
+            text = text.uppercase(),
+            modifier = Modifier
+                .padding(start = 10.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
                 .weight(1f),
-            style = MaterialTheme.typography.header,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
         )
         action()
     }
