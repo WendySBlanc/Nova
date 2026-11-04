@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -83,13 +85,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.library.filterNovaLibraryShelf
 import eu.kanade.presentation.library.findNovaArchiveCategory
 import eu.kanade.presentation.library.novaCollectionCategories
-import eu.kanade.presentation.library.NovaLibraryShelf
+import eu.kanade.presentation.theme.NovaSpatialLibraryLayout
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaGlassSurface
+import eu.kanade.presentation.theme.novaNeonProgress
+import eu.kanade.presentation.theme.novaSpatialBackdrop
+import eu.kanade.presentation.theme.novaSpatialLibraryColumns
+import eu.kanade.presentation.theme.novaSpatialLibraryLayout
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
@@ -224,7 +232,14 @@ fun NovaVikiLibraryScreen(
         },
         modifier = Modifier
             .fillMaxSize()
-            .background(NovaVikiColors.Background),
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Background,
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.055f,
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -234,149 +249,222 @@ fun NovaVikiLibraryScreen(
                 subtitle = librarySummary,
                 onSearch = onSearch,
             )
-            NovaLibraryControlBand(
-                selectedShelf = selectedShelf,
-                currentCount = currentItems.size,
-                archiveCount = archivedItems.size,
-                selectedTab = selectedTab,
-                allSeriesCount = libraryItems.size,
-                lightNovelCount = lightNovelItems.size,
-                categories = collectionCategories,
-                categoryCounts = categoryCounts,
-                selectedCategoryId = selectedCategoryId,
-                sortOption = sortOption,
-                sortDescending = sortDescending,
-                elevated = hasScrolled,
-                onSelectShelf = { shelf ->
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                val splitLayout = novaSpatialLibraryLayout(maxWidth.value.toInt()) == NovaSpatialLibraryLayout.Split
+                val dividerColor by animateColorAsState(
+                    targetValue = if (hasScrolled || splitLayout) NovaVikiColors.Outline else Color.Transparent,
+                    label = "library_controls_divider",
+                )
+                val selectShelf: (NovaLibraryShelf) -> Unit = { shelf ->
                     selectedShelfIndex = shelf.ordinal
                     selectedCategoryId = null
-                },
-                onSelectTab = { selectedTab = it },
-                onSelectCategory = { selectedCategoryId = it },
-                onSortOptionSelected = { sortOption = it },
-                onToggleDirection = { sortDescending = !sortDescending },
-            )
-            val dividerColor by animateColorAsState(
-                targetValue = if (hasScrolled) NovaVikiColors.Outline else Color.Transparent,
-                label = "library_controls_divider",
-            )
-            HorizontalDivider(color = dividerColor)
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .widthIn(max = NovaVikiDimensions.GridContentMaxWidth)
-                        .fillMaxSize(),
-                ) {
-                    val minimumCardWidth = when {
-                        maxWidth < 360.dp -> 92.dp
-                        maxWidth < 600.dp -> 104.dp
-                        maxWidth < 840.dp -> 124.dp
-                        else -> 148.dp
-                    }
-                    val loadingColumns = (maxWidth / minimumCardWidth).toInt().coerceAtLeast(2)
-                    val horizontalPadding = when {
-                        maxWidth < 360.dp -> 8.dp
-                        maxWidth < 600.dp -> 12.dp
-                        else -> 18.dp
-                    }
-                    val horizontalGap = when {
-                        maxWidth < 360.dp -> 6.dp
-                        maxWidth < 600.dp -> 8.dp
-                        else -> 12.dp
-                    }
-                    val verticalGap = when {
-                        maxWidth < 360.dp -> 14.dp
-                        maxWidth < 600.dp -> 18.dp
-                        else -> 22.dp
-                    }
-                    val cardWidthFraction = 1f
+                }
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = minimumCardWidth),
-                        state = gridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = horizontalPadding,
-                            top = 8.dp,
-                            end = horizontalPadding,
-                            bottom = 24.dp,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(horizontalGap),
-                        verticalArrangement = Arrangement.spacedBy(verticalGap),
+                if (splitLayout) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        NovaLibraryControlBand(
+                            selectedShelf = selectedShelf,
+                            currentCount = currentItems.size,
+                            archiveCount = archivedItems.size,
+                            selectedTab = selectedTab,
+                            allSeriesCount = libraryItems.size,
+                            lightNovelCount = lightNovelItems.size,
+                            categories = collectionCategories,
+                            categoryCounts = categoryCounts,
+                            selectedCategoryId = selectedCategoryId,
+                            sortOption = sortOption,
+                            sortDescending = sortDescending,
+                            elevated = hasScrolled,
+                            onSelectShelf = selectShelf,
+                            onSelectTab = { selectedTab = it },
+                            onSelectCategory = { selectedCategoryId = it },
+                            onSortOptionSelected = { sortOption = it },
+                            onToggleDirection = { sortDescending = !sortDescending },
+                            verticalLayout = true,
+                            modifier = Modifier
+                                .width(304.dp)
+                                .fillMaxHeight()
+                                .padding(12.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(1.dp)
+                                .background(dividerColor),
+                        )
+                        NovaLibraryGrid(
+                            items = sortedVisibleItems,
+                            isLibraryReady = isLibraryReady,
+                            selectedTab = selectedTab,
+                            selectedCategoryId = selectedCategoryId,
+                            archiveCategoryId = archiveCategory?.id,
+                            selectedTransitionMangaId = selectedTransitionMangaId,
+                            gridState = gridState,
+                            onSearch = onSearch,
+                            onOpenManga = openMangaWithTransition,
+                            onPlay = playManga,
+                            onSetArchived = onSetArchived,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        NovaLibraryControlBand(
+                            selectedShelf = selectedShelf,
+                            currentCount = currentItems.size,
+                            archiveCount = archivedItems.size,
+                            selectedTab = selectedTab,
+                            allSeriesCount = libraryItems.size,
+                            lightNovelCount = lightNovelItems.size,
+                            categories = collectionCategories,
+                            categoryCounts = categoryCounts,
+                            selectedCategoryId = selectedCategoryId,
+                            sortOption = sortOption,
+                            sortDescending = sortDescending,
+                            elevated = hasScrolled,
+                            onSelectShelf = selectShelf,
+                            onSelectTab = { selectedTab = it },
+                            onSelectCategory = { selectedCategoryId = it },
+                            onSortOptionSelected = { sortOption = it },
+                            onToggleDirection = { sortDescending = !sortDescending },
+                        )
+                        HorizontalDivider(color = dividerColor)
+                        NovaLibraryGrid(
+                            items = sortedVisibleItems,
+                            isLibraryReady = isLibraryReady,
+                            selectedTab = selectedTab,
+                            selectedCategoryId = selectedCategoryId,
+                            archiveCategoryId = archiveCategory?.id,
+                            selectedTransitionMangaId = selectedTransitionMangaId,
+                            gridState = gridState,
+                            onSearch = onSearch,
+                            onOpenManga = openMangaWithTransition,
+                            onPlay = playManga,
+                            onSetArchived = onSetArchived,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NovaLibraryGrid(
+    items: List<NovaVikiManga>,
+    isLibraryReady: Boolean,
+    selectedTab: Int,
+    selectedCategoryId: Long?,
+    archiveCategoryId: Long?,
+    selectedTransitionMangaId: Long?,
+    gridState: LazyGridState,
+    onSearch: () -> Unit,
+    onOpenManga: (Long) -> Unit,
+    onPlay: (Long?) -> Unit,
+    onSetArchived: (Long, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .widthIn(max = NovaVikiDimensions.GridContentMaxWidth)
+                .fillMaxSize(),
+        ) {
+            val columnCount = novaSpatialLibraryColumns(maxWidth.value.toInt())
+            val horizontalPadding = when {
+                maxWidth < 360.dp -> 8.dp
+                maxWidth < 600.dp -> 12.dp
+                else -> 18.dp
+            }
+            val horizontalGap = when {
+                maxWidth < 360.dp -> 6.dp
+                maxWidth < 600.dp -> 8.dp
+                else -> 12.dp
+            }
+            val verticalGap = when {
+                maxWidth < 360.dp -> 14.dp
+                maxWidth < 600.dp -> 18.dp
+                else -> 22.dp
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columnCount),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = horizontalPadding,
+                    top = 10.dp,
+                    end = horizontalPadding,
+                    bottom = 24.dp,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(horizontalGap),
+                verticalArrangement = Arrangement.spacedBy(verticalGap),
+            ) {
+                if (!isLibraryReady) {
+                    items(
+                        count = columnCount * 2,
+                        key = { index -> "library_loading_$index" },
+                        contentType = { "library_loading_card" },
                     ) {
-                        if (!isLibraryReady) {
-                            items(
-                                count = loadingColumns * 2,
-                                key = { index -> "library_loading_$index" },
-                                contentType = { "library_loading_card" },
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.TopCenter,
-                                ) {
-                                    NovaLibraryLoadingCard(widthFraction = cardWidthFraction)
+                        NovaLibraryLoadingCard(widthFraction = 1f)
+                    }
+                } else if (items.isEmpty()) {
+                    item(
+                        key = "library_empty",
+                        contentType = "library_empty_state",
+                        span = { GridItemSpan(maxLineSpan) },
+                    ) {
+                        NovaLibraryEmptyState(
+                            title = if (selectedTab == 0) {
+                                if (selectedCategoryId != null) {
+                                    "Aucun manhwa dans cette catégorie"
+                                } else {
+                                    "Aucun manhwa dans la bibliothèque"
                                 }
-                            }
-                        } else if (sortedVisibleItems.isEmpty()) {
-                            item(
-                                key = "library_empty",
-                                span = { GridItemSpan(maxLineSpan) },
-                            ) {
-                                NovaLibraryEmptyState(
-                                    title = if (selectedTab == 0) {
-                                        if (selectedCategoryId != null) {
-                                            "Aucun manhwa dans cette catégorie"
-                                        } else {
-                                            "Aucun manhwa dans la bibliothèque"
-                                        }
-                                    } else {
-                                        if (selectedCategoryId != null) {
-                                            "Aucun light novel dans cette catégorie"
-                                        } else {
-                                            "Aucun light novel dans la bibliothèque"
-                                        }
-                                    },
-                                    onSearch = onSearch,
-                                )
-                            }
-                        } else {
-                            items(
-                                items = sortedVisibleItems,
-                                key = { item -> item.id },
-                                contentType = { "library_grid_card" },
-                            ) { item ->
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.TopCenter,
-                                ) {
-                                    NovaLibraryGridCard(
-                                        item = item,
-                                        archived = archiveCategory?.id?.let(item.categoryIds::contains) == true,
-                                        widthFraction = cardWidthFraction,
-                                        sharedTransitionActive = selectedTransitionMangaId == item.id,
-                                        onClick = {
-                                            if (item.id >= 0L) {
-                                                openMangaWithTransition(item.id)
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (item.id >= 0L) {
-                                                playManga(item.id)
-                                            }
-                                        },
-                                        onArchive = {
-                                            if (item.id >= 0L) {
-                                                val isArchived = archiveCategory?.id?.let(item.categoryIds::contains) == true
-                                                onSetArchived(item.id, !isArchived)
-                                            }
-                                        },
-                                    )
+                            } else if (selectedCategoryId != null) {
+                                "Aucun light novel dans cette catégorie"
+                            } else {
+                                "Aucun light novel dans la bibliothèque"
+                            },
+                            onSearch = onSearch,
+                        )
+                    }
+                } else {
+                    items(
+                        items = items,
+                        key = NovaVikiManga::id,
+                        contentType = { "library_grid_card" },
+                    ) { item ->
+                        val archived = archiveCategoryId?.let(item.categoryIds::contains) == true
+                        NovaLibraryGridCard(
+                            item = item,
+                            archived = archived,
+                            widthFraction = 1f,
+                            sharedTransitionActive = selectedTransitionMangaId == item.id,
+                            onClick = {
+                                if (item.id >= 0L) {
+                                    onOpenManga(item.id)
                                 }
-                            }
-                        }
+                            },
+                            onLongClick = {
+                                if (item.id >= 0L) {
+                                    onPlay(item.id)
+                                }
+                            },
+                            onArchive = {
+                                if (item.id >= 0L) {
+                                    onSetArchived(item.id, !archived)
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -403,15 +491,26 @@ private fun NovaLibraryControlBand(
     onSelectCategory: (Long?) -> Unit,
     onSortOptionSelected: (NovaLibrarySortOption) -> Unit,
     onToggleDirection: () -> Unit,
+    verticalLayout: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val background by animateColorAsState(
         targetValue = if (elevated) NovaVikiColors.Surface else NovaVikiColors.Background,
         label = "library_controls_background",
     )
     BoxWithConstraints(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .background(background),
+            .then(
+                if (verticalLayout) {
+                    Modifier.novaGlassSurface(
+                        color = background,
+                        outline = NovaVikiColors.Outline,
+                    )
+                } else {
+                    Modifier.background(background)
+                },
+            ),
         contentAlignment = Alignment.TopCenter,
     ) {
         val compact = maxWidth < 360.dp
@@ -436,64 +535,100 @@ private fun NovaLibraryControlBand(
                 ),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            if (verticalLayout) {
+                Text(
+                    text = "ESPACE BIBLIOTHÈQUE",
+                    color = NovaVikiColors.Accent,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
+                )
+            }
             NovaLibraryShelfSelector(
                 selectedShelf = selectedShelf,
                 currentCount = currentCount,
                 archiveCount = archiveCount,
                 onSelectShelf = onSelectShelf,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            if (verticalLayout) {
                 NovaLibraryModeSelector(
                     selectedTab = selectedTab,
                     allSeriesCount = allSeriesCount,
                     lightNovelCount = lightNovelCount,
                     onSelectTab = onSelectTab,
-                    modifier = if (expandedLayout) {
-                        Modifier
-                            .widthIn(max = 460.dp)
-                            .weight(1f)
-                    } else if (!showCollections) {
-                        Modifier.weight(1f)
-                    } else {
-                        Modifier.fillMaxWidth()
-                    },
-                )
-                if (expandedLayout || !showCollections) {
-                    NovaLibrarySortActions(
-                        sortOption = sortOption,
-                        sortDescending = sortDescending,
-                        showSortLabel = expandedLayout,
-                        onSortOptionSelected = onSortOptionSelected,
-                        onToggleDirection = onToggleDirection,
-                    )
-                }
-            }
-            if (showCollections) {
-                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                )
+                if (showCollections) {
                     NovaLibraryCategoryFilters(
                         categories = categories,
                         categoryCounts = categoryCounts,
                         allCount = activeTotalCount,
                         selectedCategoryId = selectedCategoryId,
                         onSelectCategory = onSelectCategory,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    if (!expandedLayout) {
+                }
+                NovaLibrarySortActions(
+                    sortOption = sortOption,
+                    sortDescending = sortDescending,
+                    showSortLabel = true,
+                    onSortOptionSelected = onSortOptionSelected,
+                    onToggleDirection = onToggleDirection,
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NovaLibraryModeSelector(
+                        selectedTab = selectedTab,
+                        allSeriesCount = allSeriesCount,
+                        lightNovelCount = lightNovelCount,
+                        onSelectTab = onSelectTab,
+                        modifier = if (expandedLayout) {
+                            Modifier
+                                .widthIn(max = 460.dp)
+                                .weight(1f)
+                        } else if (!showCollections) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
+                    )
+                    if (expandedLayout || !showCollections) {
                         NovaLibrarySortActions(
                             sortOption = sortOption,
                             sortDescending = sortDescending,
-                            showSortLabel = showCompactSortLabel,
+                            showSortLabel = expandedLayout,
                             onSortOptionSelected = onSortOptionSelected,
                             onToggleDirection = onToggleDirection,
                         )
+                    }
+                }
+                if (showCollections) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NovaLibraryCategoryFilters(
+                            categories = categories,
+                            categoryCounts = categoryCounts,
+                            allCount = activeTotalCount,
+                            selectedCategoryId = selectedCategoryId,
+                            onSelectCategory = onSelectCategory,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (!expandedLayout) {
+                            NovaLibrarySortActions(
+                                sortOption = sortOption,
+                                sortDescending = sortDescending,
+                                showSortLabel = showCompactSortLabel,
+                                onSortOptionSelected = onSortOptionSelected,
+                                onToggleDirection = onToggleDirection,
+                            )
+                        }
                     }
                 }
             }
@@ -851,7 +986,22 @@ private fun NovaLibraryGridCard(
                     scaleY = scale
                 }
                 .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                .background(Brush.linearGradient(item.colors)),
+                .background(Brush.linearGradient(item.colors))
+                .border(
+                    width = 1.dp,
+                    color = NovaVikiColors.Outline.copy(alpha = 0.72f),
+                    shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
+                )
+                .novaNeonProgress(
+                    progress = item.progress ?: 0f,
+                    trackColor = if (item.progress != null) {
+                        Color.White.copy(alpha = 0.2f)
+                    } else {
+                        Color.Transparent
+                    },
+                    progressColor = NovaVikiColors.Accent,
+                    thickness = 4.dp,
+                ),
         ) {
             if (item.coverData != null) {
                 AsyncImage(
@@ -910,29 +1060,12 @@ private fun NovaLibraryGridCard(
                         .padding(start = 6.dp, bottom = 7.dp),
                 )
             }
-            val progress = item.progress
-            if (progress != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .background(Color.White.copy(alpha = 0.22f)),
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(progress.coerceIn(0f, 1f))
-                        .height(4.dp)
-                        .background(NovaVikiColors.Accent),
-                )
-            }
             IconButton(
                 onClick = onArchive,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp)
-                    .size(40.dp)
+                    .size(NovaVikiDimensions.MinimumTouchTarget)
                     .clip(RoundedCornerShape(50))
                     .background(Color.Black.copy(alpha = 0.64f)),
             ) {

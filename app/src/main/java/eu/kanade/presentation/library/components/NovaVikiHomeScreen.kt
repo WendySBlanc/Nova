@@ -1,6 +1,9 @@
 package eu.kanade.presentation.library.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,12 +27,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.selectable
@@ -36,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -55,8 +60,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +74,10 @@ import eu.kanade.presentation.home.NovaHomeSections
 import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaGlassSurface
+import eu.kanade.presentation.theme.novaNeonProgress
+import eu.kanade.presentation.theme.novaSpatialBackdrop
+import eu.kanade.presentation.theme.novaSpatialHomeColumns
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
@@ -87,7 +99,7 @@ fun NovaVikiHomeScreen(
     resetToTopKey: Int,
 ) {
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     var isRefreshing by remember { mutableStateOf(false) }
     val heroItemsToShow = remember(sections) {
         sections.resume
@@ -116,7 +128,7 @@ fun NovaVikiHomeScreen(
     LaunchedEffect(resetToTopKey) {
         if (resetToTopKey > 0) {
             selectedRail = null
-            listState.scrollToItem(0)
+            gridState.scrollToItem(0)
         }
     }
 
@@ -147,7 +159,14 @@ fun NovaVikiHomeScreen(
         },
         modifier = Modifier
             .fillMaxSize()
-            .background(NovaVikiColors.Background),
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Background,
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.07f,
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -156,30 +175,57 @@ fun NovaVikiHomeScreen(
                 title = stringResource(MR.strings.label_home_nova),
                 onSearch = onSearch,
             )
-            LazyColumn(
-                state = listState,
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                contentPadding = PaddingValues(bottom = 18.dp),
             ) {
-                item(contentType = "hero") {
-                    NovaRevResumeCarousel(
-                        items = heroItemsToShow,
-                        onOpenManga = onOpenManga,
-                        onSearch = onSearch,
-                    )
-                }
-                items(
-                    items = rails,
-                    key = { section -> section.title },
-                    contentType = { "rail" },
-                ) { section ->
-                    NovaRailSection(
-                        section = section,
-                        onOpenManga = onOpenManga,
-                        onOpenSection = { selectedRail = section },
-                    )
+                val columnCount = novaSpatialHomeColumns(maxWidth.value.toInt())
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columnCount),
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item(
+                        key = "home_resume_stage",
+                        contentType = "resume_stage",
+                        span = { GridItemSpan(maxLineSpan) },
+                    ) {
+                        NovaRevResumeCarousel(
+                            items = heroItemsToShow,
+                            onOpenManga = onOpenManga,
+                            onSearch = onSearch,
+                        )
+                    }
+                    rails.forEach { section ->
+                        item(
+                            key = "home_section_${section.title}",
+                            contentType = "section_header",
+                            span = { GridItemSpan(maxLineSpan) },
+                        ) {
+                            NovaSpatialSectionHeader(
+                                section = section,
+                                onClick = { selectedRail = section },
+                            )
+                        }
+                        gridItems(
+                            items = section.items.take(columnCount * 2),
+                            key = { item -> "${section.title}_${item.id}" },
+                            contentType = { "spatial_poster" },
+                        ) { item ->
+                            NovaSpatialPosterCard(
+                                item = item,
+                                onClick = {
+                                    if (item.id >= 0L) {
+                                        onOpenManga(item.id)
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -195,7 +241,14 @@ internal fun NovaVikiSearchHeader(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NovaVikiColors.Background),
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Background,
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.06f,
+            ),
     ) {
         val compact = maxWidth < 360.dp
         Row(
@@ -237,12 +290,9 @@ internal fun NovaVikiSearchHeader(
                 modifier = Modifier
                     .height(NovaVikiDimensions.MinimumTouchTarget)
                     .width(if (compact) NovaVikiDimensions.MinimumTouchTarget else 144.dp)
-                    .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-                    .background(NovaVikiColors.SurfaceStrong)
-                    .border(
-                        width = 1.dp,
-                        color = NovaVikiColors.Outline,
-                        shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+                    .novaGlassSurface(
+                        color = NovaVikiColors.SurfaceStrong,
+                        outline = NovaVikiColors.Outline,
                     )
                     .clickable(role = Role.Button, onClick = onSearch)
                     .padding(horizontal = if (compact) 0.dp else 12.dp),
@@ -712,6 +762,176 @@ private fun PosterFace(title: String, modifier: Modifier) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun NovaSpatialSectionHeader(
+    section: NovaRail,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(NovaVikiDimensions.MinimumTouchTarget)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 2.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(24.dp)
+                .background(NovaVikiColors.Accent),
+        )
+        Spacer(Modifier.width(9.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = section.title,
+                color = NovaVikiColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${section.items.size} titres",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+            )
+        }
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = "Afficher ${section.title}",
+            tint = NovaVikiColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun NovaSpatialPosterCard(
+    item: NovaVikiManga,
+    onClick: () -> Unit,
+) {
+    val coverRequest = rememberHighQualityImageRequest(item.coverData)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (pressed) 0.975f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "home_spatial_card_scale",
+    )
+    val readingState = when {
+        item.remainingChapters > 1L -> "${item.remainingChapters} chapitres à lire"
+        item.remainingChapters == 1L -> "1 chapitre à lire"
+        item.progress != null -> "Lecture en cours"
+        else -> "À jour"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${item.title}, $readingState"
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.Button,
+                onClick = onClick,
+            ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1.58f)
+                .graphicsLayer {
+                    scaleX = cardScale
+                    scaleY = cardScale
+                }
+                .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                .background(Brush.linearGradient(item.colors))
+                .border(
+                    width = 1.dp,
+                    color = NovaVikiColors.Outline.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
+                )
+                .novaNeonProgress(
+                    progress = item.progress ?: 0f,
+                    trackColor = Color.White.copy(alpha = 0.16f),
+                    progressColor = NovaVikiColors.Accent,
+                ),
+        ) {
+            if (item.coverData != null) {
+                AsyncImage(
+                    model = coverRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    filterQuality = FilterQuality.High,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.04f),
+                            1f to Color.Black.copy(alpha = 0.68f),
+                        ),
+                    ),
+            )
+            Text(
+                text = item.tag,
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(7.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            NovaChapterBadges(
+                item = item,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(7.dp),
+            )
+            Text(
+                text = readingState,
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(
+            text = item.title,
+            color = NovaVikiColors.TextPrimary,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = item.subtitle,
+            color = NovaVikiColors.TextSecondary,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -64,6 +65,8 @@ import eu.kanade.presentation.home.NovaNavigationLayout
 import eu.kanade.presentation.home.resolveNovaNavigationLayout
 import eu.kanade.presentation.theme.NovaSignalDimensions
 import eu.kanade.presentation.theme.NovaSignalMotion
+import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.activity.NovaActivitySection
@@ -131,7 +134,15 @@ object HomeScreen : Screen() {
                     startBar = {
                         if (navigationLayout == NovaNavigationLayout.Rail) {
                             NavigationRail(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                modifier = Modifier.novaSpatialBackdrop(
+                                    background = NovaVikiColors.Surface,
+                                    primary = NovaVikiColors.Accent,
+                                    secondary = NovaVikiColors.AccentWarm,
+                                    tertiary = NovaVikiColors.AccentGold,
+                                    wireColor = NovaVikiColors.OutlineStrong,
+                                    wireAlpha = 0.09f,
+                                ),
+                                containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ) {
                                 TABS
@@ -316,18 +327,26 @@ object HomeScreen : Screen() {
     private fun NovaNavigationBar(alwaysShowLabel: Boolean) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = NovaVikiNavBarBackground,
+            color = Color.Transparent,
             contentColor = NovaVikiNavBarInactive,
             tonalElevation = 0.dp,
         ) {
-            Column {
+            Column(
+                modifier = Modifier.novaSpatialBackdrop(
+                    background = NovaVikiNavBarBackground,
+                    primary = NovaVikiNavBarActive,
+                    secondary = NovaVikiColors.AccentWarm,
+                    tertiary = NovaVikiColors.AccentGold,
+                    wireColor = NovaVikiColors.OutlineStrong,
+                    wireAlpha = 0.08f,
+                ),
+            ) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .height(NovaVikiNavBarHeight)
-                        .background(NovaVikiNavBarBackground),
+                        .height(NovaVikiNavBarHeight),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     TABS
@@ -354,10 +373,10 @@ object HomeScreen : Screen() {
             animationSpec = tween(NovaSignalMotion.Control),
             label = "navigationItemColor",
         )
-        val indicatorWidth by animateFloatAsState(
-            targetValue = if (selected) 0.34f else 0f,
+        val selectedMotion by animateFloatAsState(
+            targetValue = if (selected) 1f else 0f,
             animationSpec = tween(NovaSignalMotion.Control),
-            label = "navigationIndicator",
+            label = "navigationSelectedMotion",
         )
 
         Column(
@@ -382,13 +401,23 @@ object HomeScreen : Screen() {
             Box(
                 modifier = Modifier
                     .height(3.dp)
-                    .fillMaxWidth(indicatorWidth)
-                    .background(if (selected) NovaVikiNavBarActive else Color.Transparent),
+                    .fillMaxWidth(0.34f)
+                    .graphicsLayer {
+                        scaleX = selectedMotion
+                        alpha = selectedMotion
+                    }
+                    .background(NovaVikiNavBarActive),
             )
             CompositionLocalProvider(LocalContentColor provides itemColor) {
                 NavigationIconItem(
                     tab = tab,
-                    modifier = Modifier.size(NovaVikiNavBarIconSize),
+                    modifier = Modifier
+                        .size(NovaVikiNavBarIconSize)
+                        .graphicsLayer {
+                            scaleX = 1f + selectedMotion * 0.08f
+                            scaleY = 1f + selectedMotion * 0.08f
+                            translationY = -selectedMotion * 2.dp.toPx()
+                        },
                 )
             }
             Box(

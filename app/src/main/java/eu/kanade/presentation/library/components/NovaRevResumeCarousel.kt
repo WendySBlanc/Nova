@@ -38,6 +38,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaGlassSurface
+import eu.kanade.presentation.theme.novaNeonProgress
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import nova.cardmotion.CardCarousel
 import nova.cardmotion.CardMotionMode
@@ -62,7 +66,7 @@ internal fun NovaRevResumeCarousel(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val carouselHeight = if (maxWidth < 380.dp) 232.dp else 276.dp
+        val carouselHeight = if (maxWidth < 380.dp) 236.dp else 280.dp
         CardCarousel(
             items = items,
             itemKey = NovaVikiManga::id,
@@ -93,127 +97,146 @@ private fun NovaResumeCard(item: NovaVikiManga) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(8.dp))
-            .background(Brush.linearGradient(item.colors)),
-    ) {
-        if (item.coverData != null) {
-            AsyncImage(
-                model = coverRequest,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                filterQuality = FilterQuality.High,
-                modifier = Modifier.fillMaxSize(),
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.Surface,
+                primary = item.colors.firstOrNull() ?: NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = Color.White,
+                wireAlpha = 0.12f,
             )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.08f),
-                        0.5f to Color.Black.copy(alpha = 0.3f),
-                        1f to Color.Black.copy(alpha = 0.88f),
-                    ),
-                ),
-        )
-
+            .novaNeonProgress(
+                progress = item.progress ?: 0f,
+                trackColor = Color.White.copy(alpha = 0.16f),
+                progressColor = NovaVikiColors.Accent,
+                thickness = 4.dp,
+            ),
+    ) {
         Row(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .fillMaxSize()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = item.tag.uppercase(),
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.Black.copy(alpha = 0.58f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                maxLines = 1,
-            )
-            if (item.downloadedChapters > 0L) {
-                Text(
-                    text = "Hors ligne",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        NovaChapterBadges(
-            item = item,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-        )
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(14.dp),
-        ) {
-            Text(
-                text = item.title,
-                color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = item.subtitle,
-                color = Color.White.copy(alpha = 0.84f),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .weight(0.43f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                    .background(Brush.linearGradient(item.colors)),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(NovaVikiColors.Accent),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp),
+                if (item.coverData != null) {
+                    AsyncImage(
+                        model = coverRequest,
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop,
+                        filterQuality = FilterQuality.High,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-                Text(
-                    text = if ((item.progress ?: 0f) > 0f) "Reprendre" else "Lire",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Black,
-                )
-            }
-            item.progress?.let { progress ->
-                Spacer(Modifier.height(12.dp))
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(alpha = 0.25f)),
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.48f),
+                            ),
+                        ),
+                )
+                Text(
+                    text = item.tag.uppercase(),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(9.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .weight(0.57f)
+                    .fillMaxHeight()
+                    .novaGlassSurface(
+                        color = NovaVikiColors.SurfaceRaised,
+                        outline = NovaVikiColors.Outline,
+                    )
+                    .padding(14.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = if (item.downloadedChapters > 0L) "HORS LIGNE" else "À CONTINUER",
+                        color = NovaVikiColors.Accent,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                    )
+                    NovaChapterBadges(item = item)
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = item.title,
+                    color = NovaVikiColors.TextPrimary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    text = item.subtitle,
+                    color = NovaVikiColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(50))
                             .background(NovaVikiColors.Accent),
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(9.dp))
+                    Column {
+                        Text(
+                            text = if ((item.progress ?: 0f) > 0f) "Reprendre" else "Lire",
+                            color = NovaVikiColors.TextPrimary,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Black,
+                        )
+                        item.progress?.let { progress ->
+                            Text(
+                                text = "${(progress.coerceIn(0f, 1f) * 100).toInt()} %",
+                                color = NovaVikiColors.TextSecondary,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
                 }
             }
         }

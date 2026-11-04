@@ -89,6 +89,8 @@ import eu.kanade.presentation.manga.components.getSwipeAction
 import eu.kanade.presentation.manga.components.swipeActionThreshold
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.theme.novaGlassSurface
+import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.presentation.util.isLikelyLightNovel
 import eu.kanade.presentation.util.novaMangaSharedArtwork
@@ -169,7 +171,14 @@ fun NovaMangaScreen(
             onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .background(NovaVikiColors.Background),
+                .novaSpatialBackdrop(
+                    background = NovaVikiColors.Background,
+                    primary = NovaVikiColors.Accent,
+                    secondary = NovaVikiColors.AccentWarm,
+                    tertiary = NovaVikiColors.AccentGold,
+                    wireColor = NovaVikiColors.OutlineStrong,
+                    wireAlpha = 0.05f,
+                ),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -316,7 +325,7 @@ private fun NovaMangaHero(
     ) {
         val compact = maxWidth < 360.dp
         val tablet = maxWidth >= 600.dp
-        val showPoster = tablet
+        val showPoster = true
         val heroHeight = when {
             compact -> (maxWidth * 1.08f).coerceIn(360.dp, 414.dp)
             tablet -> (maxWidth * 0.62f).coerceIn(460.dp, 520.dp)
@@ -465,7 +474,13 @@ private fun NovaMangaHero(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 14.dp, vertical = if (compact) 14.dp else 18.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = if (compact) 12.dp else 16.dp)
+                    .novaGlassSurface(
+                        color = NovaVikiColors.SurfaceRaised,
+                        outline = NovaVikiColors.OutlineStrong,
+                    )
+                    .padding(12.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
             ) {
@@ -679,7 +694,14 @@ private fun NovaMangaTabs(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(NovaVikiColors.SurfaceRaised)
+            .novaSpatialBackdrop(
+                background = NovaVikiColors.SurfaceRaised,
+                primary = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                tertiary = NovaVikiColors.AccentGold,
+                wireColor = NovaVikiColors.OutlineStrong,
+                wireAlpha = 0.08f,
+            )
             .border(
                 width = 1.dp,
                 color = NovaVikiColors.Outline,
