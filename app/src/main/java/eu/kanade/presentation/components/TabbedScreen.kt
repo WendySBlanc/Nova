@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.theme.NovaVikiColors
@@ -130,17 +131,33 @@ fun TabbedScreen(
                     selectedTabIndex = state.currentPage,
                     modifier = Modifier
                         .widthIn(max = NovaVikiDimensions.CompactContentMaxWidth)
-                        .fillMaxWidth(),
-                    containerColor = NovaVikiColors.Background,
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .novaHollowPacket(
+                            background = NovaVikiColors.Surface,
+                            outline = NovaVikiColors.OutlineStrong,
+                            accent = NovaVikiColors.Accent,
+                            secondary = NovaVikiColors.AccentWarm,
+                        ),
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = NovaVikiColors.TextPrimary,
                     divider = {},
+                    indicator = {},
                     edgePadding = androidx.compose.ui.unit.Dp.Hairline,
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         Tab(
                             selected = state.currentPage == index,
                             onClick = { scope.launch { state.animateScrollToPage(index) } },
-                            text = { TabText(text = stringResource(tab.titleRes), badgeCount = tab.badgeNumber) },
+                            text = {
+                                NovaLiquidTabLabel(
+                                    selected = state.currentPage == index,
+                                    accent = NovaVikiColors.Accent,
+                                    outline = NovaVikiColors.OutlineStrong,
+                                ) {
+                                    TabText(text = stringResource(tab.titleRes), badgeCount = tab.badgeNumber)
+                                }
+                            },
                             selectedContentColor = NovaVikiColors.Accent,
                             unselectedContentColor = NovaVikiColors.TextSecondary,
                         )

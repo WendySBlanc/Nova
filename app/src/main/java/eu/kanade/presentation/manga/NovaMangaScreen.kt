@@ -80,6 +80,7 @@ import coil3.compose.AsyncImage
 import eu.kanade.domain.manga.model.PagePreview
 import eu.kanade.presentation.components.DownloadDropdownMenu
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
@@ -735,10 +736,12 @@ private fun NovaMangaTabs(
                 colorIntensity = 2.8f,
                 showMark = false,
             )
-            .border(
-                width = 1.dp,
-                color = NovaVikiColors.Outline,
-                shape = RoundedCornerShape(0.dp),
+            .novaHollowPacket(
+                background = NovaVikiColors.SurfaceRaised.copy(alpha = 0.76f),
+                outline = coverGradient.outline,
+                accent = coverGradient.primary,
+                secondary = coverGradient.secondary,
+                particleCount = 8,
             )
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +17,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +58,8 @@ import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.presentation.components.NovaFluidFixedTabRow
+import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.home.NovaNavigationLayout
 import eu.kanade.presentation.home.resolveNovaNavigationLayout
 import eu.kanade.presentation.theme.NovaSignalDimensions
@@ -68,7 +67,6 @@ import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.Screen
-import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.activity.NovaActivitySection
 import eu.kanade.tachiyomi.ui.activity.NovaActivityTab
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -143,6 +141,13 @@ object HomeScreen : Screen() {
                                     wireAlpha = 0.09f,
                                     planeAlpha = 0.025f,
                                     showMark = false,
+                                ).novaHollowPacket(
+                                    background = NovaVikiColors.Surface,
+                                    outline = NovaVikiColors.OutlineStrong,
+                                    accent = NovaVikiColors.Accent,
+                                    secondary = NovaVikiColors.AccentWarm,
+                                    corner = 0.dp,
+                                    particleCount = 14,
                                 ),
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -327,6 +332,13 @@ object HomeScreen : Screen() {
 
     @Composable
     private fun NovaNavigationBar(alwaysShowLabel: Boolean) {
+        val tabNavigator = LocalTabNavigator.current
+        val navigator = LocalNavigator.currentOrThrow
+        val scope = rememberCoroutineScope()
+        val enabledTabs = TABS.fastFilter { it.isEnabled() }
+        val selectedIndex = enabledTabs.indexOfFirst { tabNavigator.current::class == it::class }
+            .coerceAtLeast(0)
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.Transparent,
@@ -343,35 +355,45 @@ object HomeScreen : Screen() {
                     wireAlpha = 0.08f,
                     planeAlpha = 0.025f,
                     showMark = false,
-                ),
+                )
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
             ) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
+                NovaFluidFixedTabRow(
+                    selectedIndex = selectedIndex,
+                    itemCount = enabledTabs.size,
+                    onSelect = { index ->
+                        val tab = enabledTabs[index]
+                        if (tabNavigator.current::class != tab::class) {
+                            tabNavigator.current = tab
+                        } else {
+                            scope.launch { tab.onReselect(navigator) }
+                        }
+                    },
+                    background = NovaVikiNavBarBackground,
+                    outline = NovaVikiColors.OutlineStrong,
+                    accent = NovaVikiNavBarActive,
+                    secondary = NovaVikiColors.AccentWarm,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .navigationBarsPadding()
                         .height(NovaVikiNavBarHeight),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    TABS
-                        .fastFilter { it.isEnabled() }
-                        .fastForEach {
-                            NovaNavigationBarItem(it, alwaysShowLabel)
-                        }
+                ) { index, selected ->
+                    NovaNavigationBarItem(
+                        tab = enabledTabs[index],
+                        alwaysShowLabel = alwaysShowLabel,
+                        selected = selected,
+                    )
                 }
             }
         }
     }
 
     @Composable
-    private fun RowScope.NovaNavigationBarItem(
+    private fun NovaNavigationBarItem(
         tab: eu.kanade.presentation.util.Tab,
         alwaysShowLabel: Boolean,
+        selected: Boolean,
     ) {
-        val tabNavigator = LocalTabNavigator.current
-        val navigator = LocalNavigator.currentOrThrow
-        val scope = rememberCoroutineScope()
-        val selected = tabNavigator.current::class == tab::class
         val itemColor by animateColorAsState(
             targetValue = if (selected) NovaVikiNavBarActive else NovaVikiNavBarInactive,
             animationSpec = tween(NovaSignalMotion.Control),
@@ -385,33 +407,12 @@ object HomeScreen : Screen() {
 
         Column(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxSize()
                 .fillMaxHeight()
-                .selectable(
-                    selected = selected,
-                    role = Role.Tab,
-                    onClick = {
-                        if (!selected) {
-                            tabNavigator.current = tab
-                        } else {
-                            scope.launch { tab.onReselect(navigator) }
-                        }
-                    },
-                )
                 .padding(top = 6.dp, bottom = 5.dp),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .height(3.dp)
-                    .fillMaxWidth(0.34f)
-                    .graphicsLayer {
-                        scaleX = selectedMotion
-                        alpha = selectedMotion
-                    }
-                    .background(NovaVikiNavBarActive),
-            )
             CompositionLocalProvider(LocalContentColor provides itemColor) {
                 NavigationIconItem(
                     tab = tab,

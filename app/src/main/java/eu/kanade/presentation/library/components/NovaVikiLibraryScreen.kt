@@ -85,6 +85,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.components.NovaFluidFixedTabRow
+import eu.kanade.presentation.components.NovaLiquidTabLabel
+import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.library.filterNovaLibraryShelf
@@ -648,38 +651,28 @@ private fun NovaLibraryShelfSelector(
         Triple(NovaLibraryShelf.Archive, "Archives", archiveCount),
         Triple(NovaLibraryShelf.Collections, "Collections", currentCount),
     )
-    Row(
+    val selectedIndex = shelves.indexOfFirst { it.first == selectedShelf }.coerceAtLeast(0)
+    NovaFluidFixedTabRow(
+        selectedIndex = selectedIndex,
+        itemCount = shelves.size,
+        onSelect = { index -> onSelectShelf(shelves[index].first) },
+        background = NovaVikiColors.Surface,
+        outline = NovaVikiColors.OutlineStrong,
+        accent = NovaVikiColors.Accent,
+        secondary = NovaVikiColors.AccentWarm,
         modifier = Modifier
             .fillMaxWidth()
-            .height(NovaVikiDimensions.MinimumTouchTarget)
-            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(NovaVikiColors.Surface)
-            .selectableGroup(),
-    ) {
-        shelves.forEach { (shelf, label, count) ->
-            val selected = selectedShelf == shelf
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize()
-                    .background(if (selected) NovaVikiColors.SurfaceInteractive else Color.Transparent)
-                    .selectable(
-                        selected = selected,
-                        role = Role.Tab,
-                        onClick = { onSelectShelf(shelf) },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "$label  $count",
-                    color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+            .height(NovaVikiDimensions.MinimumTouchTarget),
+    ) { index, selected ->
+        val (_, label, count) = shelves[index]
+        Text(
+            text = "$label  $count",
+            color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -695,56 +688,26 @@ private fun NovaLibraryModeSelector(
         "All Series" to allSeriesCount,
         "Light Novel" to lightNovelCount,
     )
-    Row(
+    NovaFluidFixedTabRow(
+        selectedIndex = selectedTab,
+        itemCount = tabs.size,
+        onSelect = onSelectTab,
+        background = NovaVikiColors.Surface,
+        outline = NovaVikiColors.OutlineStrong,
+        accent = NovaVikiColors.Accent,
+        secondary = NovaVikiColors.AccentWarm,
         modifier = modifier
-            .height(NovaVikiDimensions.MinimumTouchTarget)
-            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(NovaVikiColors.Surface)
-            .border(
-                width = 1.dp,
-                color = NovaVikiColors.Outline,
-                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
-            )
-            .selectableGroup(),
-    ) {
-        tabs.forEachIndexed { index, (label, count) ->
-            val selected = selectedTab == index
-            val background by animateColorAsState(
-                targetValue = if (selected) NovaVikiColors.SurfaceInteractive else Color.Transparent,
-                label = "library_tab_background",
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize()
-                    .background(background)
-                    .selectable(
-                        selected = selected,
-                        role = Role.Tab,
-                        onClick = { onSelectTab(index) },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "$label  $count",
-                    color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (selected) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .width(28.dp)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(NovaVikiColors.Accent),
-                    )
-                }
-            }
-        }
+            .height(NovaVikiDimensions.MinimumTouchTarget),
+    ) { index, selected ->
+        val (label, count) = tabs[index]
+        Text(
+            text = "$label  $count",
+            color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -788,41 +751,39 @@ private fun NovaLibraryCategoryChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val background by animateColorAsState(
-        targetValue = if (selected) NovaVikiColors.SurfaceInteractive else NovaVikiColors.Surface,
-        label = "library_category_background",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (selected) NovaVikiColors.Accent else NovaVikiColors.Outline,
-        label = "library_category_border",
-    )
     Box(
         modifier = Modifier
             .height(NovaVikiDimensions.MinimumTouchTarget)
             .widthIn(max = 220.dp)
-            .clip(RoundedCornerShape(NovaVikiDimensions.ControlCorner))
-            .background(background)
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
+            .novaHollowPacket(
+                background = NovaVikiColors.Surface,
+                outline = if (selected) NovaVikiColors.Accent else NovaVikiColors.Outline,
+                accent = NovaVikiColors.Accent,
+                secondary = NovaVikiColors.AccentWarm,
+                particleCount = if (selected) 5 else 0,
             )
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
                 onClick = onClick,
             )
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = "$label  $count",
-            color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        NovaLiquidTabLabel(
+            selected = selected,
+            accent = NovaVikiColors.Accent,
+            outline = NovaVikiColors.OutlineStrong,
+        ) {
+            Text(
+                text = "$label  $count",
+                color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

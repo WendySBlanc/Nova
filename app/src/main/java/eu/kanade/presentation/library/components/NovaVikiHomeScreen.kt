@@ -70,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.components.NovaFluidFixedTabRow
 import eu.kanade.presentation.home.NovaHomeSections
 import eu.kanade.presentation.library.NovaLibraryEntry
 import eu.kanade.presentation.theme.NovaVikiColors
@@ -327,48 +328,29 @@ internal fun NovaVikiLibraryTabs(
             .background(NovaVikiColors.Background),
     ) {
         val compact = maxWidth < 360.dp
-        Row(
+        NovaFluidFixedTabRow(
+            selectedIndex = selectedIndex,
+            itemCount = 2,
+            onSelect = onSelect,
+            background = NovaVikiColors.Surface,
+            outline = NovaVikiColors.OutlineStrong,
+            accent = NovaVikiColors.Accent,
+            secondary = NovaVikiColors.AccentWarm,
             modifier = Modifier
                 .align(Alignment.Center)
                 .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
                 .fillMaxWidth()
                 .height(if (compact) 48.dp else 52.dp)
                 .padding(horizontal = if (compact) 10.dp else 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            listOf("All Series", "Light Novel").forEachIndexed { index, label ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .height(NovaVikiDimensions.MinimumTouchTarget)
-                        .selectable(
-                            selected = index == selectedIndex,
-                            role = Role.Tab,
-                            onClick = { onSelect(index) },
-                        ),
-                ) {
-                    Text(
-                        text = label,
-                        color = if (index == selectedIndex) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (index == selectedIndex) FontWeight.Black else FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(if (index == selectedIndex) 28.dp else 0.dp)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(NovaVikiColors.Accent),
-                    )
-                }
-                if (index != 1) {
-                    Spacer(Modifier.width(if (compact) 16.dp else 24.dp))
-                }
-            }
+        ) { index, selected ->
+            Text(
+                text = if (index == 0) "All Series" else "Light Novel",
+                color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

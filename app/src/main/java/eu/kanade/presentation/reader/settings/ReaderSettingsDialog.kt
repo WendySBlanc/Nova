@@ -45,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import eu.kanade.presentation.components.NovaLiquidTabLabel
+import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.isLikelyLightNovel
@@ -198,8 +200,18 @@ fun ReaderSettingsDialog(
                             PrimaryScrollableTabRow(
                                 selectedTabIndex = pagerState.currentPage,
                                 edgePadding = 8.dp,
-                                containerColor = sheetColor,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    .novaHollowPacket(
+                                        background = NovaVikiColors.Surface,
+                                        outline = NovaVikiColors.OutlineStrong,
+                                        accent = NovaVikiColors.Accent,
+                                        secondary = NovaVikiColors.AccentWarm,
+                                    ),
+                                containerColor = Color.Transparent,
                                 divider = {},
+                                indicator = {},
                             ) {
                                 tabTitles.forEachIndexed { index, title ->
                                     Tab(
@@ -209,10 +221,16 @@ fun ReaderSettingsDialog(
                                         },
                                         modifier = Modifier.height(48.dp),
                                         text = {
-                                            Text(
-                                                text = title,
-                                                style = MaterialTheme.typography.labelLarge,
-                                            )
+                                            NovaLiquidTabLabel(
+                                                selected = pagerState.currentPage == index,
+                                                accent = NovaVikiColors.Accent,
+                                                outline = NovaVikiColors.OutlineStrong,
+                                            ) {
+                                                Text(
+                                                    text = title,
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                )
+                                            }
                                         },
                                         selectedContentColor = NovaVikiColors.Accent,
                                         unselectedContentColor = NovaVikiColors.TextSecondary,

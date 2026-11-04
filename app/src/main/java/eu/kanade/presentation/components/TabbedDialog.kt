@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -56,16 +57,34 @@ fun TabbedDialog(
         Column {
             Row {
                 PrimaryTabRow(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .novaHollowPacket(
+                            background = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            outline = MaterialTheme.colorScheme.outline,
+                            accent = MaterialTheme.colorScheme.primary,
+                            secondary = MaterialTheme.colorScheme.secondary,
+                            particleCount = 6,
+                        ),
                     selectedTabIndex = pagerState.currentPage,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     divider = {},
+                    indicator = {},
                 ) {
                     tabTitles.fastForEachIndexed { index, tab ->
                         Tab(
                             selected = pagerState.currentPage == index,
                             onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            text = { TabText(text = tab) },
+                            text = {
+                                NovaLiquidTabLabel(
+                                    selected = pagerState.currentPage == index,
+                                    accent = MaterialTheme.colorScheme.primary,
+                                    outline = MaterialTheme.colorScheme.outline,
+                                ) {
+                                    TabText(text = tab)
+                                }
+                            },
                             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
                         )
                     }

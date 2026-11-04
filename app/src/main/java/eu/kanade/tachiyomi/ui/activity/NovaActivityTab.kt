@@ -5,6 +5,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
@@ -21,10 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.components.NovaLiquidTabLabel
+import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.Tab
@@ -83,25 +88,41 @@ data object NovaActivityTab : Tab {
             ) {
                 PrimaryScrollableTabRow(
                     selectedTabIndex = section.ordinal,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .novaHollowPacket(
+                            background = NovaVikiColors.Surface,
+                            outline = NovaVikiColors.OutlineStrong,
+                            accent = NovaVikiColors.Accent,
+                            secondary = NovaVikiColors.AccentWarm,
+                        ),
                     containerColor = androidx.compose.ui.graphics.Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = androidx.compose.ui.unit.Dp.Hairline,
+                    indicator = {},
                 ) {
                     NovaActivitySection.entries.forEach { item ->
                         Tab(
                             selected = section == item,
                             onClick = { selectedSection.value = item },
                             text = {
-                                Text(
-                                    text = "0${item.ordinal + 1} / " + when (item) {
-                                        NovaActivitySection.Updates -> stringResource(MR.strings.label_recent_updates)
-                                        NovaActivitySection.Downloads -> stringResource(MR.strings.label_download_queue)
-                                        NovaActivitySection.History -> stringResource(MR.strings.label_recent_manga)
-                                        NovaActivitySection.Problems -> "Problèmes"
-                                    }.uppercase(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
+                                NovaLiquidTabLabel(
+                                    selected = section == item,
+                                    accent = NovaVikiColors.Accent,
+                                    outline = NovaVikiColors.OutlineStrong,
+                                ) {
+                                    Text(
+                                        text = "0${item.ordinal + 1} / " + when (item) {
+                                            NovaActivitySection.Updates -> stringResource(MR.strings.label_recent_updates)
+                                            NovaActivitySection.Downloads -> stringResource(MR.strings.label_download_queue)
+                                            NovaActivitySection.History -> stringResource(MR.strings.label_recent_manga)
+                                            NovaActivitySection.Problems -> "Problèmes"
+                                        }.uppercase(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
                             },
                         )
                     }
