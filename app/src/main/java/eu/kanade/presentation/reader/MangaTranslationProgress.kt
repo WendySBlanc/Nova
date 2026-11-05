@@ -95,7 +95,6 @@ fun mangaTranslationUiModel(
             } else {
                 MangaTranslationUiText.ConfigureServerDescription
             },
-            enabled = configured,
         )
     }
 }

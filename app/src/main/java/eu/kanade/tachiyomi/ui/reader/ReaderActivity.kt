@@ -65,6 +65,7 @@ import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterListDialog
 import eu.kanade.presentation.reader.DisplayRefreshHost
+import eu.kanade.presentation.reader.MangaTranslationAction
 import eu.kanade.presentation.reader.OrientationSelectDialog
 import eu.kanade.presentation.reader.ReaderContentOverlay
 import eu.kanade.presentation.reader.ReaderPageActionsDialog
@@ -686,7 +687,16 @@ class ReaderActivity : BaseActivity() {
             onOpenInBrowser = ::openChapterInBrowser.takeIf { isHttpSource },
             onShare = ::shareChapter.takeIf { isHttpSource },
             mangaTranslation = mangaTranslation,
-            onMangaTranslationAction = viewModel::onMangaTranslationAction,
+            onMangaTranslationAction = {
+                if (
+                    mangaTranslation?.action == MangaTranslationAction.Translate &&
+                    !state.mangaTranslationConfigured
+                ) {
+                    openMangaTranslationSettings()
+                } else {
+                    viewModel.onMangaTranslationAction()
+                }
+            },
 
             viewer = state.viewer,
             onNextChapter = ::loadNextChapter,
@@ -987,6 +997,15 @@ class ReaderActivity : BaseActivity() {
                 },
             )
         }
+    }
+
+    private fun openMangaTranslationSettings() {
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                action = MainActivity.INTENT_READER_SETTINGS
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            },
+        )
     }
 
     private fun openChapterInWebView() {

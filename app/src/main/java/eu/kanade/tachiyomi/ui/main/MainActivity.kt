@@ -96,6 +96,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
 import eu.kanade.tachiyomi.ui.more.OnboardingScreen
 import eu.kanade.tachiyomi.ui.more.WhatsNewScreen
+import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.util.system.dpToPx
 import eu.kanade.tachiyomi.util.system.isDebugBuildType
 import eu.kanade.tachiyomi.util.system.isNavigationBarNeedsScrim
@@ -693,6 +694,11 @@ class MainActivity : BaseActivity() {
                 }
                 null
             }
+            INTENT_READER_SETTINGS -> {
+                navigator.popUntilRoot()
+                navigator.push(SettingsScreen(SettingsScreen.Destination.Reader))
+                null
+            }
             Intent.ACTION_VIEW -> {
                 // Handling opening of backup files
                 if (intent.data.toString().endsWith(".tachibk")) {
@@ -723,6 +729,7 @@ class MainActivity : BaseActivity() {
         const val INTENT_SEARCH = "eu.kanade.tachiyomi.SEARCH"
         const val INTENT_SEARCH_QUERY = "query"
         const val INTENT_SEARCH_FILTER = "filter"
+        const val INTENT_READER_SETTINGS = "eu.kanade.tachiyomi.READER_SETTINGS"
     }
 }
 

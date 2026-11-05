@@ -28,14 +28,14 @@ class MangaTranslationUiModelTest {
     }
 
     @Test
-    fun `translation action is disabled when server configuration is incomplete`() {
+    fun `translation action opens configuration when server setup is incomplete`() {
         val model = model(
             state = MangaTranslationState.Idle,
             configured = false,
         )
 
         model.action shouldBe MangaTranslationAction.Translate
-        model.enabled shouldBe false
+        model.enabled shouldBe true
         model.contentDescription shouldBe MangaTranslationUiText.ConfigureServerDescription
     }
 
