@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.translation
 
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -84,12 +85,32 @@ class MangaTranslationCache(
             }
     }
 
+    override fun activeMetadata(chapterKey: String): TranslationResultMetadata? {
+        if (chapterKey.isBlank()) return null
+        val chapterDirectory = chapterDirectory(chapterKey)
+        return runCatching {
+            val variantName = File(chapterDirectory, ACTIVE_FILE)
+                .takeIf(File::isFile)
+                ?.readText()
+                ?.trim()
+                ?.takeIf(VARIANT_PATTERN::matches)
+                ?: return null
+            val manifest = File(File(chapterDirectory, variantName), MANIFEST_FILE)
+                .takeIf(File::isFile)
+                ?: return null
+            json.decodeFromString<TranslationResultMetadata>(manifest.readText())
+                .takeIf { metadata ->
+                    metadata.chapterKey == chapterKey && metadata.variantKey() == variantName
+                }
+        }.getOrNull()
+    }
+
     private fun extractAndValidate(
         metadata: TranslationResultMetadata,
         archive: File,
         destination: File,
     ): List<File> {
-        val pageIndexes = mutableSetOf<Int>()
+        val pageIndexes = mutableListOf<Int>()
         var totalBytes = 0L
         try {
             ZipInputStream(archive.inputStream().buffered()).use { input ->
@@ -99,9 +120,10 @@ class MangaTranslationCache(
                         throw MangaTranslationProtocolException("Entrée ZIP non autorisée: ${entry.name.take(80)}")
                     }
                     val pageIndex = PAGE_PATTERN.matchEntire(entry.name)!!.groupValues[1].toInt()
-                    if (pageIndex !in 0 until metadata.totalPages || !pageIndexes.add(pageIndex)) {
+                    if (pageIndex !in 0 until metadata.totalPages || pageIndex in pageIndexes) {
                         throw MangaTranslationProtocolException("Page traduite dupliquée ou inattendue")
                     }
+                    pageIndexes += pageIndex
                     val outputFile = File(destination, entry.name)
                     if (outputFile.canonicalFile.parentFile != destination.canonicalFile) {
                         throw MangaTranslationProtocolException("Chemin ZIP non autorisé")
@@ -136,8 +158,8 @@ class MangaTranslationCache(
         } catch (error: ZipException) {
             throw MangaTranslationProtocolException("Archive traduite corrompue", error)
         }
-        if (pageIndexes != (0 until metadata.totalPages).toSet()) {
-            throw MangaTranslationProtocolException("Nombre de pages traduites incorrect")
+        if (pageIndexes != (0 until metadata.totalPages).toList()) {
+            throw MangaTranslationProtocolException("Ordre ou nombre de pages traduites incorrect")
         }
         return pageFiles(destination, metadata.totalPages)
     }

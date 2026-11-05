@@ -17,7 +17,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 interface MangaTranslationService {
-    suspend fun checkHealth()
+    suspend fun checkHealth(): MangaTranslationServerInfo
     suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob
     suspend fun getJob(jobId: String): TranslationJob
     suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata
@@ -31,6 +31,7 @@ interface MangaTranslationArchiveGateway {
 interface MangaTranslationCacheGateway {
     fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation
     fun translatedPage(chapterKey: String, pageIndex: Int): File?
+    fun activeMetadata(chapterKey: String): TranslationResultMetadata?
 }
 
 interface MangaTranslationJobStore {
@@ -94,13 +95,34 @@ class MangaTranslationRepository(
     fun translatedPage(chapterKey: String, pageIndex: Int): File? =
         cache.translatedPage(chapterKey, pageIndex)
 
+    suspend fun hasUsableTranslation(chapterKey: String, pageIndexes: List<Int>): Boolean {
+        if (!hasTranslation(chapterKey, pageIndexes)) return false
+        val metadata = cache.activeMetadata(chapterKey) ?: return false
+        if (metadata.totalPages != pageIndexes.size) return false
+        return try {
+            service.checkHealth().configRevision == metadata.configRevision
+        } catch (_: MangaTranslationException) {
+            true
+        }
+    }
+
     suspend fun translate(chapterKey: String, pages: List<ReaderPage>) {
         runOnce(chapterKey) {
+            val serverInfo = service.checkHealth()
             val existingJobId = jobStore.get(chapterKey)
             if (existingJobId != null) {
-                poll(chapterKey, existingJobId)
+                val existingJob = service.getJob(existingJobId)
+                if (existingJob.configRevision == serverInfo.configRevision) {
+                    poll(chapterKey, existingJobId, serverInfo.configRevision, existingJob)
+                } else {
+                    if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
+                        service.cancelJob(existingJobId)
+                    }
+                    jobStore.remove(chapterKey)
+                    submit(chapterKey, pages, serverInfo.configRevision)
+                }
             } else {
-                submit(chapterKey, pages)
+                submit(chapterKey, pages, serverInfo.configRevision)
             }
         }
     }
@@ -108,7 +130,17 @@ class MangaTranslationRepository(
     suspend fun resume(chapterKey: String) {
         val jobId = jobStore.get(chapterKey) ?: return
         runOnce(chapterKey) {
-            poll(chapterKey, jobId)
+            val serverInfo = service.checkHealth()
+            val job = service.getJob(jobId)
+            if (job.configRevision != serverInfo.configRevision) {
+                if (job.status == TranslationJobStatus.QUEUED || job.status == TranslationJobStatus.RUNNING) {
+                    service.cancelJob(jobId)
+                }
+                jobStore.remove(chapterKey)
+                state(chapterKey).value = MangaTranslationState.Idle
+                return@runOnce
+            }
+            poll(chapterKey, jobId, serverInfo.configRevision, job)
         }
     }
 
@@ -136,7 +168,7 @@ class MangaTranslationRepository(
         }
     }
 
-    private suspend fun submit(chapterKey: String, pages: List<ReaderPage>) {
+    private suspend fun submit(chapterKey: String, pages: List<ReaderPage>, configRevision: String) {
         ensureNotCancelled(chapterKey)
         state(chapterKey).value = MangaTranslationState.Preparing
         val upload = archive.createUpload(chapterKey, pages)
@@ -144,21 +176,34 @@ class MangaTranslationRepository(
             ensureNotCancelled(chapterKey)
             state(chapterKey).value = MangaTranslationState.Uploading
             val job = service.submitChapter(chapterKey, upload)
+            if (job.configRevision != configRevision) {
+                throw MangaTranslationProtocolException("La configuration du serveur a changé pendant l'envoi")
+            }
             jobStore.put(chapterKey, job.jobId)
             cancelSubmittedJobIfRequested(chapterKey, job.jobId)
-            poll(chapterKey, job.jobId)
+            poll(chapterKey, job.jobId, configRevision, job)
         } finally {
             upload.delete()
         }
     }
 
-    private suspend fun poll(chapterKey: String, jobId: String) {
+    private suspend fun poll(
+        chapterKey: String,
+        jobId: String,
+        expectedConfigRevision: String? = null,
+        initialJob: TranslationJob? = null,
+    ) {
+        var nextJob = initialJob
         while (true) {
             ensureNotCancelled(chapterKey)
-            val job = getJobWithRetry(chapterKey, jobId) ?: return
+            val job = nextJob ?: getJobWithRetry(chapterKey, jobId) ?: return
+            nextJob = null
             ensureNotCancelled(chapterKey)
             if (job.jobId != jobId || job.chapterKey != chapterKey) {
                 throw MangaTranslationProtocolException("Le job reçu ne correspond pas au chapitre")
+            }
+            if (expectedConfigRevision != null && job.configRevision != expectedConfigRevision) {
+                throw MangaTranslationProtocolException("Le job utilise une autre configuration")
             }
             when (job.status) {
                 TranslationJobStatus.QUEUED -> {

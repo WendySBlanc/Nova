@@ -12,11 +12,15 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-from .translator import ChapterTranslator, TranslationCancelled
+from .translator import ChapterTranslator, TranslationCancelled, TranslationConfigSnapshot
 
 
-PAGE_NAME = re.compile(r"^page_(\d{5})\.(?:jpe?g|png|webp)$", re.IGNORECASE)
+PAGE_NAME = re.compile(r"^(\d{6})\.(?:jpe?g|png|webp)$", re.IGNORECASE)
 ACTIVE_STATUSES = {"queued", "running"}
+MAX_PAGE_COUNT = 5_000
+MAX_PAGE_BYTES = 100 * 1024 * 1024
+MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+COPY_BUFFER_BYTES = 1024 * 1024
 
 
 @dataclass
@@ -33,6 +37,7 @@ class JobRecord:
     created_at: str
     target_language: str | None = None
     config_revision: str | None = None
+    config_snapshot_path: str | None = None
 
     def public_dict(self, *, cached: bool = False) -> dict:
         return {
@@ -81,37 +86,67 @@ class JobStore:
                 records.append(JobRecord(**json.loads(path.read_text(encoding="utf-8"))))
             return records
 
-    def find_by_chapter(self, chapter_key: str) -> JobRecord | None:
-        matches = [record for record in self.all() if record.chapter_key == chapter_key]
+    def find_by_chapter(self, chapter_key: str, config_revision: str | None = None) -> JobRecord | None:
+        matches = [
+            record
+            for record in self.all()
+            if record.chapter_key == chapter_key
+            and (config_revision is None or record.config_revision == config_revision)
+        ]
         return max(matches, key=lambda item: item.created_at) if matches else None
 
 
 def extract_chapter_archive(archive_path: Path, destination: Path) -> list[Path]:
-    destination.mkdir(parents=True, exist_ok=True)
-    extracted: list[tuple[int, Path]] = []
-    seen_names: set[str] = set()
+    temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
     try:
         with zipfile.ZipFile(archive_path) as archive:
-            for entry in archive.infolist():
+            entries = archive.infolist()
+            if not entries or len(entries) > MAX_PAGE_COUNT:
+                raise InvalidChapterArchive("Archive page count is outside the supported range")
+
+            validated: list[tuple[zipfile.ZipInfo, str]] = []
+            declared_total = 0
+            for expected_index, entry in enumerate(entries):
                 name = entry.filename.replace("\\", "/")
                 pure_name = PurePosixPath(name)
-                if entry.is_dir() or pure_name.name != name or name in seen_names:
+                if entry.is_dir() or pure_name.name != name or entry.flag_bits & 0x1:
                     raise InvalidChapterArchive("Archive contains an unsafe or duplicate entry")
                 match = PAGE_NAME.fullmatch(name)
                 if match is None:
                     raise InvalidChapterArchive("Archive contains an invalid page name")
-                seen_names.add(name)
-                target = destination / name
-                with archive.open(entry) as source, target.open("wb") as output:
-                    shutil.copyfileobj(source, output)
-                extracted.append((int(match.group(1)), target))
-    except zipfile.BadZipFile as error:
-        raise InvalidChapterArchive("Archive is not a valid ZIP file") from error
+                if int(match.group(1)) != expected_index:
+                    raise InvalidChapterArchive("Archive pages must be ordered and start at zero")
+                if entry.file_size <= 0 or entry.file_size > MAX_PAGE_BYTES:
+                    raise InvalidChapterArchive("Archive contains an oversized or empty page")
+                declared_total += entry.file_size
+                if declared_total > MAX_ARCHIVE_BYTES:
+                    raise InvalidChapterArchive("Archive is too large after extraction")
+                validated.append((entry, name))
 
-    extracted.sort(key=lambda item: item[0])
-    if not extracted or [index for index, _ in extracted] != list(range(len(extracted))):
-        raise InvalidChapterArchive("Archive pages must be contiguous and start at zero")
-    return [path for _, path in extracted]
+            temporary.mkdir(parents=True, exist_ok=False)
+            actual_total = 0
+            for entry, name in validated:
+                target = temporary / name
+                page_bytes = 0
+                with archive.open(entry) as source, target.open("wb") as output:
+                    while chunk := source.read(COPY_BUFFER_BYTES):
+                        page_bytes += len(chunk)
+                        actual_total += len(chunk)
+                        if page_bytes > MAX_PAGE_BYTES or actual_total > MAX_ARCHIVE_BYTES:
+                            raise InvalidChapterArchive("Archive is too large after extraction")
+                        output.write(chunk)
+                if page_bytes != entry.file_size:
+                    raise InvalidChapterArchive("Archive page size does not match its metadata")
+    except zipfile.BadZipFile as error:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise InvalidChapterArchive("Archive is not a valid ZIP file") from error
+    except Exception:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(temporary, destination)
+    return [destination / name for _, name in validated]
 
 
 class JobManager:
@@ -132,12 +167,20 @@ class JobManager:
         self._futures: dict[str, Future] = {}
         self._cancelled: dict[str, threading.Event] = {}
 
-    def find_by_chapter(self, chapter_key: str) -> JobRecord | None:
-        return self.store.find_by_chapter(chapter_key)
+    def snapshot_configuration(self) -> TranslationConfigSnapshot:
+        return self.translator.snapshot_configuration()
 
-    def submit(self, chapter_key: str, archive_path: Path) -> tuple[JobRecord, bool]:
+    def find_by_chapter(self, chapter_key: str, config_revision: str) -> JobRecord | None:
+        return self.store.find_by_chapter(chapter_key, config_revision)
+
+    def submit(
+        self,
+        chapter_key: str,
+        archive_path: Path,
+        configuration: TranslationConfigSnapshot,
+    ) -> tuple[JobRecord, bool]:
         with self._lock:
-            existing = self.store.find_by_chapter(chapter_key)
+            existing = self.store.find_by_chapter(chapter_key, configuration.config_revision)
             if existing is not None and existing.status not in {"failed", "cancelled"}:
                 archive_path.unlink(missing_ok=True)
                 return existing, True
@@ -146,8 +189,11 @@ class JobManager:
             job_dir = self.data_dir / "work" / job_id
             input_dir = job_dir / "input"
             output_dir = job_dir / "output"
+            config_snapshot_path = job_dir / "config.snapshot"
             try:
                 pages = extract_chapter_archive(archive_path, input_dir)
+                if configuration.payload is not None:
+                    config_snapshot_path.write_bytes(configuration.payload)
             except Exception:
                 shutil.rmtree(job_dir, ignore_errors=True)
                 raise
@@ -165,6 +211,8 @@ class JobManager:
                 input_dir=str(input_dir),
                 output_dir=str(output_dir),
                 created_at=datetime.now(timezone.utc).isoformat(),
+                config_revision=configuration.config_revision,
+                config_snapshot_path=str(config_snapshot_path) if configuration.payload is not None else None,
             )
             self.store.save(record)
             if self.start_workers:
@@ -234,14 +282,18 @@ class JobManager:
             self.store.save(current)
 
         try:
+            configuration = self._configuration_for(record)
             outcome = self.translator.translate(
                 Path(record.input_dir),
                 Path(record.output_dir),
                 progress,
                 cancelled,
+                configuration,
             )
             if cancelled.is_set():
                 raise TranslationCancelled()
+            if outcome.config_revision != configuration.config_revision:
+                raise RuntimeError("MangaTranslator used a different configuration revision")
             result_path = self._package_result(record)
             record = self.store.get(job_id) or record
             record.status = "complete"
@@ -263,8 +315,12 @@ class JobManager:
             self.store.save(record)
 
     def _package_result(self, record: JobRecord) -> Path:
-        input_pages = sorted(Path(record.input_dir).glob("page_*"))
-        output_by_stem = {path.stem: path for path in Path(record.output_dir).glob("page_*") if path.is_file()}
+        input_pages = sorted(path for path in Path(record.input_dir).iterdir() if path.is_file())
+        output_by_stem = {
+            path.stem: path
+            for path in Path(record.output_dir).iterdir()
+            if path.is_file() and PAGE_NAME.fullmatch(path.name)
+        }
         expected_stems = [path.stem for path in input_pages]
         if set(output_by_stem) != set(expected_stems):
             raise RuntimeError("Translated output does not match the input page set")
@@ -277,3 +333,17 @@ class JobManager:
                 archive.write(page, arcname=page.name)
         os.replace(temporary, destination)
         return destination
+
+    def _configuration_for(self, record: JobRecord) -> TranslationConfigSnapshot:
+        if record.config_revision is None:
+            configuration = self.snapshot_configuration()
+            record.config_revision = configuration.config_revision
+            self.store.save(record)
+            return configuration
+        payload = None
+        if record.config_snapshot_path is not None:
+            snapshot_path = Path(record.config_snapshot_path)
+            if not snapshot_path.is_file():
+                raise RuntimeError("Translation configuration snapshot is missing")
+            payload = snapshot_path.read_bytes()
+        return TranslationConfigSnapshot(record.config_revision, payload)

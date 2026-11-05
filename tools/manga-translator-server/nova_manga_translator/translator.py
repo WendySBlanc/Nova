@@ -19,13 +19,22 @@ class TranslationOutcome:
     config_revision: str
 
 
+@dataclass(frozen=True)
+class TranslationConfigSnapshot:
+    config_revision: str
+    payload: bytes | None = None
+
+
 class ChapterTranslator(Protocol):
+    def snapshot_configuration(self) -> TranslationConfigSnapshot: ...
+
     def translate(
         self,
         input_dir: Path,
         output_dir: Path,
         progress: Callable[[int, int], None],
         cancelled: threading.Event,
+        configuration: TranslationConfigSnapshot,
     ) -> TranslationOutcome: ...
 
 
@@ -47,17 +56,27 @@ class MangaTranslatorAdapter:
         self.fonts_dir = (fonts_dir or self.root / "fonts").resolve()
         self.force_cpu = force_cpu
 
+    def snapshot_configuration(self) -> TranslationConfigSnapshot:
+        if not self.config_path.is_file():
+            raise RuntimeError(f"MangaTranslator config not found: {self.config_path}")
+        config_bytes = self.config_path.read_bytes()
+        return TranslationConfigSnapshot(
+            config_revision=hashlib.sha256(config_bytes).hexdigest()[:16],
+            payload=config_bytes,
+        )
+
     def translate(
         self,
         input_dir: Path,
         output_dir: Path,
         progress: Callable[[int, int], None],
         cancelled: threading.Event,
+        configuration: TranslationConfigSnapshot,
     ) -> TranslationOutcome:
         if not self.root.is_dir():
             raise RuntimeError(f"MangaTranslator directory not found: {self.root}")
-        if not self.config_path.is_file():
-            raise RuntimeError(f"MangaTranslator config not found: {self.config_path}")
+        if configuration.payload is None:
+            raise RuntimeError("MangaTranslator configuration snapshot is missing")
 
         root_text = str(self.root)
         if root_text not in sys.path:
@@ -69,7 +88,7 @@ class MangaTranslatorAdapter:
         from core.pipeline import batch_translate_images
         from ui.ui_models import UIConfigState, map_ui_to_backend_config
 
-        config_bytes = self.config_path.read_bytes()
+        config_bytes = configuration.payload
         ui_state = UIConfigState.from_dict(json.loads(config_bytes.decode("utf-8")))
 
         self.models_dir.mkdir(parents=True, exist_ok=True)
@@ -110,8 +129,7 @@ class MangaTranslatorAdapter:
             message = "; ".join(f"{name}: {error}" for name, error in errors.items())
             raise RuntimeError(message or "MangaTranslator failed to translate every page")
 
-        revision = hashlib.sha256(config_bytes).hexdigest()[:16]
         return TranslationOutcome(
             target_language=str(backend_config.translation.output_language),
-            config_revision=revision,
+            config_revision=configuration.config_revision,
         )

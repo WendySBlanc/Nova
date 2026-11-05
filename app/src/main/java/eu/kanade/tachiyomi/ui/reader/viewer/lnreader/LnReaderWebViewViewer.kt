@@ -22,6 +22,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
+import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
@@ -392,6 +393,47 @@ class LnReaderWebViewViewer(
         preloadAdjacentChapterContent(chapters.nextChapter)
     }
 
+    fun refreshCurrentChapter(chapters: ViewerChapters) {
+        viewerChapters = chapters
+        preloadAdjacentChapterContent(chapters.prevChapter)
+        preloadAdjacentChapterContent(chapters.nextChapter)
+
+        val chapter = chapters.currChapter
+        if (currentChapter?.chapter?.id != chapter.chapter.id) {
+            loadChapter(chapter)
+            return
+        }
+        currentChapter = chapter
+        val chapterKey = chapter.imageUrlChapterKey()
+        val sources = JSONObject().apply {
+            chapter.pages.orEmpty()
+                .filterNot { it is InsertPage }
+                .forEach { page ->
+                    put(
+                        page.index.toString(),
+                        "https://$NOVA_READER_IMAGE_HOST/$NOVA_READER_IMAGE_PATH/" +
+                            "$chapterKey/${page.index}?v=${page.streamVersion}",
+                    )
+                }
+        }
+        webView.evaluateJavascript(
+            """
+                (function(sources) {
+                  var scrollTop = window.scrollY;
+                  Object.keys(sources).forEach(function(pageIndex) {
+                    var figure = document.querySelector('.nova-reader-page[data-page-index="' + pageIndex + '"]');
+                    var image = figure && figure.querySelector('img');
+                    if (!image) return;
+                    image.dataset.originalSrc = sources[pageIndex];
+                    image.src = sources[pageIndex];
+                  });
+                  requestAnimationFrame(function() { window.scrollTo(0, scrollTop); });
+                })($sources);
+            """.trimIndent(),
+            null,
+        )
+    }
+
     fun beginChapterNavigation(): Boolean {
         if (chapterNavigationInFlight) return false
         chapterNavigationInFlight = true
@@ -432,7 +474,7 @@ class LnReaderWebViewViewer(
 
     fun setChromeVisible(visible: Boolean) {
         webView.evaluateJavascript(
-            "if (window.reader) { reader.hidden.val = ${(!visible).toString()}; }",
+            "if (window.reader) { reader.hidden.val = ${(!visible)}; }",
             null,
         )
     }
@@ -1102,7 +1144,7 @@ class LnReaderWebViewViewer(
                 <script src="file:///android_asset/js/index.js"></script>
                 ${if (imageReader) novaImageReaderScript() else ""}
                 <script>
-                  if (window.reader) { reader.hidden.val = ${(!activity.viewModel.state.value.menuVisible).toString()}; }
+                  if (window.reader) { reader.hidden.val = ${(!activity.viewModel.state.value.menuVisible)}; }
                 </script>
                 <style id="lnreader-custom-css">${readerPreferences.lnReaderCustomCss().get().escapeRawTextTag()}</style>
                 <script>
@@ -1436,7 +1478,10 @@ class LnReaderWebViewViewer(
     private fun ByteArray.startsWithSvg(): Boolean {
         val head = toString(Charsets.UTF_8).trimStart()
         return head.startsWith("<svg", ignoreCase = true) ||
-            head.startsWith("<?xml", ignoreCase = true) && head.contains("<svg", ignoreCase = true)
+            (
+                head.startsWith("<?xml", ignoreCase = true) &&
+                    head.contains("<svg", ignoreCase = true)
+                )
     }
 
     private fun String.needsWebViewTranscode(): Boolean {

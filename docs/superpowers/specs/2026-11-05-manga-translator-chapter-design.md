@@ -21,13 +21,13 @@ The companion service lives in `tools/manga-translator-server/` and wraps an exi
 
 The authenticated API contract is:
 
-- `GET /v1/health`
+- `GET /v1/health`, including API version, status, and the current configuration revision
 - `POST /v1/chapters` with an ordered ZIP and a deterministic chapter key
 - `GET /v1/chapters/{jobId}` for queued, running, complete, failed, or cancelled state
 - `GET /v1/chapters/{jobId}/result` for the translated ZIP
 - `DELETE /v1/chapters/{jobId}` to cancel work
 
-Jobs and completed archives survive a service restart. A repeated chapter key returns the existing job or cached result instead of translating twice.
+ZIP pages use the canonical `000000.ext` naming scheme and must be contiguous in archive order. Upload, page-count, per-page, and extracted-size limits are enforced before extraction. Jobs and completed archives survive a service restart. A repeated chapter key and configuration revision returns the existing job or cached result instead of translating twice. Each job keeps the exact MangaTranslator configuration snapshot captured at submission.
 
 ## Private connectivity
 
@@ -41,7 +41,7 @@ MangaTranslator listens only on `127.0.0.1`. Tailscale Serve exposes it through 
 - `MangaTranslationRepository` deduplicates requests by chapter key and exposes a `StateFlow` for reader progress.
 - `ReaderViewModel` starts or resumes translation and swaps each `ReaderPage.stream` only after the complete archive is validated. Original stream providers remain available for instant switching.
 
-The cache key includes the source ID, manga ID, chapter ID, page count, target language reported by the server, and a server configuration revision. A configuration change therefore cannot silently reuse stale output.
+The cache key includes the source ID, manga ID, chapter ID, page count, target language reported by the server, and a server configuration revision. Nova compares active cache metadata with the online server revision while retaining complete cached translations for offline use. A configuration change therefore cannot silently reuse stale output.
 
 ## UI and accessibility
 

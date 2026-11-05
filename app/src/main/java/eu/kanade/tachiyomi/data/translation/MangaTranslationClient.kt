@@ -31,9 +31,17 @@ class MangaTranslationClient(
         .callTimeout(callTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
         .build()
 
-    override suspend fun checkHealth() {
+    override suspend fun checkHealth(): MangaTranslationServerInfo {
         val request = requestBuilder("v1/health").get().build()
-        executeBody(request).close()
+        val info = executeJson<MangaTranslationServerInfo>(request)
+        if (
+            info.apiVersion != SUPPORTED_MANGA_TRANSLATION_API_VERSION ||
+            info.status != MANGA_TRANSLATION_SERVER_STATUS_OK ||
+            info.configRevision.isBlank()
+        ) {
+            throw MangaTranslationProtocolException("Version du serveur MangaTranslator incompatible")
+        }
+        return info
     }
 
     override suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {

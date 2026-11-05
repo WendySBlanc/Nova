@@ -22,6 +22,9 @@ open class ReaderPage(
     var streamVersion: Int = 0
         private set
 
+    var isUsingTranslatedStream: Boolean = false
+        private set
+
     open lateinit var chapter: ReaderChapter
 
     /** Value to check if a page is too wide to be doubled up */
@@ -44,6 +47,7 @@ open class ReaderPage(
     fun useTranslatedStream(translatedStream: () -> InputStream): Boolean {
         if (!rememberOriginalStream()) return false
         stream = translatedStream
+        isUsingTranslatedStream = true
         streamVersion++
         return true
     }
@@ -52,6 +56,7 @@ open class ReaderPage(
     fun useOriginalStream(): Boolean {
         val original = originalStream ?: return false
         stream = original
+        isUsingTranslatedStream = false
         streamVersion++
         return true
     }

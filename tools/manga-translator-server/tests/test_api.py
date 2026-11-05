@@ -6,6 +6,7 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -20,7 +21,7 @@ def chapter_zip(*pages: bytes) -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         for index, page in enumerate(pages):
-            archive.writestr(f"page_{index:05d}.jpg", page)
+            archive.writestr(f"{index:06d}.jpg", page)
     return output.getvalue()
 
 
@@ -46,26 +47,34 @@ def wait_for_status(
 
 
 class RecordingTranslator:
-    def __init__(self) -> None:
+    def __init__(self, revision: str = "config-v1") -> None:
         self.calls = 0
+        self.revision = revision
 
-    def translate(self, input_dir, output_dir, progress, cancelled):
+    def snapshot_configuration(self):
+        return SimpleNamespace(config_revision=self.revision, payload=b"test-config")
+
+    def translate(self, input_dir, output_dir, progress, cancelled, configuration=None):
         self.calls += 1
-        pages = sorted(Path(input_dir).glob("page_*.jpg"))
+        pages = sorted(Path(input_dir).glob("*.jpg"))
         for index, page in enumerate(pages, start=1):
             if cancelled.is_set():
                 raise TranslationCancelled()
             Path(output_dir, page.name).write_bytes(b"translated:" + page.read_bytes())
             progress(index, len(pages))
-        return TranslationOutcome(target_language="French", config_revision="config-v1")
+        revision = configuration.config_revision if configuration is not None else self.revision
+        return TranslationOutcome(target_language="French", config_revision=revision)
 
 
 class BlockingTranslator:
     def __init__(self) -> None:
         self.started = threading.Event()
 
-    def translate(self, input_dir, output_dir, progress, cancelled):
-        pages = sorted(Path(input_dir).glob("page_*.jpg"))
+    def snapshot_configuration(self):
+        return SimpleNamespace(config_revision="config-v1", payload=b"test-config")
+
+    def translate(self, input_dir, output_dir, progress, cancelled, configuration=None):
+        pages = sorted(Path(input_dir).glob("*.jpg"))
         self.started.set()
         while not cancelled.wait(0.01):
             pass
@@ -93,7 +102,11 @@ def test_health_requires_valid_bearer_token(tmp_path: Path) -> None:
         response = client.get("/v1/health", headers=auth_headers())
 
     assert response.status_code == 200
-    assert response.json() == {"api_version": 1, "status": "ok"}
+    assert response.json() == {
+        "api_version": 1,
+        "status": "ok",
+        "config_revision": "config-v1",
+    }
 
 
 def test_submit_reports_progress_and_downloads_ordered_result(tmp_path: Path) -> None:
@@ -116,8 +129,8 @@ def test_submit_reports_progress_and_downloads_ordered_result(tmp_path: Path) ->
 
     assert result.status_code == 200
     with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
-        assert archive.namelist() == ["page_00000.jpg", "page_00001.jpg"]
-        assert archive.read("page_00000.jpg") == b"translated:one"
+        assert archive.namelist() == ["000000.jpg", "000001.jpg"]
+        assert archive.read("000000.jpg") == b"translated:one"
 
 
 def test_repeated_chapter_key_reuses_existing_job(tmp_path: Path) -> None:
@@ -135,6 +148,24 @@ def test_repeated_chapter_key_reuses_existing_job(tmp_path: Path) -> None:
     assert translator.calls == 1
 
 
+def test_changed_configuration_creates_a_new_job(tmp_path: Path) -> None:
+    translator = RecordingTranslator()
+    app = create_app(tmp_path, TOKEN, translator)
+    with TestClient(app) as client:
+        first = submit(client, "same-chapter").json()
+        wait_for_status(client, first["job_id"], "complete")
+        translator.revision = "config-v2"
+
+        second_response = submit(client, "same-chapter")
+        second = second_response.json()
+        wait_for_status(client, second["job_id"], "complete")
+
+    assert second_response.status_code == 202
+    assert second["job_id"] != first["job_id"]
+    assert second["config_revision"] == "config-v2"
+    assert translator.calls == 2
+
+
 def test_queued_job_resumes_after_server_restart(tmp_path: Path) -> None:
     dormant = create_app(tmp_path, TOKEN, RecordingTranslator(), start_workers=False)
     with TestClient(dormant) as client:
@@ -148,6 +179,20 @@ def test_queued_job_resumes_after_server_restart(tmp_path: Path) -> None:
 
     assert completed["completed_pages"] == 2
     assert translator.calls == 1
+
+
+def test_queued_job_keeps_the_configuration_snapshot_from_submission(tmp_path: Path) -> None:
+    translator = RecordingTranslator(revision="config-v1")
+    dormant = create_app(tmp_path, TOKEN, translator, start_workers=False)
+    with TestClient(dormant) as client:
+        queued = submit(client, "snapshot-on-submit").json()
+
+    translator.revision = "config-v2"
+    restarted = create_app(tmp_path, TOKEN, translator)
+    with TestClient(restarted) as client:
+        completed = wait_for_status(client, queued["job_id"], "complete")
+
+    assert completed["config_revision"] == "config-v1"
 
 
 def test_delete_cancels_running_job(tmp_path: Path) -> None:
@@ -194,3 +239,49 @@ def test_submit_rejects_path_traversal_archive(tmp_path: Path) -> None:
 
     assert response.status_code == 400
     assert not Path(tmp_path, "outside.jpg").exists()
+
+
+def test_submit_rejects_upload_larger_than_limit(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("nova_manga_translator.api.MAX_UPLOAD_BYTES", 16)
+    monkeypatch.setattr("nova_manga_translator.api.MAX_MULTIPART_OVERHEAD_BYTES", 0)
+    app = create_app(tmp_path, TOKEN, RecordingTranslator())
+    with TestClient(app) as client:
+        response = submit(client, "too-large", pages=(b"x" * 128,))
+
+    assert response.status_code == 413
+    assert not any((tmp_path / "incoming").glob("*.zip"))
+
+
+def test_archive_is_fully_validated_before_any_page_is_extracted(tmp_path: Path) -> None:
+    archive_path = tmp_path / "invalid.zip"
+    destination = tmp_path / "extracted"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("000000.jpg", b"valid-first-page")
+        archive.writestr("../late-invalid.jpg", b"unsafe")
+
+    from nova_manga_translator.jobs import InvalidChapterArchive, extract_chapter_archive
+
+    try:
+        extract_chapter_archive(archive_path, destination)
+    except InvalidChapterArchive:
+        pass
+    else:
+        raise AssertionError("invalid archive was accepted")
+
+    assert not destination.exists()
+
+
+def test_archive_rejects_page_larger_than_limit(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("nova_manga_translator.jobs.MAX_PAGE_BYTES", 8)
+    archive_path = tmp_path / "oversized-page.zip"
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("000000.jpg", b"x" * 32)
+
+    from nova_manga_translator.jobs import InvalidChapterArchive, extract_chapter_archive
+
+    try:
+        extract_chapter_archive(archive_path, tmp_path / "extracted")
+    except InvalidChapterArchive:
+        pass
+    else:
+        raise AssertionError("oversized page was accepted")

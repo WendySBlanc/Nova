@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import hmac
-import shutil
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .jobs import InvalidChapterArchive, JobManager
 from .translator import ChapterTranslator
+
+
+MAX_UPLOAD_BYTES = 512 * 1024 * 1024
+UPLOAD_CHUNK_BYTES = 1024 * 1024
+MAX_MULTIPART_OVERHEAD_BYTES = 1024 * 1024
 
 
 def create_app(
@@ -38,6 +42,19 @@ def create_app(
     app = FastAPI(title="Nova MangaTranslator", version="1", lifespan=lifespan)
     app.state.job_manager = manager
 
+    @app.middleware("http")
+    async def reject_oversized_chapter_requests(request: Request, call_next):
+        if request.method == "POST" and request.url.path.endswith("/v1/chapters"):
+            content_length = request.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    request_bytes = int(content_length)
+                except ValueError:
+                    return JSONResponse({"detail": "Invalid Content-Length"}, status_code=400)
+                if request_bytes > MAX_UPLOAD_BYTES + MAX_MULTIPART_OVERHEAD_BYTES:
+                    return JSONResponse({"detail": "Chapter archive is too large"}, status_code=413)
+        return await call_next(request)
+
     def authorize(
         credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     ) -> None:
@@ -51,14 +68,20 @@ def create_app(
 
     @app.get("/v1/health", dependencies=[Depends(authorize)])
     def health() -> dict:
-        return {"api_version": 1, "status": "ok"}
+        configuration = manager.snapshot_configuration()
+        return {
+            "api_version": 1,
+            "status": "ok",
+            "config_revision": configuration.config_revision,
+        }
 
     @app.post("/v1/chapters", dependencies=[Depends(authorize)])
     def submit_chapter(
         chapter_key: str = Form(min_length=1, max_length=512),
         archive: UploadFile = File(),
     ):
-        existing = manager.find_by_chapter(chapter_key)
+        configuration = manager.snapshot_configuration()
+        existing = manager.find_by_chapter(chapter_key, configuration.config_revision)
         if existing is not None and existing.status not in {"failed", "cancelled"}:
             return existing.public_dict(cached=True)
 
@@ -67,17 +90,23 @@ def create_app(
         incoming = incoming_dir / f"{uuid.uuid4().hex}.zip"
         try:
             with incoming.open("wb") as output:
-                shutil.copyfileobj(archive.file, output)
-            record, cached = manager.submit(chapter_key, incoming)
+                uploaded_bytes = 0
+                while chunk := archive.file.read(UPLOAD_CHUNK_BYTES):
+                    uploaded_bytes += len(chunk)
+                    if uploaded_bytes > MAX_UPLOAD_BYTES:
+                        raise HTTPException(status_code=413, detail="Chapter archive is too large")
+                    output.write(chunk)
+            record, cached = manager.submit(chapter_key, incoming, configuration)
         except InvalidChapterArchive as error:
             incoming.unlink(missing_ok=True)
             raise HTTPException(status_code=400, detail=str(error)) from error
+        except HTTPException:
+            incoming.unlink(missing_ok=True)
+            raise
         finally:
             archive.file.close()
 
         response_status = status.HTTP_200_OK if cached else status.HTTP_202_ACCEPTED
-        from fastapi.responses import JSONResponse
-
         return JSONResponse(record.public_dict(cached=cached), status_code=response_status)
 
     @app.get("/v1/chapters/{job_id}", dependencies=[Depends(authorize)])
@@ -104,8 +133,6 @@ def create_app(
         record = manager.cancel(job_id)
         if record is None:
             raise HTTPException(status_code=404, detail="Unknown translation job")
-        from fastapi.responses import JSONResponse
-
         return JSONResponse(record.public_dict(), status_code=status.HTTP_202_ACCEPTED)
 
     return app

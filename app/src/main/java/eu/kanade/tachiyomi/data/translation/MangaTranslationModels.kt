@@ -12,6 +12,13 @@ data class MangaTranslationConnection(
 }
 
 @Serializable
+data class MangaTranslationServerInfo(
+    @SerialName("api_version") val apiVersion: Int,
+    val status: String,
+    @SerialName("config_revision") val configRevision: String,
+)
+
+@Serializable
 enum class TranslationJobStatus {
     @SerialName("queued")
     QUEUED,
@@ -78,3 +85,5 @@ class MangaTranslationProtocolException(message: String, cause: Throwable? = nul
     MangaTranslationException(message, cause)
 
 private const val MAX_ERROR_DETAIL_LENGTH = 240
+internal const val SUPPORTED_MANGA_TRANSLATION_API_VERSION = 1
+internal const val MANGA_TRANSLATION_SERVER_STATUS_OK = "ok"

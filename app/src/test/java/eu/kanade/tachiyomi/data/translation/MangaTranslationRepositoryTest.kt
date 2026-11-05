@@ -121,6 +121,22 @@ class MangaTranslationRepositoryTest {
     }
 
     @Test
+    fun `resume discards a pending job from an older server configuration`() = runTest {
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val service = FakeService(
+            jobs = ArrayDeque(listOf(job(TranslationJobStatus.RUNNING, completed = 1))),
+            serverInfo = serverInfo("config-v2"),
+        )
+        val repository = repository(service = service, jobStore = store)
+
+        repository.resume(CHAPTER_KEY)
+
+        service.cancelledJobIds shouldBe listOf(JOB_ID)
+        store.get(CHAPTER_KEY) shouldBe null
+        repository.observe(CHAPTER_KEY).value shouldBe MangaTranslationState.Idle
+    }
+
+    @Test
     fun `server failure becomes terminal and clears the persisted job`() = runTest {
         val store = FakeJobStore()
         val service = FakeService(
@@ -194,6 +210,34 @@ class MangaTranslationRepositoryTest {
         repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Failed>()
     }
 
+    @Test
+    fun `online configuration change makes an older cached translation stale`() = runTest {
+        val cache = FakeCache(
+            activeMetadata = metadata().copy(configRevision = "config-v1"),
+            translatedPages = setOf(0, 1),
+        )
+        val service = FakeService(
+            serverInfo = serverInfo("config-v2"),
+        )
+        val repository = repository(service = service, cache = cache)
+
+        repository.hasUsableTranslation(CHAPTER_KEY, listOf(0, 1)) shouldBe false
+    }
+
+    @Test
+    fun `offline mode keeps a complete cached translation usable`() = runTest {
+        val cache = FakeCache(
+            activeMetadata = metadata(),
+            translatedPages = setOf(0, 1),
+        )
+        val service = FakeService(
+            healthError = MangaTranslationNetworkException(IllegalStateException("offline")),
+        )
+        val repository = repository(service = service, cache = cache)
+
+        repository.hasUsableTranslation(CHAPTER_KEY, listOf(0, 1)) shouldBe true
+    }
+
     private fun repository(
         service: MangaTranslationService = FakeService(),
         jobStore: MangaTranslationJobStore = FakeJobStore(),
@@ -214,11 +258,16 @@ class MangaTranslationRepositoryTest {
         private val jobs: ArrayDeque<TranslationJob> = ArrayDeque(),
         private val getJobHandler: (suspend () -> TranslationJob)? = null,
         private val resultMetadata: TranslationResultMetadata = metadata(),
+        private val serverInfo: MangaTranslationServerInfo = serverInfo("config-v1"),
+        private val healthError: MangaTranslationException? = null,
     ) : MangaTranslationService {
         var submitCount = 0
         val cancelledJobIds = mutableListOf<String>()
 
-        override suspend fun checkHealth() = Unit
+        override suspend fun checkHealth(): MangaTranslationServerInfo {
+            healthError?.let { throw it }
+            return serverInfo
+        }
 
         override suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {
             submitCount++
@@ -249,6 +298,8 @@ class MangaTranslationRepositoryTest {
 
     private class FakeCache(
         private val installError: MangaTranslationException? = null,
+        private val activeMetadata: TranslationResultMetadata? = null,
+        private val translatedPages: Set<Int> = emptySet(),
     ) : MangaTranslationCacheGateway {
         override fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation {
             installError?.let { throw it }
@@ -259,7 +310,11 @@ class MangaTranslationRepositoryTest {
             return InstalledTranslation(metadata, directory, pages)
         }
 
-        override fun translatedPage(chapterKey: String, pageIndex: Int): File? = null
+        override fun translatedPage(chapterKey: String, pageIndex: Int): File? = pageIndex
+            .takeIf(translatedPages::contains)
+            ?.let { File("cached-$it.png") }
+
+        override fun activeMetadata(chapterKey: String): TranslationResultMetadata? = activeMetadata
     }
 
     private class FakeJobStore(
@@ -292,7 +347,7 @@ class MangaTranslationRepositoryTest {
             totalPages = 2,
             error = error,
             targetLanguage = if (status == TranslationJobStatus.COMPLETE) "French" else null,
-            configRevision = if (status == TranslationJobStatus.COMPLETE) "config-v1" else null,
+            configRevision = "config-v1",
         )
 
         fun metadata() = TranslationResultMetadata(
@@ -300,6 +355,12 @@ class MangaTranslationRepositoryTest {
             targetLanguage = "French",
             configRevision = "config-v1",
             totalPages = 2,
+        )
+
+        fun serverInfo(configRevision: String) = MangaTranslationServerInfo(
+            apiVersion = 1,
+            status = "ok",
+            configRevision = configRevision,
         )
     }
 }

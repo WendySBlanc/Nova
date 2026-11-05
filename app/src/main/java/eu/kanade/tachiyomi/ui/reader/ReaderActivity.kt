@@ -295,6 +295,13 @@ class ReaderActivity : BaseActivity() {
                             }
                         }
                     }
+                    ReaderViewModel.Event.RefreshCurrentChapterImages -> {
+                        val chapters = viewModel.state.value.viewerChapters
+                        val viewer = viewModel.state.value.viewer
+                        if (chapters != null && viewer is LnReaderWebViewViewer) {
+                            viewer.refreshCurrentChapter(chapters)
+                        }
+                    }
                     ReaderViewModel.Event.PageChanged -> {
                         displayRefreshHost.flash()
                     }

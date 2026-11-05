@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.translation
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -47,6 +48,39 @@ class MangaTranslationClientTest {
         validateMangaTranslationServerUrl("") shouldBe "Adresse requise"
         validateMangaTranslationServerUrl("ftp://nova.tailnet.ts.net") shouldBe
             "Le serveur doit utiliser HTTP ou HTTPS"
+    }
+
+    @Test
+    fun `health requires the supported api and returns configuration identity`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"api_version":1,"status":"ok","config_revision":"config-v2"}""",
+            ),
+        )
+
+        client().checkHealth() shouldBe serverInfo("config-v2")
+    }
+
+    @Test
+    fun `health rejects an incompatible successful response`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"api_version":2,"status":"ok","config_revision":"config-v2"}""",
+            ),
+        )
+
+        val error = runCatching { client().checkHealth() }.exceptionOrNull()
+
+        error.shouldBeInstanceOf<MangaTranslationProtocolException>()
+    }
+
+    @Test
+    fun `health rejects a successful response missing protocol fields`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"config_revision":"config-v2"}"""))
+
+        val error = runCatching { client().checkHealth() }.exceptionOrNull()
+
+        error.shouldBeInstanceOf<MangaTranslationProtocolException>()
     }
 
     @Test
@@ -155,4 +189,10 @@ class MangaTranslationClientTest {
             "cached":false
         }
         """.trimIndent()
+
+    private fun serverInfo(configRevision: String) = MangaTranslationServerInfo(
+        apiVersion = 1,
+        status = "ok",
+        configRevision = configRevision,
+    )
 }

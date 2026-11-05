@@ -81,6 +81,19 @@ class MangaTranslationArchiveTest {
     }
 
     @Test
+    fun `cache rejects reordered translated pages`() {
+        val cache = cache()
+        val result = zipOf(
+            "000001.png" to png("second"),
+            "000000.png" to png("first"),
+        )
+
+        shouldThrow<MangaTranslationProtocolException> {
+            cache.installResult(metadata(totalPages = 2), result)
+        }
+    }
+
+    @Test
     fun `cache rejects a page count mismatch`() {
         val cache = cache()
         val result = zipOf("000000.png" to png("first"))
@@ -123,6 +136,15 @@ class MangaTranslationArchiveTest {
     }
 
     @Test
+    fun `cache exposes active translation metadata`() {
+        val cache = cache()
+        val expected = metadata(totalPages = 1, configRevision = "config-current")
+        cache.installResult(expected, zipOf("000000.png" to png("translated")))
+
+        cache.activeMetadata(CHAPTER_KEY) shouldBe expected
+    }
+
+    @Test
     fun `cache cleans stale installation directories and partial files`() {
         val root = File(temporaryDirectory.toFile(), "cache")
         val staleDirectory = File(root, "chapter/.install-abandoned").apply { mkdirs() }
@@ -133,6 +155,20 @@ class MangaTranslationArchiveTest {
 
         staleDirectory.exists() shouldBe false
         staleFile.exists() shouldBe false
+    }
+
+    @Test
+    fun `reader page remembers which stream is displayed`() {
+        val page = page(0, png("original"))
+        page.rememberOriginalStream() shouldBe true
+
+        page.useTranslatedStream { png("translated").inputStream() } shouldBe true
+        page.isUsingTranslatedStream shouldBe true
+        payload(page.stream!!.invoke().readBytes()) shouldBe "translated"
+
+        page.useOriginalStream() shouldBe true
+        page.isUsingTranslatedStream shouldBe false
+        payload(page.stream!!.invoke().readBytes()) shouldBe "original"
     }
 
     private fun cache() = MangaTranslationCache(File(temporaryDirectory.toFile(), "cache"))
