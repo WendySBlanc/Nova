@@ -65,6 +65,7 @@ import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterListDialog
 import eu.kanade.presentation.reader.DisplayRefreshHost
+import eu.kanade.presentation.reader.mangaTranslationUiModel
 import eu.kanade.presentation.reader.OrientationSelectDialog
 import eu.kanade.presentation.reader.ReaderContentOverlay
 import eu.kanade.presentation.reader.ReaderPageActionsDialog
@@ -311,6 +312,9 @@ class ReaderActivity : BaseActivity() {
                     }
                     is ReaderViewModel.Event.SetCoverResult -> {
                         onSetAsCoverResult(event.result)
+                    }
+                    is ReaderViewModel.Event.MangaTranslationError -> {
+                        toast(event.message)
                     }
                 }
             }
@@ -653,6 +657,12 @@ class ReaderActivity : BaseActivity() {
         val dualPageSplitPaged by readerPreferences.dualPageSplitPaged().collectAsState()
 
         val navBarType = NavBarType.Bottom
+        val mangaTranslation = mangaTranslationUiModel(
+            available = state.mangaTranslationAvailable,
+            state = state.mangaTranslationState,
+            hasTranslation = state.hasMangaTranslation,
+            showingTranslation = state.showingMangaTranslation,
+        )
         // SY <--
 
         ReaderAppBars(
@@ -667,6 +677,8 @@ class ReaderActivity : BaseActivity() {
             onOpenInWebView = ::openChapterInWebView.takeIf { isHttpSource },
             onOpenInBrowser = ::openChapterInBrowser.takeIf { isHttpSource },
             onShare = ::shareChapter.takeIf { isHttpSource },
+            mangaTranslation = mangaTranslation,
+            onMangaTranslationAction = viewModel::onMangaTranslationAction,
 
             viewer = state.viewer,
             onNextChapter = ::loadNextChapter,

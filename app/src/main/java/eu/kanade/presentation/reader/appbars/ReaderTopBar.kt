@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Public
@@ -31,10 +32,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.reader.MangaTranslationAction
+import eu.kanade.presentation.reader.MangaTranslationUiModel
+import eu.kanade.presentation.reader.contentDescriptionText
+import eu.kanade.presentation.reader.labelText
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.R
@@ -52,6 +59,8 @@ fun ReaderTopBar(
     onOpenInWebView: (() -> Unit)?,
     onOpenInBrowser: (() -> Unit)?,
     onShare: (() -> Unit)?,
+    mangaTranslation: MangaTranslationUiModel?,
+    onMangaTranslationAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val configuration = LocalConfiguration.current
@@ -122,7 +131,7 @@ fun ReaderTopBar(
             )
         }
 
-        if (onOpenInWebView != null || onOpenInBrowser != null || onShare != null) {
+        if (mangaTranslation != null || onOpenInWebView != null || onOpenInBrowser != null || onShare != null) {
             Box {
                 IconButton(
                     onClick = { moreExpanded = true },
@@ -139,6 +148,29 @@ fun ReaderTopBar(
                     expanded = moreExpanded,
                     onDismissRequest = { moreExpanded = false },
                 ) {
+                    mangaTranslation?.let { translation ->
+                        val description = translation.contentDescriptionText()
+                        DropdownMenuItem(
+                            text = { Text(translation.labelText()) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (translation.action == MangaTranslationAction.Cancel) {
+                                        Icons.Outlined.Close
+                                    } else {
+                                        Icons.Outlined.Public
+                                    },
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                moreExpanded = false
+                                onMangaTranslationAction()
+                            },
+                            modifier = Modifier.semantics {
+                                stateDescription = description
+                            },
+                        )
+                    }
                     onOpenInWebView?.let { openWebView ->
                         DropdownMenuItem(
                             text = { Text("Ouvrir le site") },

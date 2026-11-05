@@ -169,6 +169,16 @@
     <string name="set_as_cover">Ajouter comme couverture</string>
     <string name="cover_updated">Couverture mise à jour</string>
     <string name="chapter_progress">Page : %1$d</string>
+    <string name="manga_translation_translate_chapter">Traduire le chapitre</string>
+    <string name="manga_translation_translate_chapter_description">Envoyer toutes les pages de ce chapitre vers votre serveur MangaTranslator privé</string>
+    <string name="manga_translation_in_progress">Traduction en cours</string>
+    <string name="manga_translation_progress">Traduction %1$d/%2$d</string>
+    <string name="manga_translation_cancel_description">Traduction en cours. Appuyez deux fois pour annuler</string>
+    <string name="manga_translation_cancel_progress_description">Traduction en cours, %1$d pages sur %2$d. Appuyez deux fois pour annuler</string>
+    <string name="manga_translation_show_original">Afficher l’original</string>
+    <string name="manga_translation_show_original_description">Remplacer les pages traduites par le chapitre original</string>
+    <string name="manga_translation_show_translation">Afficher la traduction</string>
+    <string name="manga_translation_show_translation_description">Remplacer les pages originales par la traduction enregistrée</string>
     <string name="no_next_chapter">Chapitre suivant non trouvé</string>
     <string name="decode_image_error">L\'image n\'a pas pu être chargée</string>
     <string name="confirm_set_image_as_cover">Voulez-vous mettre cette image comme couverture ?</string>

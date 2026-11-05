@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.reader.MangaTranslationProgress
+import eu.kanade.presentation.reader.MangaTranslationUiModel
 import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
@@ -61,6 +63,8 @@ fun ReaderAppBars(
     onOpenInWebView: (() -> Unit)?,
     onOpenInBrowser: (() -> Unit)?,
     onShare: (() -> Unit)?,
+    mangaTranslation: MangaTranslationUiModel?,
+    onMangaTranslationAction: () -> Unit,
 
     viewer: Viewer?,
     onNextChapter: () -> Unit,
@@ -136,7 +140,12 @@ fun ReaderAppBars(
                         onOpenInWebView = onOpenInWebView,
                         onOpenInBrowser = onOpenInBrowser,
                         onShare = onShare,
+                        mangaTranslation = mangaTranslation,
+                        onMangaTranslationAction = onMangaTranslationAction,
                     )
+                    mangaTranslation?.let { translation ->
+                        MangaTranslationProgress(model = translation)
+                    }
                     HorizontalDivider(color = NovaVikiColors.Outline)
                     if (isExhToolsVisible) {
                         ExhUtils(

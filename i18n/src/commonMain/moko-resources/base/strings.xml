@@ -856,6 +856,16 @@
     <string name="cover_updated">Cover updated</string>
     <string name="share_page_info">%1$s: %2$s, page %3$d</string>
     <string name="chapter_progress">Page: %1$d</string>
+    <string name="manga_translation_translate_chapter">Translate chapter</string>
+    <string name="manga_translation_translate_chapter_description">Send every page in this chapter to your private MangaTranslator server</string>
+    <string name="manga_translation_in_progress">Translation in progress</string>
+    <string name="manga_translation_progress">Translation %1$d/%2$d</string>
+    <string name="manga_translation_cancel_description">Translation in progress. Double tap to cancel</string>
+    <string name="manga_translation_cancel_progress_description">Translation in progress, %1$d of %2$d pages. Double tap to cancel</string>
+    <string name="manga_translation_show_original">Show original</string>
+    <string name="manga_translation_show_original_description">Replace the translated pages with the original chapter</string>
+    <string name="manga_translation_show_translation">Show translation</string>
+    <string name="manga_translation_show_translation_description">Replace the original pages with the cached translation</string>
     <string name="no_next_chapter">Next chapter not found</string>
     <string name="decode_image_error">The image couldn\'t be loaded</string>
     <string name="confirm_set_image_as_cover">Use this image as cover art?</string>

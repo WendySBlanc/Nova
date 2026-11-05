@@ -88,6 +88,12 @@ class MangaTranslationRepository(
     fun observe(chapterKey: String): StateFlow<MangaTranslationState> =
         state(chapterKey).asStateFlow()
 
+    fun hasTranslation(chapterKey: String, pageIndexes: List<Int>): Boolean =
+        pageIndexes.isNotEmpty() && pageIndexes.all { cache.translatedPage(chapterKey, it) != null }
+
+    fun translatedPage(chapterKey: String, pageIndex: Int): File? =
+        cache.translatedPage(chapterKey, pageIndex)
+
     suspend fun translate(chapterKey: String, pages: List<ReaderPage>) {
         runOnce(chapterKey) {
             val existingJobId = jobStore.get(chapterKey)
