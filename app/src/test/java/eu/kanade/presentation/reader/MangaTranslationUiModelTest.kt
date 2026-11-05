@@ -77,16 +77,16 @@ class MangaTranslationUiModelTest {
     }
 
     @Test
-    fun `visible translation can switch back to original`() {
-        val model = model(
+    fun `visible translation does not offer the discarded original`() {
+        val model = mangaTranslationUiModel(
+            available = true,
+            configured = true,
             state = MangaTranslationState.Idle,
             hasTranslation = true,
             showingTranslation = true,
         )
 
-        model.action shouldBe MangaTranslationAction.ShowOriginal
-        model.label shouldBe MangaTranslationUiText.ShowOriginal
-        model.contentDescription shouldBe MangaTranslationUiText.ShowOriginalDescription
+        model shouldBe null
     }
 
     @Test

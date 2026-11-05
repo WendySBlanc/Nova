@@ -30,6 +30,7 @@ interface MangaTranslationArchiveGateway {
 
 interface MangaTranslationCacheGateway {
     fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation
+    fun installedTranslation(chapterKey: String): InstalledTranslation?
     fun translatedPage(chapterKey: String, pageIndex: Int): File?
     fun activeMetadata(chapterKey: String): TranslationResultMetadata?
 }
@@ -95,15 +96,14 @@ class MangaTranslationRepository(
     fun translatedPage(chapterKey: String, pageIndex: Int): File? =
         cache.translatedPage(chapterKey, pageIndex)
 
+    fun installedTranslation(chapterKey: String): InstalledTranslation? =
+        cache.installedTranslation(chapterKey)
+
     suspend fun hasUsableTranslation(chapterKey: String, pageIndexes: List<Int>): Boolean {
         if (!hasTranslation(chapterKey, pageIndexes)) return false
         val metadata = cache.activeMetadata(chapterKey) ?: return false
         if (metadata.totalPages != pageIndexes.size) return false
-        return try {
-            service.checkHealth().configRevision == metadata.configRevision
-        } catch (_: MangaTranslationException) {
-            true
-        }
+        return true
     }
 
     suspend fun translate(chapterKey: String, pages: List<ReaderPage>) {

@@ -79,6 +79,18 @@ class MangaTranslatorNamingTranslator(RecordingTranslator):
         return TranslationOutcome(target_language="French", config_revision=revision)
 
 
+class PartialTranslationTranslator(RecordingTranslator):
+    def translate(self, input_dir, output_dir, progress, cancelled, configuration=None):
+        self.calls += 1
+        pages = sorted(Path(input_dir).glob("*.jpg"))
+        Path(output_dir, f"{pages[0].stem}_translated.png").write_bytes(
+            b"translated:" + pages[0].read_bytes(),
+        )
+        progress(len(pages), len(pages))
+        revision = configuration.config_revision if configuration is not None else self.revision
+        return TranslationOutcome(target_language="French", config_revision=revision)
+
+
 class BlockingTranslator:
     def __init__(self) -> None:
         self.started = threading.Event()
@@ -160,6 +172,27 @@ def test_packages_manga_translator_output_names_as_canonical_pages(tmp_path: Pat
     with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
         assert archive.namelist() == ["000000.png", "000001.png"]
         assert archive.read("000000.png") == b"translated:one"
+
+
+def test_keeps_original_pages_when_manga_translator_omits_them(tmp_path: Path) -> None:
+    app = create_app(tmp_path, TOKEN, PartialTranslationTranslator())
+    with TestClient(app) as client:
+        response = submit(client, "partial-manga-translator-output")
+        completed = wait_for_status(client, response.json()["job_id"], "complete")
+        result = client.get(
+            f"/v1/chapters/{completed['job_id']}/result",
+            headers=auth_headers(),
+        )
+
+    assert result.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
+        assert archive.namelist() == ["000000.png", "000001.jpg"]
+        assert archive.read("000000.png") == b"translated:one"
+        assert archive.read("000001.jpg") == b"two"
+    work_directory = tmp_path / "work" / completed["job_id"]
+    assert not (work_directory / "input").exists()
+    assert not (work_directory / "output").exists()
+    assert (work_directory / "translated.zip").is_file()
 
 
 def test_repeated_chapter_key_reuses_existing_job(tmp_path: Path) -> None:

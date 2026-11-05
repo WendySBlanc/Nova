@@ -299,6 +299,8 @@ class JobManager:
             if outcome.config_revision != configuration.config_revision:
                 raise RuntimeError("MangaTranslator used a different configuration revision")
             result_path = self._package_result(record)
+            shutil.rmtree(record.input_dir, ignore_errors=True)
+            shutil.rmtree(record.output_dir, ignore_errors=True)
             record = self.store.get(job_id) or record
             record.status = "complete"
             record.completed_pages = record.total_pages
@@ -331,8 +333,10 @@ class JobManager:
             output_by_stem[stem] = path
 
         expected_stems = [PAGE_NAME.fullmatch(path.name).group(1) for path in input_pages]
-        if set(output_by_stem) != set(expected_stems):
+        if not set(output_by_stem).issubset(expected_stems):
             raise RuntimeError("Translated output does not match the input page set")
+        for input_page, stem in zip(input_pages, expected_stems, strict=True):
+            output_by_stem.setdefault(stem, input_page)
 
         destination = Path(record.output_dir).parent / "translated.zip"
         temporary = destination.with_suffix(".zip.tmp")

@@ -145,6 +145,41 @@ class MangaTranslationArchiveTest {
     }
 
     @Test
+    fun `cache exposes installed translation for offline reading`() {
+        val cache = cache()
+        val expected = metadata(totalPages = 2)
+        cache.installResult(
+            expected,
+            zipOf(
+                "000000.png" to png("first"),
+                "000001.jpg" to jpeg("second"),
+            ),
+        )
+
+        val installed = cache.installedTranslation(CHAPTER_KEY)!!
+
+        installed.metadata shouldBe expected
+        installed.pages.map { payload(it.readBytes()) }.shouldContainExactly("first", "second")
+    }
+
+    @Test
+    fun `installing a new translation removes inactive variants`() {
+        val root = File(temporaryDirectory.toFile(), "cache")
+        val cache = MangaTranslationCache(root)
+        cache.installResult(
+            metadata(totalPages = 1, configRevision = "config-v1"),
+            zipOf("000000.png" to png("old")),
+        )
+        cache.installResult(
+            metadata(totalPages = 1, configRevision = "config-v2"),
+            zipOf("000000.png" to png("new")),
+        )
+
+        root.walkTopDown().count { it.isFile && it.name == "manifest.json" } shouldBe 1
+        payload(cache.translatedPage(CHAPTER_KEY, 0)!!.readBytes()) shouldBe "new"
+    }
+
+    @Test
     fun `cache cleans stale installation directories and partial files`() {
         val root = File(temporaryDirectory.toFile(), "cache")
         val staleDirectory = File(root, "chapter/.install-abandoned").apply { mkdirs() }

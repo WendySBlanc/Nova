@@ -45,39 +45,9 @@ $env:NOVA_MANGA_TRANSLATOR_TOKEN = $Token
 $env:NOVA_MANGA_TRANSLATOR_PORT = $Port.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:NOVA_MANGA_TRANSLATOR_FORCE_CPU = if ($ForceCpu) { "1" } else { "0" }
 
-$launcher = @'
-import os
-from pathlib import Path
-
-import uvicorn
-
-from nova_manga_translator.api import create_app
-from nova_manga_translator.translator import MangaTranslatorAdapter
-
-root = Path(os.environ["NOVA_MANGA_TRANSLATOR_ROOT"])
-translator = MangaTranslatorAdapter(
-    manga_translator_root=root,
-    config_path=Path(os.environ["NOVA_MANGA_TRANSLATOR_CONFIG"]),
-    models_dir=root / "models",
-    fonts_dir=root / "fonts",
-    force_cpu=os.environ["NOVA_MANGA_TRANSLATOR_FORCE_CPU"] == "1",
-)
-app = create_app(
-    data_dir=Path(os.environ["NOVA_MANGA_TRANSLATOR_DATA"]),
-    token=os.environ["NOVA_MANGA_TRANSLATOR_TOKEN"],
-    translator=translator,
-)
-uvicorn.run(
-    app,
-    host="127.0.0.1",
-    port=int(os.environ["NOVA_MANGA_TRANSLATOR_PORT"]),
-    access_log=False,
-)
-'@
-
 Push-Location $PSScriptRoot
 try {
-    & $resolvedPython -c $launcher
+    & $resolvedPython -m nova_manga_translator.server
     if ($LASTEXITCODE -ne 0) {
         throw "Nova MangaTranslator server exited with code $LASTEXITCODE"
     }

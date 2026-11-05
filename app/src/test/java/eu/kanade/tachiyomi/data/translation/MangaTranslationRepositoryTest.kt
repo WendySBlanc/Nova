@@ -211,7 +211,7 @@ class MangaTranslationRepositoryTest {
     }
 
     @Test
-    fun `online configuration change makes an older cached translation stale`() = runTest {
+    fun `complete installed translation stays usable after an online configuration change`() = runTest {
         val cache = FakeCache(
             activeMetadata = metadata().copy(configRevision = "config-v1"),
             translatedPages = setOf(0, 1),
@@ -221,7 +221,7 @@ class MangaTranslationRepositoryTest {
         )
         val repository = repository(service = service, cache = cache)
 
-        repository.hasUsableTranslation(CHAPTER_KEY, listOf(0, 1)) shouldBe false
+        repository.hasUsableTranslation(CHAPTER_KEY, listOf(0, 1)) shouldBe true
     }
 
     @Test
@@ -309,6 +309,8 @@ class MangaTranslationRepositoryTest {
             }
             return InstalledTranslation(metadata, directory, pages)
         }
+
+        override fun installedTranslation(chapterKey: String): InstalledTranslation? = null
 
         override fun translatedPage(chapterKey: String, pageIndex: Int): File? = pageIndex
             .takeIf(translatedPages::contains)

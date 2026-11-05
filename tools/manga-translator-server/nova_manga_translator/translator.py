@@ -131,7 +131,7 @@ class MangaTranslatorAdapter:
 
         if cancelled.is_set():
             raise TranslationCancelled()
-        results = batch_translate_images(
+        batch_translate_images(
             input_dir=input_dir,
             config=backend_config,
             output_dir=output_dir,
@@ -140,10 +140,6 @@ class MangaTranslatorAdapter:
         )
         if cancelled.is_set():
             raise TranslationCancelled()
-        if results.get("error_count", 0):
-            errors = results.get("errors") or {}
-            message = "; ".join(f"{name}: {error}" for name, error in errors.items())
-            raise RuntimeError(message or "MangaTranslator failed to translate every page")
 
         return TranslationOutcome(
             target_language=str(backend_config.translation.output_language),

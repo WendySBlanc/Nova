@@ -51,6 +51,10 @@ class MangaTranslationCache(
             }
             val installedPages = pageFiles(installedDirectory, metadata.totalPages)
             activate(chapterDirectory, variantName)
+            chapterDirectory.listFiles()
+                .orEmpty()
+                .filter { it.isDirectory && it.name != variantName && VARIANT_PATTERN.matches(it.name) }
+                .forEach(File::deleteRecursively)
             return InstalledTranslation(metadata, installedDirectory, installedPages)
         } catch (error: MangaTranslationException) {
             temporary.deleteRecursively()
@@ -62,6 +66,14 @@ class MangaTranslationCache(
             temporary.deleteRecursively()
             throw MangaTranslationProtocolException("Archive traduite invalide", error)
         }
+    }
+
+    override fun installedTranslation(chapterKey: String): InstalledTranslation? {
+        val metadata = activeMetadata(chapterKey) ?: return null
+        val directory = File(chapterDirectory(chapterKey), metadata.variantKey())
+        return runCatching {
+            InstalledTranslation(metadata, directory, pageFiles(directory, metadata.totalPages))
+        }.getOrNull()
     }
 
     override fun translatedPage(chapterKey: String, pageIndex: Int): File? {
