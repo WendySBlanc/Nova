@@ -21,6 +21,8 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
+import eu.kanade.tachiyomi.data.translation.MangaTranslationClient
+import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.InstalledExtensionsInventory
@@ -37,6 +39,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
 import nl.adaptivity.xmlutil.serialization.XML
+import okhttp3.OkHttpClient
 import tachiyomi.core.common.storage.AndroidStorageFolderProvider
 import tachiyomi.core.common.storage.UniFileTempFileManager
 import tachiyomi.data.AndroidDatabaseHandler
@@ -158,6 +161,14 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { NetworkHelper(app, get(), isDebugBuildType) }
         addSingletonFactory { JavaScriptEngine(app) }
+        addSingletonFactory {
+            val preferences = get<MangaTranslationPreferences>()
+            MangaTranslationClient(
+                client = OkHttpClient(),
+                json = get(),
+                connection = preferences::connection,
+            )
+        }
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }
