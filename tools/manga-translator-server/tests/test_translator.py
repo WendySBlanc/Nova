@@ -5,7 +5,70 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 
+import nova_manga_translator.translator as translator_module
 from nova_manga_translator.translator import MangaTranslatorAdapter, TranslationConfigSnapshot
+
+
+def test_local_ollama_qwen_request_disables_reasoning(monkeypatch) -> None:
+    captured_payloads = []
+
+    def post_with_retries(_url, _headers, payload, _parse, **_kwargs):
+        captured_payloads.append(payload)
+
+    endpoint = SimpleNamespace(post_with_retries=post_with_retries)
+    monkeypatch.setitem(sys.modules, "utils", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "utils.endpoints", SimpleNamespace(openai_compatible=endpoint))
+    monkeypatch.setitem(sys.modules, "utils.endpoints.openai_compatible", endpoint)
+
+    install_compatibility = getattr(
+        translator_module,
+        "_install_local_ollama_compatibility",
+        lambda: None,
+    )
+    install_compatibility()
+    endpoint.post_with_retries(
+        "http://127.0.0.1:11434/v1/chat/completions",
+        {},
+        {"model": "nova-qwen3.5:9b", "max_tokens": 4096},
+        lambda result: result,
+        label="OpenAI-Compatible",
+    )
+
+    assert captured_payloads == [
+        {
+            "model": "nova-qwen3.5:9b",
+            "max_tokens": 4096,
+            "reasoning_effort": "none",
+        },
+    ]
+
+
+def test_remote_openai_compatible_request_keeps_original_payload(monkeypatch) -> None:
+    captured_payloads = []
+
+    def post_with_retries(_url, _headers, payload, _parse, **_kwargs):
+        captured_payloads.append(payload)
+
+    endpoint = SimpleNamespace(post_with_retries=post_with_retries)
+    monkeypatch.setitem(sys.modules, "utils", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "utils.endpoints", SimpleNamespace(openai_compatible=endpoint))
+    monkeypatch.setitem(sys.modules, "utils.endpoints.openai_compatible", endpoint)
+
+    install_compatibility = getattr(
+        translator_module,
+        "_install_local_ollama_compatibility",
+        lambda: None,
+    )
+    install_compatibility()
+    endpoint.post_with_retries(
+        "https://api.example.com/v1/chat/completions",
+        {},
+        {"model": "qwen3.5:9b", "max_tokens": 4096},
+        lambda result: result,
+        label="OpenAI-Compatible",
+    )
+
+    assert captured_payloads == [{"model": "qwen3.5:9b", "max_tokens": 4096}]
 
 
 def test_adapter_allows_individual_page_failures(tmp_path: Path, monkeypatch) -> None:
@@ -29,6 +92,7 @@ def test_adapter_allows_individual_page_failures(tmp_path: Path, monkeypatch) ->
         yolo_model_path=None,
     )
     ui_state = SimpleNamespace(batch_font_pack="test-font")
+    endpoint = SimpleNamespace(post_with_retries=lambda *_args, **_kwargs: None)
 
     def batch_translate_images(**kwargs):
         (kwargs["output_dir"] / "000000_translated.png").write_bytes(b"translated:one")
@@ -53,6 +117,9 @@ def test_adapter_allows_individual_page_failures(tmp_path: Path, monkeypatch) ->
             UIConfigState=SimpleNamespace(from_dict=lambda _payload: ui_state),
             map_ui_to_backend_config=lambda *_args, **_kwargs: backend_config,
         ),
+        "utils": SimpleNamespace(),
+        "utils.endpoints": SimpleNamespace(openai_compatible=endpoint),
+        "utils.endpoints.openai_compatible": endpoint,
     }
     for name, module in modules.items():
         monkeypatch.setitem(sys.modules, name, module)
