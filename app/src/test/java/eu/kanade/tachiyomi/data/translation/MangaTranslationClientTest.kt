@@ -88,6 +88,7 @@ class MangaTranslationClientTest {
         metadata.targetLanguage shouldBe "French"
         metadata.configRevision shouldBe "config-v1"
         metadata.totalPages shouldBe 2
+        metadata.chapterKey shouldBe "chapter-key"
     }
 
     @Test

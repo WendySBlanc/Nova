@@ -42,7 +42,9 @@ data class TranslationJob(
     val cached: Boolean = false,
 )
 
+@Serializable
 data class TranslationResultMetadata(
+    val chapterKey: String,
     val targetLanguage: String,
     val configRevision: String,
     val totalPages: Int,

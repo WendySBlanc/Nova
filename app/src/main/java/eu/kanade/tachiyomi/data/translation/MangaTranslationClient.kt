@@ -81,6 +81,7 @@ class MangaTranslationClient(
             throw error
         }
         return TranslationResultMetadata(
+            chapterKey = job.chapterKey,
             targetLanguage = targetLanguage,
             configRevision = configRevision,
             totalPages = job.totalPages,
