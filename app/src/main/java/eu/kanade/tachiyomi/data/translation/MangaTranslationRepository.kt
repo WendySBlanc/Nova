@@ -30,6 +30,12 @@ interface MangaTranslationArchiveGateway {
 
 interface MangaTranslationCacheGateway {
     fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation
+    fun replacePage(
+        chapterKey: String,
+        pageIndex: Int,
+        resultMetadata: TranslationResultMetadata,
+        archive: File,
+    ): InstalledTranslation
     fun installedTranslation(chapterKey: String): InstalledTranslation?
     fun translatedPage(chapterKey: String, pageIndex: Int): File?
     fun activeMetadata(chapterKey: String): TranslationResultMetadata?
@@ -136,6 +142,32 @@ class MangaTranslationRepository(
         }
     }
 
+    suspend fun retranslatePage(chapterKey: String, pageIndex: Int, page: ReaderPage) {
+        require(pageIndex >= 0) { "pageIndex cannot be negative" }
+        runOnce(chapterKey) {
+            val serverInfo = service.checkHealth()
+            jobStore.get(chapterKey)?.let { existingJobId ->
+                val existingJob = service.getJob(existingJobId)
+                if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
+                    service.cancelJob(existingJobId)
+                }
+                jobStore.remove(chapterKey)
+            }
+            val sourceStream = page.stream
+                ?: throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
+            val uploadPage = ReaderPage(index = 0, stream = sourceStream)
+            val serverChapterKey = pageTranslationChapterKey(chapterKey, pageIndex)
+            submit(
+                chapterKey = chapterKey,
+                pages = listOf(uploadPage),
+                configRevision = serverInfo.configRevision,
+                force = true,
+                serverChapterKey = serverChapterKey,
+                replacementPageIndex = pageIndex,
+            )
+        }
+    }
+
     suspend fun resume(chapterKey: String) {
         val jobId = jobStore.get(chapterKey) ?: return
         runOnce(chapterKey) {
@@ -149,7 +181,15 @@ class MangaTranslationRepository(
                 state(chapterKey).value = MangaTranslationState.Idle
                 return@runOnce
             }
-            poll(chapterKey, jobId, serverInfo.configRevision, job)
+            val replacementPageIndex = pageTranslationIndex(chapterKey, job.chapterKey)
+            poll(
+                chapterKey = chapterKey,
+                jobId = jobId,
+                expectedConfigRevision = serverInfo.configRevision,
+                initialJob = job,
+                serverChapterKey = job.chapterKey,
+                replacementPageIndex = replacementPageIndex,
+            )
         }
     }
 
@@ -182,20 +222,29 @@ class MangaTranslationRepository(
         pages: List<ReaderPage>,
         configRevision: String,
         force: Boolean = false,
+        serverChapterKey: String = chapterKey,
+        replacementPageIndex: Int? = null,
     ) {
         ensureNotCancelled(chapterKey)
         state(chapterKey).value = MangaTranslationState.Preparing
-        val upload = archive.createUpload(chapterKey, pages)
+        val upload = archive.createUpload(serverChapterKey, pages)
         try {
             ensureNotCancelled(chapterKey)
             state(chapterKey).value = MangaTranslationState.Uploading
-            val job = service.submitChapter(chapterKey, upload, force)
+            val job = service.submitChapter(serverChapterKey, upload, force)
             if (job.configRevision != configRevision) {
                 throw MangaTranslationProtocolException("La configuration du serveur a changé pendant l'envoi")
             }
             jobStore.put(chapterKey, job.jobId)
             cancelSubmittedJobIfRequested(chapterKey, job.jobId)
-            poll(chapterKey, job.jobId, configRevision, job)
+            poll(
+                chapterKey = chapterKey,
+                jobId = job.jobId,
+                expectedConfigRevision = configRevision,
+                initialJob = job,
+                serverChapterKey = serverChapterKey,
+                replacementPageIndex = replacementPageIndex,
+            )
         } finally {
             upload.delete()
         }
@@ -206,6 +255,8 @@ class MangaTranslationRepository(
         jobId: String,
         expectedConfigRevision: String? = null,
         initialJob: TranslationJob? = null,
+        serverChapterKey: String = chapterKey,
+        replacementPageIndex: Int? = null,
     ) {
         var nextJob = initialJob
         while (true) {
@@ -213,7 +264,7 @@ class MangaTranslationRepository(
             val job = nextJob ?: getJobWithRetry(chapterKey, jobId) ?: return
             nextJob = null
             ensureNotCancelled(chapterKey)
-            if (job.jobId != jobId || job.chapterKey != chapterKey) {
+            if (job.jobId != jobId || job.chapterKey != serverChapterKey) {
                 throw MangaTranslationProtocolException("Le job reçu ne correspond pas au chapitre")
             }
             if (expectedConfigRevision != null && job.configRevision != expectedConfigRevision) {
@@ -235,7 +286,17 @@ class MangaTranslationRepository(
                     delay(pollInterval)
                 }
                 TranslationJobStatus.COMPLETE -> {
-                    installCompletedResult(chapterKey, jobId, job.totalPages)
+                    if (replacementPageIndex == null) {
+                        installCompletedResult(chapterKey, jobId, job.totalPages)
+                    } else {
+                        installCompletedPageResult(
+                            chapterKey = chapterKey,
+                            serverChapterKey = serverChapterKey,
+                            pageIndex = replacementPageIndex,
+                            jobId = jobId,
+                            expectedPages = job.totalPages,
+                        )
+                    }
                     return
                 }
                 TranslationJobStatus.FAILED -> {
@@ -299,6 +360,30 @@ class MangaTranslationRepository(
         }
     }
 
+    private suspend fun installCompletedPageResult(
+        chapterKey: String,
+        serverChapterKey: String,
+        pageIndex: Int,
+        jobId: String,
+        expectedPages: Int,
+    ) {
+        state(chapterKey).value = MangaTranslationState.Downloading
+        resultDirectory.mkdirs()
+        val result = File(resultDirectory, "${serverChapterKey.sha256()}-${jobId.sha256()}.zip")
+        try {
+            val metadata = service.downloadResult(jobId, result)
+            ensureNotCancelled(chapterKey)
+            if (metadata.chapterKey != serverChapterKey || metadata.totalPages != 1 || expectedPages != 1) {
+                throw MangaTranslationProtocolException("Le résultat ne correspond pas à la page")
+            }
+            val installed = cache.replacePage(chapterKey, pageIndex, metadata, result)
+            jobStore.remove(chapterKey)
+            state(chapterKey).value = MangaTranslationState.Ready(installed)
+        } finally {
+            result.delete()
+        }
+    }
+
     private suspend fun runOnce(chapterKey: String, block: suspend () -> Unit) {
         val started = activeMutex.withLock { activeChapters.add(chapterKey) }
         if (!started) return
@@ -347,6 +432,15 @@ class MangaTranslationRepository(
         MutableStateFlow(MangaTranslationState.Idle)
     }
 }
+
+private fun pageTranslationChapterKey(chapterKey: String, pageIndex: Int): String =
+    "$chapterKey:page:$pageIndex"
+
+private fun pageTranslationIndex(chapterKey: String, serverChapterKey: String): Int? =
+    serverChapterKey.removePrefix("$chapterKey:page:")
+        .takeIf { serverChapterKey.startsWith("$chapterKey:page:") }
+        ?.toIntOrNull()
+        ?.takeIf { it >= 0 }
 
 private fun MangaTranslationException.isRetryable(): Boolean =
     this is MangaTranslationNetworkException ||

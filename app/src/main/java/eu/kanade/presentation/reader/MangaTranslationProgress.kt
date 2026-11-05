@@ -60,6 +60,7 @@ data class MangaTranslationUiModel(
     val enabled: Boolean = true,
     val completedPages: Int? = null,
     val totalPages: Int? = null,
+    val canRetranslatePage: Boolean = false,
 )
 
 fun mangaTranslationUiModel(
@@ -87,6 +88,7 @@ fun mangaTranslationUiModel(
             action = MangaTranslationAction.Translate,
             label = MangaTranslationUiText.TranslateChapter,
             contentDescription = MangaTranslationUiText.TranslateChapterDescription,
+            canRetranslatePage = true,
         )
         hasTranslation -> MangaTranslationUiModel(
             action = MangaTranslationAction.ShowTranslation,

@@ -180,6 +180,7 @@
     <string name="manga_translation_show_original_description">Remplacer les pages traduites par le chapitre original</string>
     <string name="manga_translation_show_translation">Afficher la traduction</string>
     <string name="manga_translation_show_translation_description">Remplacer les pages originales par la traduction enregistrée</string>
+    <string name="manga_translation_retranslate_page">Retraduire cette page</string>
     <string name="manga_translation_configure_server_description">Configurez d’abord le serveur MangaTranslator privé dans les paramètres du lecteur</string>
     <string name="manga_translation_settings_title">Traduction des chapitres</string>
     <string name="manga_translation_server_title">Serveur MangaTranslator privé</string>

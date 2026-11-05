@@ -88,6 +88,7 @@ class MangaTranslationUiModelTest {
 
         model?.action shouldBe MangaTranslationAction.Translate
         model?.label shouldBe MangaTranslationUiText.TranslateChapter
+        model?.canRetranslatePage shouldBe true
     }
 
     @Test

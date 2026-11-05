@@ -1354,6 +1354,34 @@ class ReaderViewModel @JvmOverloads constructor(
         }
     }
 
+    fun onRetranslateCurrentMangaPage(pageIndex: Int) {
+        val snapshot = state.value
+        val chapterKey = mangaTranslationChapterKey ?: return
+        val chapter = snapshot.currentChapter ?: return
+        if (
+            pageIndex < 0 ||
+            !snapshot.mangaTranslationAvailable ||
+            !snapshot.mangaTranslationConfigured ||
+            !snapshot.hasMangaTranslation ||
+            !snapshot.showingMangaTranslation ||
+            snapshot.mangaTranslationState.isActive
+        ) {
+            return
+        }
+
+        mutableState.update { it.copy(mangaTranslationState = MangaTranslationState.Preparing) }
+        mangaTranslationActionJob = viewModelScope.launch {
+            try {
+                val page = prepareMangaRetranslationPage(chapter, pageIndex)
+                mangaTranslationRepository.retranslatePage(chapterKey, pageIndex, page)
+            } catch (_: TimeoutCancellationException) {
+                setMangaTranslationFailure("La page n'a pas pu être chargée à temps")
+            } catch (error: MangaTranslationException) {
+                setMangaTranslationFailure(error.message ?: "Impossible de préparer la page")
+            }
+        }
+    }
+
     private fun bindMangaTranslation(readerChapter: ReaderChapter) {
         mangaTranslationObservationJob?.cancel()
         val chapterKey = mangaTranslationKey(readerChapter)
@@ -1475,8 +1503,46 @@ class ReaderViewModel @JvmOverloads constructor(
             ?: throw MangaTranslationProtocolException("La source originale de ce chapitre n'est pas disponible")
         val sourceLoader = HttpPageLoader(readerChapter, source)
         return try {
-            val sourcePages = sourceLoader.getPages()
+            val sourcePages = sourceLoader.getPages().onEach { it.chapter = readerChapter }
             prepareMangaTranslationPages(readerChapter, sourcePages, sourceLoader)
+        } finally {
+            sourceLoader.recycle()
+        }
+    }
+
+    private suspend fun prepareMangaRetranslationPage(
+        readerChapter: ReaderChapter,
+        pageIndex: Int,
+    ): ReaderPage {
+        if (readerChapter.pageLoader !is TranslatedPageLoader) {
+            val page = mangaTranslationPages(readerChapter)
+                .firstOrNull { it.index == pageIndex }
+                ?: throw MangaTranslationProtocolException("Page ${pageIndex + 1} introuvable")
+            val translatedStream = page.stream
+            if (page.isUsingTranslatedStream) {
+                if (!page.useOriginalStream()) {
+                    throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
+                }
+                val sourceStream = page.stream
+                    ?: throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
+                translatedStream?.let(page::useTranslatedStream)
+                return ReaderPage(index = pageIndex, stream = sourceStream)
+            }
+
+            val prepared = prepareMangaTranslationPages(readerChapter, listOf(page)).single()
+            return ReaderPage(index = pageIndex, stream = prepared.stream)
+        }
+
+        val source = getSourceForReaderChapter(readerChapter) as? HttpSource
+            ?: throw MangaTranslationProtocolException("La source originale de ce chapitre n'est pas disponible")
+        val sourceLoader = HttpPageLoader(readerChapter, source)
+        return try {
+            val sourcePage = sourceLoader.getPages()
+                .onEach { it.chapter = readerChapter }
+                .firstOrNull { it.index == pageIndex }
+                ?: throw MangaTranslationProtocolException("Page ${pageIndex + 1} introuvable")
+            val prepared = prepareMangaTranslationPages(readerChapter, listOf(sourcePage), sourceLoader).single()
+            ReaderPage(index = pageIndex, stream = prepared.stream)
         } finally {
             sourceLoader.recycle()
         }

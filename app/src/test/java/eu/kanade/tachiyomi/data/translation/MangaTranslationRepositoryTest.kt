@@ -60,6 +60,21 @@ class MangaTranslationRepositoryTest {
     }
 
     @Test
+    fun `retranslating one page uses a separate forced job and replaces only that page`() = runTest {
+        val service = FakeService()
+        val cache = FakeCache()
+        val repository = repository(service = service, cache = cache)
+        val page = ReaderPage(4, stream = { "source-page".byteInputStream() })
+
+        repository.retranslatePage(CHAPTER_KEY, pageIndex = 4, page = page)
+
+        service.submittedChapterKeys shouldBe listOf("$CHAPTER_KEY:page:4")
+        service.forcedSubmissions shouldBe listOf(true)
+        cache.replacedPageIndexes shouldBe listOf(4)
+        repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Ready>()
+    }
+
+    @Test
     fun `concurrent translate calls are deduplicated`() = runTest {
         val releaseJob = CompletableDeferred<Unit>()
         val service = FakeService(
@@ -127,6 +142,34 @@ class MangaTranslationRepositoryTest {
 
         service.submitCount shouldBe 0
         store.get(CHAPTER_KEY) shouldBe null
+        repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Ready>()
+    }
+
+    @Test
+    fun `resume restores an in progress single page retranslation`() = runTest {
+        val pageIndex = 1
+        val pageChapterKey = "$CHAPTER_KEY:page:$pageIndex"
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val cache = FakeCache()
+        val service = FakeService(
+            jobs = ArrayDeque(
+                listOf(
+                    job(
+                        status = TranslationJobStatus.COMPLETE,
+                        completed = 1,
+                        chapterKey = pageChapterKey,
+                        totalPages = 1,
+                    ),
+                ),
+            ),
+        )
+        val repository = repository(service = service, jobStore = store, cache = cache)
+
+        repository.resume(CHAPTER_KEY)
+
+        service.submitCount shouldBe 0
+        store.get(CHAPTER_KEY) shouldBe null
+        cache.replacedPageIndexes shouldBe listOf(pageIndex)
         repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Ready>()
     }
 
@@ -273,7 +316,9 @@ class MangaTranslationRepositoryTest {
     ) : MangaTranslationService {
         var submitCount = 0
         val forcedSubmissions = mutableListOf<Boolean>()
+        val submittedChapterKeys = mutableListOf<String>()
         val cancelledJobIds = mutableListOf<String>()
+        private var latestSubmittedChapterKey = CHAPTER_KEY
 
         override suspend fun checkHealth(): MangaTranslationServerInfo {
             healthError?.let { throw it }
@@ -283,16 +328,35 @@ class MangaTranslationRepositoryTest {
         override suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean): TranslationJob {
             submitCount++
             forcedSubmissions += force
-            return job(TranslationJobStatus.QUEUED, completed = 0)
+            submittedChapterKeys += chapterKey
+            latestSubmittedChapterKey = chapterKey
+            return job(
+                status = TranslationJobStatus.QUEUED,
+                completed = 0,
+                chapterKey = chapterKey,
+                totalPages = if (chapterKey.contains(":page:")) 1 else 2,
+            )
         }
 
-        override suspend fun getJob(jobId: String): TranslationJob =
-            getJobHandler?.invoke() ?: jobs.removeFirstOrNull() ?: job(TranslationJobStatus.COMPLETE, completed = 2)
+        override suspend fun getJob(jobId: String): TranslationJob {
+            val nextJob = getJobHandler?.invoke() ?: jobs.removeFirstOrNull() ?: job(
+                status = TranslationJobStatus.COMPLETE,
+                completed = if (latestSubmittedChapterKey.contains(":page:")) 1 else 2,
+                chapterKey = latestSubmittedChapterKey,
+                totalPages = if (latestSubmittedChapterKey.contains(":page:")) 1 else 2,
+            )
+            latestSubmittedChapterKey = nextJob.chapterKey
+            return nextJob
+        }
 
         override suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata {
             destination.parentFile?.mkdirs()
             destination.writeText("result")
-            return resultMetadata
+            return if (latestSubmittedChapterKey.contains(":page:")) {
+                resultMetadata.copy(chapterKey = latestSubmittedChapterKey, totalPages = 1)
+            } else {
+                resultMetadata
+            }
         }
 
         override suspend fun cancelJob(jobId: String) {
@@ -313,6 +377,8 @@ class MangaTranslationRepositoryTest {
         private val activeMetadata: TranslationResultMetadata? = null,
         private val translatedPages: Set<Int> = emptySet(),
     ) : MangaTranslationCacheGateway {
+        val replacedPageIndexes = mutableListOf<Int>()
+
         override fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation {
             installError?.let { throw it }
             val directory = File(archive.parentFile, "installed").apply { mkdirs() }
@@ -329,6 +395,16 @@ class MangaTranslationRepositoryTest {
             ?.let { File("cached-$it.png") }
 
         override fun activeMetadata(chapterKey: String): TranslationResultMetadata? = activeMetadata
+
+        override fun replacePage(
+            chapterKey: String,
+            pageIndex: Int,
+            resultMetadata: TranslationResultMetadata,
+            archive: File,
+        ): InstalledTranslation {
+            replacedPageIndexes += pageIndex
+            return installResult(metadata(), archive)
+        }
     }
 
     private class FakeJobStore(
@@ -353,12 +429,14 @@ class MangaTranslationRepositoryTest {
             status: TranslationJobStatus,
             completed: Int = 0,
             error: String? = null,
+            chapterKey: String = CHAPTER_KEY,
+            totalPages: Int = 2,
         ) = TranslationJob(
             jobId = JOB_ID,
-            chapterKey = CHAPTER_KEY,
+            chapterKey = chapterKey,
             status = status,
             completedPages = completed,
-            totalPages = 2,
+            totalPages = totalPages,
             error = error,
             targetLanguage = if (status == TranslationJobStatus.COMPLETE) "French" else null,
             configRevision = "config-v1",

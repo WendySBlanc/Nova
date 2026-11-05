@@ -867,6 +867,7 @@
     <string name="manga_translation_show_original_description">Replace the translated pages with the original chapter</string>
     <string name="manga_translation_show_translation">Show translation</string>
     <string name="manga_translation_show_translation_description">Replace the original pages with the cached translation</string>
+    <string name="manga_translation_retranslate_page">Retranslate this page</string>
     <string name="manga_translation_configure_server_description">Configure the private MangaTranslator server in Reader settings first</string>
     <string name="manga_translation_settings_title">Chapter translation</string>
     <string name="manga_translation_server_title">Private MangaTranslator server</string>

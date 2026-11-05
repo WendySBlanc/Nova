@@ -180,6 +180,37 @@ class MangaTranslationArchiveTest {
     }
 
     @Test
+    fun `replacing one translated page preserves the rest of the chapter`() {
+        val cache = cache()
+        val chapterMetadata = metadata(totalPages = 3)
+        cache.installResult(
+            chapterMetadata,
+            zipOf(
+                "000000.png" to png("first"),
+                "000001.png" to png("second-old"),
+                "000002.png" to png("third"),
+            ),
+        )
+        val pageMetadata = TranslationResultMetadata(
+            chapterKey = "$CHAPTER_KEY:page:1",
+            targetLanguage = "French",
+            configRevision = "config-v1",
+            totalPages = 1,
+        )
+
+        val installed = cache.replacePage(
+            chapterKey = CHAPTER_KEY,
+            pageIndex = 1,
+            resultMetadata = pageMetadata,
+            archive = zipOf("000000.png" to png("second-new")),
+        )
+
+        installed.pages.map { payload(it.readBytes()) }
+            .shouldContainExactly("first", "second-new", "third")
+        installed.metadata shouldBe chapterMetadata
+    }
+
+    @Test
     fun `cache cleans stale installation directories and partial files`() {
         val root = File(temporaryDirectory.toFile(), "cache")
         val staleDirectory = File(root, "chapter/.install-abandoned").apply { mkdirs() }

@@ -68,6 +68,39 @@ class MangaTranslationCache(
         }
     }
 
+    @Synchronized
+    override fun replacePage(
+        chapterKey: String,
+        pageIndex: Int,
+        resultMetadata: TranslationResultMetadata,
+        archive: File,
+    ): InstalledTranslation {
+        val installed = installedTranslation(chapterKey)
+            ?: throw MangaTranslationProtocolException("Traduction du chapitre introuvable")
+        if (pageIndex !in installed.pages.indices || resultMetadata.totalPages != 1) {
+            throw MangaTranslationProtocolException("Métadonnées de page traduite invalides")
+        }
+        if (!archive.isFile) {
+            throw MangaTranslationProtocolException("Archive traduite introuvable")
+        }
+
+        val temporary = File(installed.directory, ".page-${UUID.randomUUID()}").apply { mkdirs() }
+        try {
+            val translatedPage = extractAndValidate(resultMetadata, archive, temporary).single()
+            promoteFile(translatedPage, installed.pages[pageIndex])
+            return installedTranslation(chapterKey)
+                ?: throw MangaTranslationProtocolException("Traduction du chapitre introuvable")
+        } catch (error: MangaTranslationException) {
+            throw error
+        } catch (error: IOException) {
+            throw MangaTranslationProtocolException("Page traduite invalide", error)
+        } catch (error: RuntimeException) {
+            throw MangaTranslationProtocolException("Page traduite invalide", error)
+        } finally {
+            temporary.deleteRecursively()
+        }
+    }
+
     override fun installedTranslation(chapterKey: String): InstalledTranslation? {
         val metadata = activeMetadata(chapterKey) ?: return null
         val directory = File(chapterDirectory(chapterKey), metadata.variantKey())

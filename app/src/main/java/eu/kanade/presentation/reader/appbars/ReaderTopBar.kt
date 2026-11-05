@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ fun ReaderTopBar(
     onShare: (() -> Unit)?,
     mangaTranslation: MangaTranslationUiModel?,
     onMangaTranslationAction: () -> Unit,
+    onRetranslateCurrentPage: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val configuration = LocalConfiguration.current
@@ -131,7 +133,13 @@ fun ReaderTopBar(
             )
         }
 
-        if (mangaTranslation != null || onOpenInWebView != null || onOpenInBrowser != null || onShare != null) {
+        if (
+            mangaTranslation != null ||
+            onRetranslateCurrentPage != null ||
+            onOpenInWebView != null ||
+            onOpenInBrowser != null ||
+            onShare != null
+        ) {
             Box {
                 IconButton(
                     onClick = { moreExpanded = true },
@@ -170,6 +178,18 @@ fun ReaderTopBar(
                             },
                             modifier = Modifier.semantics {
                                 stateDescription = description
+                            },
+                        )
+                    }
+                    onRetranslateCurrentPage?.let { retranslateCurrentPage ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(MR.strings.manga_translation_retranslate_page)) },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Refresh, contentDescription = null)
+                            },
+                            onClick = {
+                                moreExpanded = false
+                                retranslateCurrentPage()
                             },
                         )
                     }

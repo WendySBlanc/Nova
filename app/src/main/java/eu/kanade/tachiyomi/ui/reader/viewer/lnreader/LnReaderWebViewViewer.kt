@@ -64,6 +64,8 @@ class LnReaderWebViewViewer(
     private var currentChapterUsesImages = false
     val isImageChapter: Boolean
         get() = currentChapterUsesImages
+    var currentImagePageIndex: Int = 0
+        private set
     private var ttsReady = false
     private var chapterLoadJob: Job? = null
     private var chapterLoadGeneration = 0L
@@ -527,6 +529,7 @@ class LnReaderWebViewViewer(
         }
 
         currentChapter = chapter
+        currentImagePageIndex = 0
         lastSettingsPayload = null
         resetTtsQueue()
         if (!autoStartTtsOnNextLoad) {
@@ -647,6 +650,12 @@ class LnReaderWebViewViewer(
                 val progress = event.optInt("data", -1)
                 if (progress >= 0) {
                     currentChapter?.let { activity.viewModel.onTextReaderProgress(it, progress) }
+                }
+            }
+            "image-position" -> {
+                val pageIndex = event.optInt("pageIndex", -1)
+                if (currentChapterUsesImages && pageIndex >= 0) {
+                    currentImagePageIndex = pageIndex
                 }
             }
             "next" -> {
@@ -1211,6 +1220,7 @@ class LnReaderWebViewViewer(
                     var warmupFrame = null;
                     var maxAutomaticRetries = 2;
                     var activeFigureIndex = 0;
+                    var lastReportedPageIndex = -1;
 
                     var stopImageContextMenu = function(event) {
                       if (event.target && event.target.closest && event.target.closest('.nova-image-chapter img')) {
@@ -1285,6 +1295,13 @@ class LnReaderWebViewViewer(
                         image.src = image.dataset.originalSrc + '?novaRetry=' + Date.now();
                       }, automatic ? 500 * (attempts + 1) : 100);
                     };
+                    var reportActiveImagePage = function(figure) {
+                      if (!figure) return;
+                      var pageIndex = parseInt(figure.dataset.pageIndex || '-1', 10);
+                      if (pageIndex < 0 || pageIndex === lastReportedPageIndex) return;
+                      lastReportedPageIndex = pageIndex;
+                      reader.post({ type: 'image-position', pageIndex: pageIndex });
+                    };
                     var warmNearbyImages = function() {
                       warmupFrame = null;
                       var figures = Array.prototype.slice.call(chapter.querySelectorAll('.nova-reader-page'));
@@ -1302,6 +1319,14 @@ class LnReaderWebViewViewer(
                       ) {
                         activeFigureIndex -= 1;
                       }
+                      var centeredElement = document.elementFromPoint(
+                        Math.round(window.innerWidth / 2),
+                        Math.round(window.innerHeight / 2)
+                      );
+                      var centeredFigure = centeredElement && centeredElement.closest
+                        ? centeredElement.closest('.nova-reader-page')
+                        : null;
+                      reportActiveImagePage(centeredFigure || figures[activeFigureIndex]);
                       var start = Math.max(0, activeFigureIndex - 1);
                       var end = Math.min(figures.length, activeFigureIndex + 4);
                       for (var index = start; index < end; index += 1) {

@@ -65,6 +65,7 @@ fun ReaderAppBars(
     onShare: (() -> Unit)?,
     mangaTranslation: MangaTranslationUiModel?,
     onMangaTranslationAction: () -> Unit,
+    onRetranslateCurrentPage: (() -> Unit)?,
 
     viewer: Viewer?,
     onNextChapter: () -> Unit,
@@ -142,6 +143,7 @@ fun ReaderAppBars(
                         onShare = onShare,
                         mangaTranslation = mangaTranslation,
                         onMangaTranslationAction = onMangaTranslationAction,
+                        onRetranslateCurrentPage = onRetranslateCurrentPage,
                     )
                     mangaTranslation?.let { translation ->
                         MangaTranslationProgress(

@@ -697,6 +697,19 @@ class ReaderActivity : BaseActivity() {
                     viewModel.onMangaTranslationAction()
                 }
             },
+            onRetranslateCurrentPage = if (mangaTranslation?.canRetranslatePage == true) {
+                {
+                    if (state.mangaTranslationConfigured) {
+                        val pageIndex = (state.viewer as? LnReaderWebViewViewer)?.currentImagePageIndex
+                            ?: (state.currentPage - 1)
+                        viewModel.onRetranslateCurrentMangaPage(pageIndex)
+                    } else {
+                        openMangaTranslationSettings()
+                    }
+                }
+            } else {
+                null
+            },
 
             viewer = state.viewer,
             onNextChapter = ::loadNextChapter,
