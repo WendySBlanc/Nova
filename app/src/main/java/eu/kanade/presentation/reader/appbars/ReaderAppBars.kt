@@ -144,7 +144,10 @@ fun ReaderAppBars(
                         onMangaTranslationAction = onMangaTranslationAction,
                     )
                     mangaTranslation?.let { translation ->
-                        MangaTranslationProgress(model = translation)
+                        MangaTranslationProgress(
+                            model = translation,
+                            onCancel = onMangaTranslationAction,
+                        )
                     }
                     HorizontalDivider(color = NovaVikiColors.Outline)
                     if (isExhToolsVisible) {

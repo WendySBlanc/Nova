@@ -171,6 +171,7 @@
     <string name="chapter_progress">Page : %1$d</string>
     <string name="manga_translation_translate_chapter">Traduire le chapitre</string>
     <string name="manga_translation_translate_chapter_description">Envoyer toutes les pages de ce chapitre vers votre serveur MangaTranslator privé</string>
+    <string name="manga_translation_stop">Arrêter la traduction</string>
     <string name="manga_translation_in_progress">Traduction en cours</string>
     <string name="manga_translation_progress">Traduction %1$d/%2$d</string>
     <string name="manga_translation_cancel_description">Traduction en cours. Appuyez deux fois pour annuler</string>

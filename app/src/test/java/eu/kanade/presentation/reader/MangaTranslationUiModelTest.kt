@@ -44,7 +44,7 @@ class MangaTranslationUiModelTest {
         val model = model(state = MangaTranslationState.Preparing)
 
         model.action shouldBe MangaTranslationAction.Cancel
-        model.label shouldBe MangaTranslationUiText.TranslationInProgress
+        model.label shouldBe MangaTranslationUiText.StopTranslation
         model.contentDescription shouldBe MangaTranslationUiText.CancelTranslationDescription
         model.completedPages shouldBe null
         model.totalPages shouldBe null
@@ -55,7 +55,7 @@ class MangaTranslationUiModelTest {
         val model = model(state = MangaTranslationState.Translating(4, 20))
 
         model.action shouldBe MangaTranslationAction.Cancel
-        model.label shouldBe MangaTranslationUiText.TranslationProgress
+        model.label shouldBe MangaTranslationUiText.StopTranslation
         model.contentDescription shouldBe MangaTranslationUiText.CancelTranslationProgressDescription
         model.completedPages shouldBe 4
         model.totalPages shouldBe 20

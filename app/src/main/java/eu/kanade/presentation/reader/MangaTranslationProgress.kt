@@ -1,12 +1,21 @@
 package eu.kanade.presentation.reader
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.StopCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -32,6 +41,7 @@ enum class MangaTranslationAction {
 enum class MangaTranslationUiText {
     TranslateChapter,
     TranslateChapterDescription,
+    StopTranslation,
     TranslationInProgress,
     TranslationProgress,
     CancelTranslationDescription,
@@ -64,11 +74,7 @@ fun mangaTranslationUiModel(
     return when {
         state.isActive -> MangaTranslationUiModel(
             action = MangaTranslationAction.Cancel,
-            label = if (progress == null) {
-                MangaTranslationUiText.TranslationInProgress
-            } else {
-                MangaTranslationUiText.TranslationProgress
-            },
+            label = MangaTranslationUiText.StopTranslation,
             contentDescription = if (progress == null) {
                 MangaTranslationUiText.CancelTranslationDescription
             } else {
@@ -98,47 +104,67 @@ fun mangaTranslationUiModel(
 @Composable
 fun MangaTranslationProgress(
     model: MangaTranslationUiModel,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (model.action != MangaTranslationAction.Cancel) return
-    val label = model.labelText()
-    val description = model.contentDescriptionText()
     val completed = model.completedPages
     val total = model.totalPages
+    val status = if (completed != null && total != null && total > 0) {
+        stringResource(MR.strings.manga_translation_progress, completed, total)
+    } else {
+        stringResource(MR.strings.manga_translation_in_progress)
+    }
 
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .clearAndSetSemantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = description
-                progressBarRangeInfo = if (completed != null && total != null && total > 0) {
-                    ProgressBarRangeInfo(completed.toFloat().div(total).coerceIn(0f, 1f), 0f..1f)
-                } else {
-                    ProgressBarRangeInfo.Indeterminate
-                }
-            }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            color = NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(bottom = 6.dp),
-        )
-        if (completed != null && total != null && total > 0) {
-            LinearProgressIndicator(
-                progress = { completed.toFloat().div(total).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-                color = NovaVikiColors.Accent,
-                trackColor = NovaVikiColors.Outline,
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clearAndSetSemantics {
+                    liveRegion = LiveRegionMode.Polite
+                    contentDescription = status
+                    progressBarRangeInfo = if (completed != null && total != null && total > 0) {
+                        ProgressBarRangeInfo(completed.toFloat().div(total).coerceIn(0f, 1f), 0f..1f)
+                    } else {
+                        ProgressBarRangeInfo.Indeterminate
+                    }
+                },
+        ) {
+            Text(
+                text = status,
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
-        } else {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = NovaVikiColors.Accent,
-                trackColor = NovaVikiColors.Outline,
+            if (completed != null && total != null && total > 0) {
+                LinearProgressIndicator(
+                    progress = { completed.toFloat().div(total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = NovaVikiColors.Accent,
+                    trackColor = NovaVikiColors.Outline,
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = NovaVikiColors.Accent,
+                    trackColor = NovaVikiColors.Outline,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        TextButton(onClick = onCancel) {
+            Icon(
+                imageVector = Icons.Outlined.StopCircle,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
             )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(model.labelText())
         }
     }
 }
@@ -146,6 +172,7 @@ fun MangaTranslationProgress(
 @Composable
 fun MangaTranslationUiModel.labelText(): String = when (label) {
     MangaTranslationUiText.TranslateChapter -> stringResource(MR.strings.manga_translation_translate_chapter)
+    MangaTranslationUiText.StopTranslation -> stringResource(MR.strings.manga_translation_stop)
     MangaTranslationUiText.TranslationInProgress -> stringResource(MR.strings.manga_translation_in_progress)
     MangaTranslationUiText.TranslationProgress -> stringResource(
         MR.strings.manga_translation_progress,
