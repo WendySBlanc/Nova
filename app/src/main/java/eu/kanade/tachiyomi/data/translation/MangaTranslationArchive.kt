@@ -19,8 +19,8 @@ import java.util.zip.ZipOutputStream
 class MangaTranslationArchive(
     private val uploadDirectory: File,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-) {
-    suspend fun createUpload(chapterKey: String, pages: List<ReaderPage>): File = withContext(ioDispatcher) {
+) : MangaTranslationArchiveGateway {
+    override suspend fun createUpload(chapterKey: String, pages: List<ReaderPage>): File = withContext(ioDispatcher) {
         require(chapterKey.isNotBlank()) { "chapterKey cannot be blank" }
         require(pages.isNotEmpty()) { "pages cannot be empty" }
         val orderedPages = pages.sortedBy { it.index }

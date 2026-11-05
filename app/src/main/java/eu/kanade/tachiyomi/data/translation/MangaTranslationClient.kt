@@ -26,17 +26,17 @@ class MangaTranslationClient(
     private val json: Json,
     private val connection: () -> MangaTranslationConnection,
     callTimeout: Duration = 10.minutes,
-) {
+) : MangaTranslationService {
     private val client = client.newBuilder()
         .callTimeout(callTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS)
         .build()
 
-    suspend fun checkHealth() {
+    override suspend fun checkHealth() {
         val request = requestBuilder("v1/health").get().build()
         executeBody(request).close()
     }
 
-    suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {
+    override suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {
         require(chapterKey.isNotBlank()) { "chapterKey cannot be blank" }
         require(archive.isFile) { "Translation archive does not exist" }
         val body = MultipartBody.Builder()
@@ -52,12 +52,12 @@ class MangaTranslationClient(
         return executeJson(request)
     }
 
-    suspend fun getJob(jobId: String): TranslationJob {
+    override suspend fun getJob(jobId: String): TranslationJob {
         val request = requestBuilder("v1/chapters/${encodeSegment(jobId)}").get().build()
         return executeJson(request)
     }
 
-    suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata {
+    override suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata {
         val job = getJob(jobId)
         if (job.status != TranslationJobStatus.COMPLETE) {
             throw MangaTranslationProtocolException("La traduction n'est pas terminée")
@@ -88,7 +88,7 @@ class MangaTranslationClient(
         )
     }
 
-    suspend fun cancelJob(jobId: String) {
+    override suspend fun cancelJob(jobId: String) {
         val emptyBody = ByteArray(0).toRequestBody(null)
         val request = requestBuilder("v1/chapters/${encodeSegment(jobId)}").delete(emptyBody).build()
         executeBody(request).close()

@@ -21,8 +21,16 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
+import eu.kanade.tachiyomi.data.translation.MangaTranslationArchive
+import eu.kanade.tachiyomi.data.translation.MangaTranslationArchiveGateway
+import eu.kanade.tachiyomi.data.translation.MangaTranslationCache
+import eu.kanade.tachiyomi.data.translation.MangaTranslationCacheGateway
 import eu.kanade.tachiyomi.data.translation.MangaTranslationClient
+import eu.kanade.tachiyomi.data.translation.MangaTranslationJobStore
 import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
+import eu.kanade.tachiyomi.data.translation.MangaTranslationRepository
+import eu.kanade.tachiyomi.data.translation.MangaTranslationService
+import eu.kanade.tachiyomi.data.translation.PreferenceMangaTranslationJobStore
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.InstalledExtensionsInventory
@@ -63,6 +71,7 @@ import uy.kohesive.injekt.api.addSingleton
 import uy.kohesive.injekt.api.addSingletonFactory
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 
 // SY -->
 private const val LEGACY_DATABASE_NAME = "tachiyomi.db"
@@ -161,12 +170,30 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { NetworkHelper(app, get(), isDebugBuildType) }
         addSingletonFactory { JavaScriptEngine(app) }
-        addSingletonFactory {
+        addSingletonFactory<MangaTranslationService> {
             val preferences = get<MangaTranslationPreferences>()
             MangaTranslationClient(
                 client = OkHttpClient(),
                 json = get(),
                 connection = preferences::connection,
+            )
+        }
+        addSingletonFactory<MangaTranslationArchiveGateway> {
+            MangaTranslationArchive(File(app.cacheDir, "manga-translation/uploads"))
+        }
+        addSingletonFactory<MangaTranslationCacheGateway> {
+            MangaTranslationCache(File(app.filesDir, "manga-translation/cache"), get())
+        }
+        addSingletonFactory<MangaTranslationJobStore> {
+            PreferenceMangaTranslationJobStore(get(), get())
+        }
+        addSingletonFactory {
+            MangaTranslationRepository(
+                service = get(),
+                archive = get(),
+                cache = get(),
+                jobStore = get(),
+                resultDirectory = File(app.cacheDir, "manga-translation/results"),
             )
         }
 

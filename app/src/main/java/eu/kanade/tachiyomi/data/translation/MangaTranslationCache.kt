@@ -20,14 +20,14 @@ data class InstalledTranslation(
 class MangaTranslationCache(
     private val rootDirectory: File,
     private val json: Json = Json,
-) {
+) : MangaTranslationCacheGateway {
     init {
         rootDirectory.mkdirs()
         cleanStaleFiles()
     }
 
     @Synchronized
-    fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation {
+    override fun installResult(metadata: TranslationResultMetadata, archive: File): InstalledTranslation {
         if (metadata.chapterKey.isBlank() || metadata.totalPages <= 0) {
             throw MangaTranslationProtocolException("Métadonnées de traduction invalides")
         }
@@ -63,7 +63,7 @@ class MangaTranslationCache(
         }
     }
 
-    fun translatedPage(chapterKey: String, pageIndex: Int): File? {
+    override fun translatedPage(chapterKey: String, pageIndex: Int): File? {
         if (chapterKey.isBlank() || pageIndex < 0) return null
         val chapterDirectory = chapterDirectory(chapterKey)
         val variantName = runCatching {
