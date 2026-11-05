@@ -40,18 +40,21 @@ enum class MangaTranslationUiText {
     ShowOriginalDescription,
     ShowTranslation,
     ShowTranslationDescription,
+    ConfigureServerDescription,
 }
 
 data class MangaTranslationUiModel(
     val action: MangaTranslationAction,
     val label: MangaTranslationUiText,
     val contentDescription: MangaTranslationUiText,
+    val enabled: Boolean = true,
     val completedPages: Int? = null,
     val totalPages: Int? = null,
 )
 
 fun mangaTranslationUiModel(
     available: Boolean,
+    configured: Boolean,
     state: MangaTranslationState,
     hasTranslation: Boolean,
     showingTranslation: Boolean,
@@ -87,7 +90,12 @@ fun mangaTranslationUiModel(
         else -> MangaTranslationUiModel(
             action = MangaTranslationAction.Translate,
             label = MangaTranslationUiText.TranslateChapter,
-            contentDescription = MangaTranslationUiText.TranslateChapterDescription,
+            contentDescription = if (configured) {
+                MangaTranslationUiText.TranslateChapterDescription
+            } else {
+                MangaTranslationUiText.ConfigureServerDescription
+            },
+            enabled = configured,
         )
     }
 }
@@ -169,5 +177,7 @@ fun MangaTranslationUiModel.contentDescriptionText(): String = when (contentDesc
         stringResource(MR.strings.manga_translation_show_original_description)
     MangaTranslationUiText.ShowTranslationDescription ->
         stringResource(MR.strings.manga_translation_show_translation_description)
+    MangaTranslationUiText.ConfigureServerDescription ->
+        stringResource(MR.strings.manga_translation_configure_server_description)
     else -> labelText()
 }

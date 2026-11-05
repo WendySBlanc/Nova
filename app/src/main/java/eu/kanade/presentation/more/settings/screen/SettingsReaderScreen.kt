@@ -1,11 +1,41 @@
 package eu.kanade.presentation.more.settings.screen
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.more.settings.Preference
+import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
+import eu.kanade.tachiyomi.data.translation.MangaTranslationService
+import eu.kanade.tachiyomi.data.translation.normalizeMangaTranslationBaseUrl
+import eu.kanade.tachiyomi.data.translation.validateMangaTranslationServerUrl
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderBottomButton
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
@@ -17,6 +47,8 @@ import eu.kanade.tachiyomi.util.system.hasDisplayCutout
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.i18n.sy.SYMR
@@ -29,6 +61,13 @@ import java.text.NumberFormat
 
 @Suppress("unused")
 object SettingsReaderScreen : SearchableSettings {
+    private enum class ConnectionTestState {
+        Idle,
+        Testing,
+        Success,
+        Failure,
+    }
+
     private fun readResolve(): Any = SettingsReaderScreen
 
     @ReadOnlyComposable
@@ -80,6 +119,7 @@ object SettingsReaderScreen : SearchableSettings {
             getDisplayGroup(readerPreferences = readerPref),
             getEInkGroup(readerPreferences = readerPref),
             getReadingGroup(readerPreferences = readerPref),
+            getMangaTranslationGroup(),
             getPagedGroup(readerPreferences = readerPref),
             getWebtoonGroup(readerPreferences = readerPref),
             // SY -->
@@ -91,6 +131,151 @@ object SettingsReaderScreen : SearchableSettings {
             getPageDownloadingGroup(readerPreferences = readerPref),
             getForkSettingsGroup(readerPreferences = readerPref),
             // SY <--
+        )
+    }
+
+    @Composable
+    private fun getMangaTranslationGroup(): Preference.PreferenceGroup {
+        val preferences = remember { Injekt.get<MangaTranslationPreferences>() }
+        val service = remember { Injekt.get<MangaTranslationService>() }
+        val serverUrl by preferences.serverUrl().collectAsState()
+        val accessToken by preferences.accessToken().collectAsState()
+        val scope = rememberCoroutineScope()
+        var showConfiguration by rememberSaveable { mutableStateOf(false) }
+        var testState by remember { mutableStateOf(ConnectionTestState.Idle) }
+        val configured = serverUrl.isNotBlank() && accessToken.isNotBlank()
+
+        LaunchedEffect(serverUrl, accessToken) {
+            testState = ConnectionTestState.Idle
+        }
+
+        if (showConfiguration) {
+            MangaTranslationConnectionDialog(
+                initialUrl = serverUrl,
+                initialToken = accessToken,
+                onDismissRequest = { showConfiguration = false },
+                onSave = { url, token ->
+                    preferences.serverUrl().set(normalizeMangaTranslationBaseUrl(url).toString())
+                    preferences.accessToken().set(token.trim())
+                    showConfiguration = false
+                },
+            )
+        }
+
+        val connectionSummary = if (configured) {
+            serverUrl
+        } else {
+            stringResource(MR.strings.manga_translation_server_not_configured)
+        }
+        val testSummary = when (testState) {
+            ConnectionTestState.Idle -> stringResource(MR.strings.manga_translation_test_connection_summary)
+            ConnectionTestState.Testing -> stringResource(MR.strings.manga_translation_test_connection_testing)
+            ConnectionTestState.Success -> stringResource(MR.strings.manga_translation_test_connection_success)
+            ConnectionTestState.Failure -> stringResource(MR.strings.manga_translation_test_connection_failure)
+        }
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.manga_translation_settings_title),
+            preferenceItems = persistentListOf(
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.manga_translation_server_title),
+                    subtitle = connectionSummary,
+                    onClick = { showConfiguration = true },
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.manga_translation_test_connection),
+                    subtitle = testSummary,
+                    enabled = configured && testState != ConnectionTestState.Testing,
+                    onClick = {
+                        scope.launch {
+                            testState = ConnectionTestState.Testing
+                            testState = try {
+                                service.checkHealth()
+                                ConnectionTestState.Success
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: Exception) {
+                                ConnectionTestState.Failure
+                            }
+                        }
+                    },
+                ),
+            ),
+        )
+    }
+
+    @Composable
+    private fun MangaTranslationConnectionDialog(
+        initialUrl: String,
+        initialToken: String,
+        onDismissRequest: () -> Unit,
+        onSave: (url: String, token: String) -> Unit,
+    ) {
+        var serverUrl by rememberSaveable(initialUrl) { mutableStateOf(initialUrl) }
+        var accessToken by remember(initialToken) { mutableStateOf(initialToken) }
+        var tokenVisible by remember { mutableStateOf(false) }
+        val urlError = validateMangaTranslationServerUrl(serverUrl)
+        val canSave = urlError == null && accessToken.isNotBlank()
+
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            title = { Text(stringResource(MR.strings.manga_translation_server_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        label = { Text(stringResource(MR.strings.manga_translation_server_url)) },
+                        supportingText = urlError?.let { error -> ({ Text(error) }) },
+                        isError = urlError != null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = accessToken,
+                        onValueChange = { accessToken = it },
+                        label = { Text(stringResource(MR.strings.manga_translation_access_token)) },
+                        trailingIcon = {
+                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                Icon(
+                                    imageVector = if (tokenVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = stringResource(
+                                        if (tokenVisible) {
+                                            MR.strings.manga_translation_hide_token
+                                        } else {
+                                            MR.strings.manga_translation_show_token
+                                        },
+                                    ),
+                                )
+                            }
+                        },
+                        visualTransformation = if (tokenVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentType = ContentType.Password },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = canSave,
+                    onClick = { onSave(serverUrl, accessToken) },
+                ) {
+                    Text(stringResource(MR.strings.action_ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRequest) {
+                    Text(stringResource(MR.strings.action_cancel))
+                }
+            },
         )
     }
 

@@ -65,13 +65,13 @@ import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterListDialog
 import eu.kanade.presentation.reader.DisplayRefreshHost
-import eu.kanade.presentation.reader.mangaTranslationUiModel
 import eu.kanade.presentation.reader.OrientationSelectDialog
 import eu.kanade.presentation.reader.ReaderContentOverlay
 import eu.kanade.presentation.reader.ReaderPageActionsDialog
 import eu.kanade.presentation.reader.ReadingModeSelectDialog
 import eu.kanade.presentation.reader.appbars.NavBarType
 import eu.kanade.presentation.reader.appbars.ReaderAppBars
+import eu.kanade.presentation.reader.mangaTranslationUiModel
 import eu.kanade.presentation.reader.settings.ReaderSettingsDialog
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.R
@@ -659,6 +659,7 @@ class ReaderActivity : BaseActivity() {
         val navBarType = NavBarType.Bottom
         val mangaTranslation = mangaTranslationUiModel(
             available = state.mangaTranslationAvailable,
+            configured = state.mangaTranslationConfigured,
             state = state.mangaTranslationState,
             hasTranslation = state.hasMangaTranslation,
             showingTranslation = state.showingMangaTranslation,

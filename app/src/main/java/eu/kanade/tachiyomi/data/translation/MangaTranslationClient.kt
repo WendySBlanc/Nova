@@ -148,6 +148,16 @@ class MangaTranslationClient(
 
 internal fun normalizeMangaTranslationBaseUrl(rawUrl: String): HttpUrl {
     val trimmed = rawUrl.trim()
+    if (trimmed.isBlank()) {
+        throw MangaTranslationProtocolException("Adresse requise")
+    }
+    val explicitScheme = SCHEME_PATTERN.find(trimmed)
+        ?.value
+        ?.removeSuffix("://")
+        ?.lowercase()
+    if (explicitScheme != null && explicitScheme !in SUPPORTED_SCHEMES) {
+        throw MangaTranslationProtocolException("Le serveur doit utiliser HTTP ou HTTPS")
+    }
     val withScheme = if (SCHEME_PATTERN.containsMatchIn(trimmed)) trimmed else "https://$trimmed"
     val parsed = withScheme.toHttpUrlOrNull()
         ?: throw MangaTranslationProtocolException("Adresse MangaTranslator invalide")
@@ -162,6 +172,10 @@ internal fun normalizeMangaTranslationBaseUrl(rawUrl: String): HttpUrl {
         .build()
 }
 
+internal fun validateMangaTranslationServerUrl(rawUrl: String): String? = runCatching {
+    normalizeMangaTranslationBaseUrl(rawUrl)
+}.exceptionOrNull()?.message
+
 private fun encodeSegment(value: String): String = HttpUrl.Builder()
     .scheme("https")
     .host("localhost")
@@ -171,4 +185,5 @@ private fun encodeSegment(value: String): String = HttpUrl.Builder()
     .last()
 
 private val SCHEME_PATTERN = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://")
+private val SUPPORTED_SCHEMES = setOf("http", "https")
 private val ZIP_MEDIA_TYPE = "application/zip".toMediaType()

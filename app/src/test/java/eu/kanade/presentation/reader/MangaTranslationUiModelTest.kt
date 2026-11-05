@@ -10,6 +10,7 @@ class MangaTranslationUiModelTest {
     fun `text chapters expose no translation action`() {
         mangaTranslationUiModel(
             available = false,
+            configured = true,
             state = MangaTranslationState.Idle,
             hasTranslation = false,
             showingTranslation = false,
@@ -21,8 +22,21 @@ class MangaTranslationUiModelTest {
         val model = model(state = MangaTranslationState.Idle)
 
         model.action shouldBe MangaTranslationAction.Translate
+        model.enabled shouldBe true
         model.label shouldBe MangaTranslationUiText.TranslateChapter
         model.contentDescription shouldBe MangaTranslationUiText.TranslateChapterDescription
+    }
+
+    @Test
+    fun `translation action is disabled when server configuration is incomplete`() {
+        val model = model(
+            state = MangaTranslationState.Idle,
+            configured = false,
+        )
+
+        model.action shouldBe MangaTranslationAction.Translate
+        model.enabled shouldBe false
+        model.contentDescription shouldBe MangaTranslationUiText.ConfigureServerDescription
     }
 
     @Test
@@ -53,9 +67,11 @@ class MangaTranslationUiModelTest {
             state = MangaTranslationState.Idle,
             hasTranslation = true,
             showingTranslation = false,
+            configured = false,
         )
 
         model.action shouldBe MangaTranslationAction.ShowTranslation
+        model.enabled shouldBe true
         model.label shouldBe MangaTranslationUiText.ShowTranslation
         model.contentDescription shouldBe MangaTranslationUiText.ShowTranslationDescription
     }
@@ -87,8 +103,10 @@ class MangaTranslationUiModelTest {
         state: MangaTranslationState,
         hasTranslation: Boolean = false,
         showingTranslation: Boolean = false,
+        configured: Boolean = true,
     ) = mangaTranslationUiModel(
         available = true,
+        configured = configured,
         state = state,
         hasTranslation = hasTranslation,
         showingTranslation = showingTranslation,

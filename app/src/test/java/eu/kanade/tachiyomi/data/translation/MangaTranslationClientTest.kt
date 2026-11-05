@@ -42,6 +42,14 @@ class MangaTranslationClientTest {
     }
 
     @Test
+    fun `validates reader server url before saving`() {
+        validateMangaTranslationServerUrl("https://nova.tailnet.ts.net") shouldBe null
+        validateMangaTranslationServerUrl("") shouldBe "Adresse requise"
+        validateMangaTranslationServerUrl("ftp://nova.tailnet.ts.net") shouldBe
+            "Le serveur doit utiliser HTTP ou HTTPS"
+    }
+
+    @Test
     fun `submit sends bearer token and parses accepted job`() = runTest {
         server.enqueue(
             MockResponse()
@@ -145,5 +153,6 @@ class MangaTranslationClientTest {
             "target_language":"French",
             "config_revision":"config-v1",
             "cached":false
-        }""".trimIndent()
+        }
+        """.trimIndent()
 }

@@ -27,6 +27,7 @@ import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.data.sync.SyncDataJob
 import eu.kanade.tachiyomi.data.translation.MangaTranslationException
+import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
 import eu.kanade.tachiyomi.data.translation.MangaTranslationProtocolException
 import eu.kanade.tachiyomi.data.translation.MangaTranslationRepository
 import eu.kanade.tachiyomi.data.translation.MangaTranslationState
@@ -69,6 +70,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -170,6 +172,7 @@ class ReaderViewModel @JvmOverloads constructor(
     private val tempFileManager: UniFileTempFileManager = Injekt.get(),
     private val imageSaver: ImageSaver = Injekt.get(),
     private val mangaTranslationRepository: MangaTranslationRepository = Injekt.get(),
+    private val mangaTranslationPreferences: MangaTranslationPreferences = Injekt.get(),
     val readerPreferences: ReaderPreferences = Injekt.get(),
     private val basePreferences: BasePreferences = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
@@ -193,7 +196,9 @@ class ReaderViewModel @JvmOverloads constructor(
     // SY <--
 ) : ViewModel() {
 
-    private val mutableState = MutableStateFlow(State())
+    private val mutableState = MutableStateFlow(
+        State(mangaTranslationConfigured = mangaTranslationPreferences.connection().isConfigured),
+    )
     val state = mutableState.asStateFlow()
 
     private val eventChannel = Channel<Event>()
@@ -423,6 +428,18 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
     init {
+        combine(
+            mangaTranslationPreferences.serverUrl().changes(),
+            mangaTranslationPreferences.accessToken().changes(),
+        ) { serverUrl, accessToken ->
+            serverUrl.isNotBlank() && accessToken.isNotBlank()
+        }
+            .distinctUntilChanged()
+            .onEach { configured ->
+                mutableState.update { it.copy(mangaTranslationConfigured = configured) }
+            }
+            .launchIn(viewModelScope)
+
         // To save state
         state.map { it.viewerChapters?.currChapter }
             .distinctUntilChanged()
@@ -1270,6 +1287,9 @@ class ReaderViewModel @JvmOverloads constructor(
         val chapterKey = mangaTranslationChapterKey ?: return
         val chapter = snapshot.currentChapter ?: return
         if (!snapshot.mangaTranslationAvailable) return
+        if (!snapshot.mangaTranslationState.isActive && !snapshot.hasMangaTranslation && !snapshot.mangaTranslationConfigured) {
+            return
+        }
 
         when {
             snapshot.mangaTranslationState.isActive -> {
@@ -1966,6 +1986,7 @@ class ReaderViewModel @JvmOverloads constructor(
         val isAutoScrollEnabled: Boolean = false,
         val ehAutoscrollFreq: String = "",
         val mangaTranslationAvailable: Boolean = false,
+        val mangaTranslationConfigured: Boolean = false,
         val mangaTranslationState: MangaTranslationState = MangaTranslationState.Idle,
         val hasMangaTranslation: Boolean = false,
         val showingMangaTranslation: Boolean = false,

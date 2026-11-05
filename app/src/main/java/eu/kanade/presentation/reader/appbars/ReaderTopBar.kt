@@ -152,6 +152,7 @@ fun ReaderTopBar(
                         val description = translation.contentDescriptionText()
                         DropdownMenuItem(
                             text = { Text(translation.labelText()) },
+                            enabled = translation.enabled,
                             leadingIcon = {
                                 Icon(
                                     imageVector = if (translation.action == MangaTranslationAction.Cancel) {
@@ -163,6 +164,7 @@ fun ReaderTopBar(
                                 )
                             },
                             onClick = {
+                                if (!translation.enabled) return@DropdownMenuItem
                                 moreExpanded = false
                                 onMangaTranslationAction()
                             },
