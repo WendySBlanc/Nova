@@ -50,6 +50,16 @@ class MangaTranslationRepositoryTest {
     }
 
     @Test
+    fun `forced translation requests a fresh server job`() = runTest {
+        val service = FakeService()
+        val repository = repository(service = service)
+
+        repository.translate(CHAPTER_KEY, pages(), force = true)
+
+        service.forcedSubmissions shouldBe listOf(true)
+    }
+
+    @Test
     fun `concurrent translate calls are deduplicated`() = runTest {
         val releaseJob = CompletableDeferred<Unit>()
         val service = FakeService(
@@ -262,6 +272,7 @@ class MangaTranslationRepositoryTest {
         private val healthError: MangaTranslationException? = null,
     ) : MangaTranslationService {
         var submitCount = 0
+        val forcedSubmissions = mutableListOf<Boolean>()
         val cancelledJobIds = mutableListOf<String>()
 
         override suspend fun checkHealth(): MangaTranslationServerInfo {
@@ -269,8 +280,9 @@ class MangaTranslationRepositoryTest {
             return serverInfo
         }
 
-        override suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {
+        override suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean): TranslationJob {
             submitCount++
+            forcedSubmissions += force
             return job(TranslationJobStatus.QUEUED, completed = 0)
         }
 

@@ -83,7 +83,11 @@ fun mangaTranslationUiModel(
             completedPages = progress?.first,
             totalPages = progress?.second,
         )
-        hasTranslation && showingTranslation -> null
+        hasTranslation && showingTranslation -> MangaTranslationUiModel(
+            action = MangaTranslationAction.Translate,
+            label = MangaTranslationUiText.TranslateChapter,
+            contentDescription = MangaTranslationUiText.TranslateChapterDescription,
+        )
         hasTranslation -> MangaTranslationUiModel(
             action = MangaTranslationAction.ShowTranslation,
             label = MangaTranslationUiText.ShowTranslation,

@@ -44,12 +44,13 @@ class MangaTranslationClient(
         return info
     }
 
-    override suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob {
+    override suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean): TranslationJob {
         require(chapterKey.isNotBlank()) { "chapterKey cannot be blank" }
         require(archive.isFile) { "Translation archive does not exist" }
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("chapter_key", chapterKey)
+            .addFormDataPart("force", force.toString())
             .addFormDataPart(
                 "archive",
                 archive.name,

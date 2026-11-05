@@ -104,6 +104,22 @@ class MangaTranslationClientTest {
     }
 
     @Test
+    fun `forced submit asks server to replace an existing translation`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(202)
+                .setBody(jobJson(status = "queued")),
+        )
+        val archive = File(temporaryDirectory.toFile(), "chapter.zip").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+
+        client().submitChapter("source:manga:chapter", archive, force = true)
+        val body = server.takeRequest().body.readUtf8()
+
+        body shouldContain "force"
+        body shouldContain "true"
+    }
+
+    @Test
     fun `get job ignores unknown response fields`() = runTest {
         server.enqueue(
             MockResponse().setBody(

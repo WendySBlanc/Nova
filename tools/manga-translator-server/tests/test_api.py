@@ -106,11 +106,17 @@ class BlockingTranslator:
         raise TranslationCancelled()
 
 
-def submit(client: TestClient, chapter_key: str, pages: tuple[bytes, ...] = (b"one", b"two")):
+def submit(
+    client: TestClient,
+    chapter_key: str,
+    pages: tuple[bytes, ...] = (b"one", b"two"),
+    *,
+    force: bool = False,
+):
     return client.post(
         "/v1/chapters",
         headers=auth_headers(),
-        data={"chapter_key": chapter_key},
+        data={"chapter_key": chapter_key, "force": str(force).lower()},
         files={"archive": ("chapter.zip", chapter_zip(*pages), "application/zip")},
     )
 
@@ -208,6 +214,23 @@ def test_repeated_chapter_key_reuses_existing_job(tmp_path: Path) -> None:
     assert second["job_id"] == first["job_id"]
     assert second["cached"] is True
     assert translator.calls == 1
+
+
+def test_forced_chapter_submission_creates_a_new_job(tmp_path: Path) -> None:
+    translator = RecordingTranslator()
+    app = create_app(tmp_path, TOKEN, translator)
+    with TestClient(app) as client:
+        first = submit(client, "same-chapter").json()
+        wait_for_status(client, first["job_id"], "complete")
+
+        second_response = submit(client, "same-chapter", force=True)
+        second = second_response.json()
+        wait_for_status(client, second["job_id"], "complete")
+
+    assert second_response.status_code == 202
+    assert second["job_id"] != first["job_id"]
+    assert second["cached"] is False
+    assert translator.calls == 2
 
 
 def test_changed_configuration_creates_a_new_job(tmp_path: Path) -> None:

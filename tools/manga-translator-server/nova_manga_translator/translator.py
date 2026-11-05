@@ -15,7 +15,7 @@ class TranslationCancelled(Exception):
 
 
 def _install_local_ollama_compatibility() -> None:
-    """Disable Qwen thinking for Nova's local OpenAI-compatible Ollama endpoint."""
+    """Keep Qwen thinking enabled through Ollama's OpenAI-compatible endpoint."""
     from utils.endpoints import openai_compatible
 
     original_post = openai_compatible.post_with_retries
@@ -34,7 +34,7 @@ def _install_local_ollama_compatibility() -> None:
 
         model_name = str(payload.get("model", "")).lower()
         if is_local_ollama and "qwen3" in model_name:
-            payload = {**payload, "reasoning_effort": "none"}
+            payload = {**payload, "reasoning_effort": "low"}
         return original_post(url, headers, payload, parse, *args, **kwargs)
 
     post_with_retries._nova_local_ollama_compatibility = True

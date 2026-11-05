@@ -77,7 +77,7 @@ class MangaTranslationUiModelTest {
     }
 
     @Test
-    fun `visible translation does not offer the discarded original`() {
+    fun `visible translation keeps the translate action available`() {
         val model = mangaTranslationUiModel(
             available = true,
             configured = true,
@@ -86,7 +86,8 @@ class MangaTranslationUiModelTest {
             showingTranslation = true,
         )
 
-        model shouldBe null
+        model?.action shouldBe MangaTranslationAction.Translate
+        model?.label shouldBe MangaTranslationUiText.TranslateChapter
     }
 
     @Test

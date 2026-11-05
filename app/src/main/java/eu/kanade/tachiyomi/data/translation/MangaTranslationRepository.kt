@@ -18,7 +18,7 @@ import kotlin.time.Duration.Companion.seconds
 
 interface MangaTranslationService {
     suspend fun checkHealth(): MangaTranslationServerInfo
-    suspend fun submitChapter(chapterKey: String, archive: File): TranslationJob
+    suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean = false): TranslationJob
     suspend fun getJob(jobId: String): TranslationJob
     suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata
     suspend fun cancelJob(jobId: String)
@@ -106,11 +106,20 @@ class MangaTranslationRepository(
         return true
     }
 
-    suspend fun translate(chapterKey: String, pages: List<ReaderPage>) {
+    suspend fun translate(chapterKey: String, pages: List<ReaderPage>, force: Boolean = false) {
         runOnce(chapterKey) {
             val serverInfo = service.checkHealth()
             val existingJobId = jobStore.get(chapterKey)
-            if (existingJobId != null) {
+            if (force) {
+                if (existingJobId != null) {
+                    val existingJob = service.getJob(existingJobId)
+                    if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
+                        service.cancelJob(existingJobId)
+                    }
+                    jobStore.remove(chapterKey)
+                }
+                submit(chapterKey, pages, serverInfo.configRevision, force = true)
+            } else if (existingJobId != null) {
                 val existingJob = service.getJob(existingJobId)
                 if (existingJob.configRevision == serverInfo.configRevision) {
                     poll(chapterKey, existingJobId, serverInfo.configRevision, existingJob)
@@ -168,14 +177,19 @@ class MangaTranslationRepository(
         }
     }
 
-    private suspend fun submit(chapterKey: String, pages: List<ReaderPage>, configRevision: String) {
+    private suspend fun submit(
+        chapterKey: String,
+        pages: List<ReaderPage>,
+        configRevision: String,
+        force: Boolean = false,
+    ) {
         ensureNotCancelled(chapterKey)
         state(chapterKey).value = MangaTranslationState.Preparing
         val upload = archive.createUpload(chapterKey, pages)
         try {
             ensureNotCancelled(chapterKey)
             state(chapterKey).value = MangaTranslationState.Uploading
-            val job = service.submitChapter(chapterKey, upload)
+            val job = service.submitChapter(chapterKey, upload, force)
             if (job.configRevision != configRevision) {
                 throw MangaTranslationProtocolException("La configuration du serveur a changé pendant l'envoi")
             }

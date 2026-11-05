@@ -9,7 +9,7 @@ import nova_manga_translator.translator as translator_module
 from nova_manga_translator.translator import MangaTranslatorAdapter, TranslationConfigSnapshot
 
 
-def test_local_ollama_qwen_request_disables_reasoning(monkeypatch) -> None:
+def test_local_ollama_qwen_request_keeps_reasoning_enabled(monkeypatch) -> None:
     captured_payloads = []
 
     def post_with_retries(_url, _headers, payload, _parse, **_kwargs):
@@ -38,7 +38,7 @@ def test_local_ollama_qwen_request_disables_reasoning(monkeypatch) -> None:
         {
             "model": "nova-qwen3.5:9b",
             "max_tokens": 4096,
-            "reasoning_effort": "none",
+            "reasoning_effort": "low",
         },
     ]
 

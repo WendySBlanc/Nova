@@ -78,11 +78,12 @@ def create_app(
     @app.post("/v1/chapters", dependencies=[Depends(authorize)])
     def submit_chapter(
         chapter_key: str = Form(min_length=1, max_length=512),
+        force: bool = Form(False),
         archive: UploadFile = File(),
     ):
         configuration = manager.snapshot_configuration()
         existing = manager.find_by_chapter(chapter_key, configuration.config_revision)
-        if existing is not None and existing.status not in {"failed", "cancelled"}:
+        if not force and existing is not None and existing.status not in {"failed", "cancelled"}:
             return existing.public_dict(cached=True)
 
         incoming_dir = data_dir / "incoming"
@@ -96,7 +97,7 @@ def create_app(
                     if uploaded_bytes > MAX_UPLOAD_BYTES:
                         raise HTTPException(status_code=413, detail="Chapter archive is too large")
                     output.write(chunk)
-            record, cached = manager.submit(chapter_key, incoming, configuration)
+            record, cached = manager.submit(chapter_key, incoming, configuration, force=force)
         except InvalidChapterArchive as error:
             incoming.unlink(missing_ok=True)
             raise HTTPException(status_code=400, detail=str(error)) from error

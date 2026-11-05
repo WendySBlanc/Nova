@@ -182,10 +182,12 @@ class JobManager:
         chapter_key: str,
         archive_path: Path,
         configuration: TranslationConfigSnapshot,
+        *,
+        force: bool = False,
     ) -> tuple[JobRecord, bool]:
         with self._lock:
             existing = self.store.find_by_chapter(chapter_key, configuration.config_revision)
-            if existing is not None and existing.status not in {"failed", "cancelled"}:
+            if not force and existing is not None and existing.status not in {"failed", "cancelled"}:
                 archive_path.unlink(missing_ok=True)
                 return existing, True
 
