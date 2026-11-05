@@ -66,6 +66,19 @@ class RecordingTranslator:
         return TranslationOutcome(target_language="French", config_revision=revision)
 
 
+class MangaTranslatorNamingTranslator(RecordingTranslator):
+    def translate(self, input_dir, output_dir, progress, cancelled, configuration=None):
+        self.calls += 1
+        pages = sorted(Path(input_dir).glob("*.jpg"))
+        for index, page in enumerate(pages, start=1):
+            Path(output_dir, f"{page.stem}_translated.png").write_bytes(
+                b"translated:" + page.read_bytes(),
+            )
+            progress(index, len(pages))
+        revision = configuration.config_revision if configuration is not None else self.revision
+        return TranslationOutcome(target_language="French", config_revision=revision)
+
+
 class BlockingTranslator:
     def __init__(self) -> None:
         self.started = threading.Event()
@@ -131,6 +144,22 @@ def test_submit_reports_progress_and_downloads_ordered_result(tmp_path: Path) ->
     with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
         assert archive.namelist() == ["000000.jpg", "000001.jpg"]
         assert archive.read("000000.jpg") == b"translated:one"
+
+
+def test_packages_manga_translator_output_names_as_canonical_pages(tmp_path: Path) -> None:
+    app = create_app(tmp_path, TOKEN, MangaTranslatorNamingTranslator())
+    with TestClient(app) as client:
+        response = submit(client, "manga-translator-output-names")
+        completed = wait_for_status(client, response.json()["job_id"], "complete")
+        result = client.get(
+            f"/v1/chapters/{completed['job_id']}/result",
+            headers=auth_headers(),
+        )
+
+    assert result.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(result.content)) as archive:
+        assert archive.namelist() == ["000000.png", "000001.png"]
+        assert archive.read("000000.png") == b"translated:one"
 
 
 def test_repeated_chapter_key_reuses_existing_job(tmp_path: Path) -> None:

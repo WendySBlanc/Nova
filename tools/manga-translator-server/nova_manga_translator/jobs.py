@@ -16,6 +16,10 @@ from .translator import ChapterTranslator, TranslationCancelled, TranslationConf
 
 
 PAGE_NAME = re.compile(r"^(\d{6})\.(?:jpe?g|png|webp)$", re.IGNORECASE)
+TRANSLATED_PAGE_NAME = re.compile(
+    r"^(\d{6})(?:_translated)?\.(?:jpe?g|png|webp)$",
+    re.IGNORECASE,
+)
 ACTIVE_STATUSES = {"queued", "running"}
 MAX_PAGE_COUNT = 5_000
 MAX_PAGE_BYTES = 100 * 1024 * 1024
@@ -316,12 +320,17 @@ class JobManager:
 
     def _package_result(self, record: JobRecord) -> Path:
         input_pages = sorted(path for path in Path(record.input_dir).iterdir() if path.is_file())
-        output_by_stem = {
-            path.stem: path
-            for path in Path(record.output_dir).iterdir()
-            if path.is_file() and PAGE_NAME.fullmatch(path.name)
-        }
-        expected_stems = [path.stem for path in input_pages]
+        output_by_stem: dict[str, Path] = {}
+        for path in Path(record.output_dir).iterdir():
+            match = TRANSLATED_PAGE_NAME.fullmatch(path.name) if path.is_file() else None
+            if match is None:
+                continue
+            stem = match.group(1)
+            if stem in output_by_stem:
+                raise RuntimeError("MangaTranslator produced duplicate translated pages")
+            output_by_stem[stem] = path
+
+        expected_stems = [PAGE_NAME.fullmatch(path.name).group(1) for path in input_pages]
         if set(output_by_stem) != set(expected_stems):
             raise RuntimeError("Translated output does not match the input page set")
 
@@ -330,7 +339,7 @@ class JobManager:
         with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
             for stem in expected_stems:
                 page = output_by_stem[stem]
-                archive.write(page, arcname=page.name)
+                archive.write(page, arcname=f"{stem}{page.suffix.lower()}")
         os.replace(temporary, destination)
         return destination
 

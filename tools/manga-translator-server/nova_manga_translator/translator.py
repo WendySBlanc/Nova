@@ -86,6 +86,7 @@ class MangaTranslatorAdapter:
         from core.device import get_best_device
         from core.ml.model_manager import get_model_manager, migrate_model_dirs
         from core.pipeline import batch_translate_images
+        from core.validation import autodetect_yolo_model_path
         from ui.ui_models import UIConfigState, map_ui_to_backend_config
 
         config_bytes = configuration.payload
@@ -105,6 +106,21 @@ class MangaTranslatorAdapter:
             target_device=device,
             is_batch=True,
         )
+        backend_config.yolo_model_path = str(
+            autodetect_yolo_model_path(
+                self.models_dir,
+                backend_config.detection.bubble_detector_model,
+            ).resolve(),
+        )
+        font_pack = ui_state.batch_font_pack
+        if not font_pack:
+            raise RuntimeError("MangaTranslator batch font pack is not configured")
+        font_dir = (self.fonts_dir / font_pack).resolve()
+        if not font_dir.is_dir() or not any(
+            path.suffix.lower() in {".otf", ".ttf"} for path in font_dir.iterdir()
+        ):
+            raise RuntimeError(f"MangaTranslator font pack is invalid: {font_dir}")
+        backend_config.rendering.font_dir = str(font_dir)
         pages = sorted(path for path in Path(input_dir).iterdir() if path.is_file())
         total = len(pages)
 
