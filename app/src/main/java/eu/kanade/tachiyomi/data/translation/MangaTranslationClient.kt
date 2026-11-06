@@ -44,13 +44,25 @@ class MangaTranslationClient(
         return info
     }
 
-    override suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean): TranslationJob {
+    override suspend fun submitChapter(
+        chapterKey: String,
+        archive: File,
+        force: Boolean,
+        replacementPageIndex: Int?,
+    ): TranslationJob {
         require(chapterKey.isNotBlank()) { "chapterKey cannot be blank" }
         require(archive.isFile) { "Translation archive does not exist" }
-        val body = MultipartBody.Builder()
+        require(replacementPageIndex == null || replacementPageIndex >= 0) {
+            "replacementPageIndex cannot be negative"
+        }
+        val bodyBuilder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("chapter_key", chapterKey)
             .addFormDataPart("force", force.toString())
+        replacementPageIndex?.let {
+            bodyBuilder.addFormDataPart("replacement_page_index", it.toString())
+        }
+        val body = bodyBuilder
             .addFormDataPart(
                 "archive",
                 archive.name,

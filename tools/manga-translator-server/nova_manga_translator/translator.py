@@ -7,38 +7,10 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Protocol
-from urllib.parse import urlsplit
 
 
 class TranslationCancelled(Exception):
     """Raised when a running chapter translation is cancelled."""
-
-
-def _install_local_ollama_compatibility() -> None:
-    """Keep Qwen thinking enabled through Ollama's OpenAI-compatible endpoint."""
-    from utils.endpoints import openai_compatible
-
-    original_post = openai_compatible.post_with_retries
-    if getattr(original_post, "_nova_local_ollama_compatibility", False):
-        return
-
-    def post_with_retries(url, headers, payload, parse, *args, **kwargs):
-        try:
-            endpoint = urlsplit(url)
-            is_local_ollama = (
-                endpoint.hostname in {"127.0.0.1", "localhost", "::1"}
-                and endpoint.port == 11434
-            )
-        except ValueError:
-            is_local_ollama = False
-
-        model_name = str(payload.get("model", "")).lower()
-        if is_local_ollama and "qwen3" in model_name:
-            payload = {**payload, "reasoning_effort": "low"}
-        return original_post(url, headers, payload, parse, *args, **kwargs)
-
-    post_with_retries._nova_local_ollama_compatibility = True
-    openai_compatible.post_with_retries = post_with_retries
 
 
 @dataclass(frozen=True)
@@ -116,8 +88,6 @@ class MangaTranslatorAdapter:
         from core.pipeline import batch_translate_images
         from core.validation import autodetect_yolo_model_path
         from ui.ui_models import UIConfigState, map_ui_to_backend_config
-
-        _install_local_ollama_compatibility()
 
         config_bytes = configuration.payload
         ui_state = UIConfigState.from_dict(json.loads(config_bytes.decode("utf-8")))

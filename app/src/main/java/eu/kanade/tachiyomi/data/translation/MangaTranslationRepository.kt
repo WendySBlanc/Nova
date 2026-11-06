@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -18,7 +19,12 @@ import kotlin.time.Duration.Companion.seconds
 
 interface MangaTranslationService {
     suspend fun checkHealth(): MangaTranslationServerInfo
-    suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean = false): TranslationJob
+    suspend fun submitChapter(
+        chapterKey: String,
+        archive: File,
+        force: Boolean = false,
+        replacementPageIndex: Int? = null,
+    ): TranslationJob
     suspend fun getJob(jobId: String): TranslationJob
     suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata
     suspend fun cancelJob(jobId: String)
@@ -41,9 +47,15 @@ interface MangaTranslationCacheGateway {
     fun activeMetadata(chapterKey: String): TranslationResultMetadata?
 }
 
+@Serializable
+data class PendingMangaTranslationJob(
+    val jobId: String,
+    val replacementPageIndex: Int? = null,
+)
+
 interface MangaTranslationJobStore {
-    fun get(chapterKey: String): String?
-    fun put(chapterKey: String, jobId: String)
+    fun get(chapterKey: String): PendingMangaTranslationJob?
+    fun put(chapterKey: String, job: PendingMangaTranslationJob)
     fun remove(chapterKey: String)
 }
 
@@ -54,11 +66,11 @@ class PreferenceMangaTranslationJobStore(
     private val preference = preferences.pendingJobs()
 
     @Synchronized
-    override fun get(chapterKey: String): String? = read()[chapterKey]
+    override fun get(chapterKey: String): PendingMangaTranslationJob? = read()[chapterKey]
 
     @Synchronized
-    override fun put(chapterKey: String, jobId: String) {
-        write(read() + (chapterKey to jobId))
+    override fun put(chapterKey: String, job: PendingMangaTranslationJob) {
+        write(read() + (chapterKey to job))
     }
 
     @Synchronized
@@ -66,11 +78,17 @@ class PreferenceMangaTranslationJobStore(
         write(read() - chapterKey)
     }
 
-    private fun read(): Map<String, String> = runCatching {
-        json.decodeFromString<Map<String, String>>(preference.get())
-    }.getOrDefault(emptyMap())
+    private fun read(): Map<String, PendingMangaTranslationJob> {
+        val stored = preference.get()
+        return runCatching {
+            json.decodeFromString<Map<String, PendingMangaTranslationJob>>(stored)
+        }.recoverCatching {
+            json.decodeFromString<Map<String, String>>(stored)
+                .mapValues { PendingMangaTranslationJob(jobId = it.value) }
+        }.getOrDefault(emptyMap())
+    }
 
-    private fun write(jobs: Map<String, String>) {
+    private fun write(jobs: Map<String, PendingMangaTranslationJob>) {
         if (jobs.isEmpty()) {
             preference.delete()
         } else {
@@ -115,23 +133,29 @@ class MangaTranslationRepository(
     suspend fun translate(chapterKey: String, pages: List<ReaderPage>, force: Boolean = false) {
         runOnce(chapterKey) {
             val serverInfo = service.checkHealth()
-            val existingJobId = jobStore.get(chapterKey)
+            val existingJob = jobStore.get(chapterKey)
             if (force) {
-                if (existingJobId != null) {
-                    val existingJob = service.getJob(existingJobId)
-                    if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
-                        service.cancelJob(existingJobId)
+                if (existingJob != null) {
+                    val serverJob = service.getJob(existingJob.jobId)
+                    if (serverJob.status == TranslationJobStatus.QUEUED || serverJob.status == TranslationJobStatus.RUNNING) {
+                        service.cancelJob(existingJob.jobId)
                     }
                     jobStore.remove(chapterKey)
                 }
                 submit(chapterKey, pages, serverInfo.configRevision, force = true)
-            } else if (existingJobId != null) {
-                val existingJob = service.getJob(existingJobId)
-                if (existingJob.configRevision == serverInfo.configRevision) {
-                    poll(chapterKey, existingJobId, serverInfo.configRevision, existingJob)
+            } else if (existingJob != null) {
+                val serverJob = service.getJob(existingJob.jobId)
+                if (serverJob.configRevision == serverInfo.configRevision) {
+                    poll(
+                        chapterKey = chapterKey,
+                        jobId = existingJob.jobId,
+                        expectedConfigRevision = serverInfo.configRevision,
+                        initialJob = serverJob,
+                        replacementPageIndex = existingJob.replacementPageIndex,
+                    )
                 } else {
-                    if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
-                        service.cancelJob(existingJobId)
+                    if (serverJob.status == TranslationJobStatus.QUEUED || serverJob.status == TranslationJobStatus.RUNNING) {
+                        service.cancelJob(existingJob.jobId)
                     }
                     jobStore.remove(chapterKey)
                     submit(chapterKey, pages, serverInfo.configRevision)
@@ -146,45 +170,44 @@ class MangaTranslationRepository(
         require(pageIndex >= 0) { "pageIndex cannot be negative" }
         runOnce(chapterKey) {
             val serverInfo = service.checkHealth()
-            jobStore.get(chapterKey)?.let { existingJobId ->
-                val existingJob = service.getJob(existingJobId)
-                if (existingJob.status == TranslationJobStatus.QUEUED || existingJob.status == TranslationJobStatus.RUNNING) {
-                    service.cancelJob(existingJobId)
+            jobStore.get(chapterKey)?.let { existingJob ->
+                val serverJob = service.getJob(existingJob.jobId)
+                if (serverJob.status == TranslationJobStatus.QUEUED || serverJob.status == TranslationJobStatus.RUNNING) {
+                    service.cancelJob(existingJob.jobId)
                 }
                 jobStore.remove(chapterKey)
             }
             val sourceStream = page.stream
                 ?: throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
             val uploadPage = ReaderPage(index = 0, stream = sourceStream)
-            val serverChapterKey = pageTranslationChapterKey(chapterKey, pageIndex)
             submit(
                 chapterKey = chapterKey,
                 pages = listOf(uploadPage),
                 configRevision = serverInfo.configRevision,
                 force = true,
-                serverChapterKey = serverChapterKey,
                 replacementPageIndex = pageIndex,
             )
         }
     }
 
     suspend fun resume(chapterKey: String) {
-        val jobId = jobStore.get(chapterKey) ?: return
+        val pendingJob = jobStore.get(chapterKey) ?: return
         runOnce(chapterKey) {
             val serverInfo = service.checkHealth()
-            val job = service.getJob(jobId)
+            val job = service.getJob(pendingJob.jobId)
             if (job.configRevision != serverInfo.configRevision) {
                 if (job.status == TranslationJobStatus.QUEUED || job.status == TranslationJobStatus.RUNNING) {
-                    service.cancelJob(jobId)
+                    service.cancelJob(pendingJob.jobId)
                 }
                 jobStore.remove(chapterKey)
                 state(chapterKey).value = MangaTranslationState.Idle
                 return@runOnce
             }
-            val replacementPageIndex = pageTranslationIndex(chapterKey, job.chapterKey)
+            val replacementPageIndex = pendingJob.replacementPageIndex
+                ?: pageTranslationIndex(chapterKey, job.chapterKey)
             poll(
                 chapterKey = chapterKey,
-                jobId = jobId,
+                jobId = pendingJob.jobId,
                 expectedConfigRevision = serverInfo.configRevision,
                 initialJob = job,
                 serverChapterKey = job.chapterKey,
@@ -197,14 +220,14 @@ class MangaTranslationRepository(
         cancellationRequests += chapterKey
         val currentState = state(chapterKey)
         currentState.value = MangaTranslationState.Cancelling
-        val jobId = jobStore.get(chapterKey)
-        if (jobId == null) {
+        val pendingJob = jobStore.get(chapterKey)
+        if (pendingJob == null) {
             currentState.value = MangaTranslationState.Cancelled
             clearCancellationIfInactive(chapterKey)
             return
         }
         try {
-            service.cancelJob(jobId)
+            service.cancelJob(pendingJob.jobId)
             jobStore.remove(chapterKey)
             currentState.value = MangaTranslationState.Cancelled
             clearCancellationIfInactive(chapterKey)
@@ -231,11 +254,22 @@ class MangaTranslationRepository(
         try {
             ensureNotCancelled(chapterKey)
             state(chapterKey).value = MangaTranslationState.Uploading
-            val job = service.submitChapter(serverChapterKey, upload, force)
+            val job = service.submitChapter(
+                chapterKey = serverChapterKey,
+                archive = upload,
+                force = force,
+                replacementPageIndex = replacementPageIndex,
+            )
             if (job.configRevision != configRevision) {
                 throw MangaTranslationProtocolException("La configuration du serveur a changé pendant l'envoi")
             }
-            jobStore.put(chapterKey, job.jobId)
+            jobStore.put(
+                chapterKey,
+                PendingMangaTranslationJob(
+                    jobId = job.jobId,
+                    replacementPageIndex = replacementPageIndex,
+                ),
+            )
             cancelSubmittedJobIfRequested(chapterKey, job.jobId)
             poll(
                 chapterKey = chapterKey,
@@ -432,9 +466,6 @@ class MangaTranslationRepository(
         MutableStateFlow(MangaTranslationState.Idle)
     }
 }
-
-private fun pageTranslationChapterKey(chapterKey: String, pageIndex: Int): String =
-    "$chapterKey:page:$pageIndex"
 
 private fun pageTranslationIndex(chapterKey: String, serverChapterKey: String): Int? =
     serverChapterKey.removePrefix("$chapterKey:page:")

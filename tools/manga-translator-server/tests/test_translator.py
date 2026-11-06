@@ -9,7 +9,7 @@ import nova_manga_translator.translator as translator_module
 from nova_manga_translator.translator import MangaTranslatorAdapter, TranslationConfigSnapshot
 
 
-def test_local_ollama_qwen_request_keeps_reasoning_enabled(monkeypatch) -> None:
+def test_local_ollama_qwen_request_keeps_native_model_parameters(monkeypatch) -> None:
     captured_payloads = []
 
     def post_with_retries(_url, _headers, payload, _parse, **_kwargs):
@@ -29,18 +29,12 @@ def test_local_ollama_qwen_request_keeps_reasoning_enabled(monkeypatch) -> None:
     endpoint.post_with_retries(
         "http://127.0.0.1:11434/v1/chat/completions",
         {},
-        {"model": "nova-qwen3.5:9b", "max_tokens": 4096},
+        {"model": "qwen3.5:9b-q4_K_M", "max_tokens": 4096},
         lambda result: result,
         label="OpenAI-Compatible",
     )
 
-    assert captured_payloads == [
-        {
-            "model": "nova-qwen3.5:9b",
-            "max_tokens": 4096,
-            "reasoning_effort": "low",
-        },
-    ]
+    assert captured_payloads == [{"model": "qwen3.5:9b-q4_K_M", "max_tokens": 4096}]
 
 
 def test_remote_openai_compatible_request_keeps_original_payload(monkeypatch) -> None:

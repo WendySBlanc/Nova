@@ -42,6 +42,7 @@ class JobRecord:
     target_language: str | None = None
     config_revision: str | None = None
     config_snapshot_path: str | None = None
+    replacement_page_index: int | None = None
 
     def public_dict(self, *, cached: bool = False) -> dict:
         return {
@@ -53,6 +54,7 @@ class JobRecord:
             "error": self.error,
             "target_language": self.target_language,
             "config_revision": self.config_revision,
+            "replacement_page_index": self.replacement_page_index,
             "cached": cached,
         }
 
@@ -90,12 +92,18 @@ class JobStore:
                 records.append(JobRecord(**json.loads(path.read_text(encoding="utf-8"))))
             return records
 
-    def find_by_chapter(self, chapter_key: str, config_revision: str | None = None) -> JobRecord | None:
+    def find_by_chapter(
+        self,
+        chapter_key: str,
+        config_revision: str | None = None,
+        replacement_page_index: int | None = None,
+    ) -> JobRecord | None:
         matches = [
             record
             for record in self.all()
             if record.chapter_key == chapter_key
             and (config_revision is None or record.config_revision == config_revision)
+            and record.replacement_page_index == replacement_page_index
         ]
         return max(matches, key=lambda item: item.created_at) if matches else None
 
@@ -174,8 +182,13 @@ class JobManager:
     def snapshot_configuration(self) -> TranslationConfigSnapshot:
         return self.translator.snapshot_configuration()
 
-    def find_by_chapter(self, chapter_key: str, config_revision: str) -> JobRecord | None:
-        return self.store.find_by_chapter(chapter_key, config_revision)
+    def find_by_chapter(
+        self,
+        chapter_key: str,
+        config_revision: str,
+        replacement_page_index: int | None = None,
+    ) -> JobRecord | None:
+        return self.store.find_by_chapter(chapter_key, config_revision, replacement_page_index)
 
     def submit(
         self,
@@ -184,9 +197,14 @@ class JobManager:
         configuration: TranslationConfigSnapshot,
         *,
         force: bool = False,
+        replacement_page_index: int | None = None,
     ) -> tuple[JobRecord, bool]:
         with self._lock:
-            existing = self.store.find_by_chapter(chapter_key, configuration.config_revision)
+            existing = self.store.find_by_chapter(
+                chapter_key,
+                configuration.config_revision,
+                replacement_page_index,
+            )
             if not force and existing is not None and existing.status not in {"failed", "cancelled"}:
                 archive_path.unlink(missing_ok=True)
                 return existing, True
@@ -219,6 +237,7 @@ class JobManager:
                 created_at=datetime.now(timezone.utc).isoformat(),
                 config_revision=configuration.config_revision,
                 config_snapshot_path=str(config_snapshot_path) if configuration.payload is not None else None,
+                replacement_page_index=replacement_page_index,
             )
             self.store.save(record)
             if self.start_workers:

@@ -60,7 +60,7 @@ class MangaTranslationRepositoryTest {
     }
 
     @Test
-    fun `retranslating one page uses a separate forced job and replaces only that page`() = runTest {
+    fun `retranslating one page keeps the original chapter key and replaces only that page`() = runTest {
         val service = FakeService()
         val cache = FakeCache()
         val repository = repository(service = service, cache = cache)
@@ -68,8 +68,9 @@ class MangaTranslationRepositoryTest {
 
         repository.retranslatePage(CHAPTER_KEY, pageIndex = 4, page = page)
 
-        service.submittedChapterKeys shouldBe listOf("$CHAPTER_KEY:page:4")
+        service.submittedChapterKeys shouldBe listOf(CHAPTER_KEY)
         service.forcedSubmissions shouldBe listOf(true)
+        service.submittedReplacementPageIndexes shouldBe listOf(4)
         cache.replacedPageIndexes shouldBe listOf(4)
         repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Ready>()
     }
@@ -127,14 +128,14 @@ class MangaTranslationRepositoryTest {
 
         repository.translate(CHAPTER_KEY, pages())
 
-        store.get(CHAPTER_KEY) shouldBe JOB_ID
+        store.get(CHAPTER_KEY) shouldBe pendingJob()
         val failure = repository.observe(CHAPTER_KEY).value.shouldBeInstanceOf<MangaTranslationState.Failed>()
         failure.canRetry shouldBe true
     }
 
     @Test
     fun `resume after process recreation polls the persisted job without uploading`() = runTest {
-        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to pendingJob()))
         val service = FakeService(jobs = ArrayDeque(listOf(job(TranslationJobStatus.COMPLETE, completed = 2))))
         val repository = repository(service = service, jobStore = store)
 
@@ -148,8 +149,7 @@ class MangaTranslationRepositoryTest {
     @Test
     fun `resume restores an in progress single page retranslation`() = runTest {
         val pageIndex = 1
-        val pageChapterKey = "$CHAPTER_KEY:page:$pageIndex"
-        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to pendingJob(pageIndex)))
         val cache = FakeCache()
         val service = FakeService(
             jobs = ArrayDeque(
@@ -157,7 +157,7 @@ class MangaTranslationRepositoryTest {
                     job(
                         status = TranslationJobStatus.COMPLETE,
                         completed = 1,
-                        chapterKey = pageChapterKey,
+                        chapterKey = CHAPTER_KEY,
                         totalPages = 1,
                     ),
                 ),
@@ -175,7 +175,7 @@ class MangaTranslationRepositoryTest {
 
     @Test
     fun `resume discards a pending job from an older server configuration`() = runTest {
-        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to pendingJob()))
         val service = FakeService(
             jobs = ArrayDeque(listOf(job(TranslationJobStatus.RUNNING, completed = 1))),
             serverInfo = serverInfo("config-v2"),
@@ -207,7 +207,7 @@ class MangaTranslationRepositoryTest {
 
     @Test
     fun `explicit cancellation cancels the persisted server job`() = runTest {
-        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to JOB_ID))
+        val store = FakeJobStore(mutableMapOf(CHAPTER_KEY to pendingJob()))
         val service = FakeService()
         val repository = repository(service = service, jobStore = store)
 
@@ -317,43 +317,56 @@ class MangaTranslationRepositoryTest {
         var submitCount = 0
         val forcedSubmissions = mutableListOf<Boolean>()
         val submittedChapterKeys = mutableListOf<String>()
+        val submittedReplacementPageIndexes = mutableListOf<Int?>()
         val cancelledJobIds = mutableListOf<String>()
         private var latestSubmittedChapterKey = CHAPTER_KEY
+        private var latestSubmittedPageCount = 2
 
         override suspend fun checkHealth(): MangaTranslationServerInfo {
             healthError?.let { throw it }
             return serverInfo
         }
 
-        override suspend fun submitChapter(chapterKey: String, archive: File, force: Boolean): TranslationJob {
+        override suspend fun submitChapter(
+            chapterKey: String,
+            archive: File,
+            force: Boolean,
+            replacementPageIndex: Int?,
+        ): TranslationJob {
             submitCount++
             forcedSubmissions += force
             submittedChapterKeys += chapterKey
+            submittedReplacementPageIndexes += replacementPageIndex
             latestSubmittedChapterKey = chapterKey
+            latestSubmittedPageCount = archive.readText().toInt()
             return job(
                 status = TranslationJobStatus.QUEUED,
                 completed = 0,
                 chapterKey = chapterKey,
-                totalPages = if (chapterKey.contains(":page:")) 1 else 2,
+                totalPages = latestSubmittedPageCount,
             )
         }
 
         override suspend fun getJob(jobId: String): TranslationJob {
             val nextJob = getJobHandler?.invoke() ?: jobs.removeFirstOrNull() ?: job(
                 status = TranslationJobStatus.COMPLETE,
-                completed = if (latestSubmittedChapterKey.contains(":page:")) 1 else 2,
+                completed = latestSubmittedPageCount,
                 chapterKey = latestSubmittedChapterKey,
-                totalPages = if (latestSubmittedChapterKey.contains(":page:")) 1 else 2,
+                totalPages = latestSubmittedPageCount,
             )
             latestSubmittedChapterKey = nextJob.chapterKey
+            latestSubmittedPageCount = nextJob.totalPages
             return nextJob
         }
 
         override suspend fun downloadResult(jobId: String, destination: File): TranslationResultMetadata {
             destination.parentFile?.mkdirs()
             destination.writeText("result")
-            return if (latestSubmittedChapterKey.contains(":page:")) {
-                resultMetadata.copy(chapterKey = latestSubmittedChapterKey, totalPages = 1)
+            return if (resultMetadata == metadata()) {
+                resultMetadata.copy(
+                    chapterKey = latestSubmittedChapterKey,
+                    totalPages = latestSubmittedPageCount,
+                )
             } else {
                 resultMetadata
             }
@@ -368,7 +381,7 @@ class MangaTranslationRepositoryTest {
         override suspend fun createUpload(chapterKey: String, pages: List<ReaderPage>): File =
             upload.apply {
                 parentFile?.mkdirs()
-                writeText("upload")
+                writeText(pages.size.toString())
             }
     }
 
@@ -408,12 +421,12 @@ class MangaTranslationRepositoryTest {
     }
 
     private class FakeJobStore(
-        private val jobs: MutableMap<String, String> = mutableMapOf(),
+        private val jobs: MutableMap<String, PendingMangaTranslationJob> = mutableMapOf(),
     ) : MangaTranslationJobStore {
-        override fun get(chapterKey: String): String? = jobs[chapterKey]
+        override fun get(chapterKey: String): PendingMangaTranslationJob? = jobs[chapterKey]
 
-        override fun put(chapterKey: String, jobId: String) {
-            jobs[chapterKey] = jobId
+        override fun put(chapterKey: String, job: PendingMangaTranslationJob) {
+            jobs[chapterKey] = job
         }
 
         override fun remove(chapterKey: String) {
@@ -424,6 +437,11 @@ class MangaTranslationRepositoryTest {
     private companion object {
         const val CHAPTER_KEY = "source:manga:chapter"
         const val JOB_ID = "job-1"
+
+        fun pendingJob(pageIndex: Int? = null) = PendingMangaTranslationJob(
+            jobId = JOB_ID,
+            replacementPageIndex = pageIndex,
+        )
 
         fun job(
             status: TranslationJobStatus,

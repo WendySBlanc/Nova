@@ -120,6 +120,28 @@ class MangaTranslationClientTest {
     }
 
     @Test
+    fun `page retranslation keeps chapter identity and sends page index separately`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(202)
+                .setBody(jobJson(status = "queued")),
+        )
+        val archive = File(temporaryDirectory.toFile(), "chapter.zip").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+
+        client().submitChapter(
+            chapterKey = "source:manga:chapter",
+            archive = archive,
+            force = true,
+            replacementPageIndex = 4,
+        )
+        val body = server.takeRequest().body.readUtf8()
+
+        body shouldContain "source:manga:chapter"
+        body shouldContain "replacement_page_index"
+        body shouldContain "4"
+    }
+
+    @Test
     fun `get job ignores unknown response fields`() = runTest {
         server.enqueue(
             MockResponse().setBody(

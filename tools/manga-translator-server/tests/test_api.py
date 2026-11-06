@@ -112,11 +112,15 @@ def submit(
     pages: tuple[bytes, ...] = (b"one", b"two"),
     *,
     force: bool = False,
+    replacement_page_index: int | None = None,
 ):
+    data = {"chapter_key": chapter_key, "force": str(force).lower()}
+    if replacement_page_index is not None:
+        data["replacement_page_index"] = str(replacement_page_index)
     return client.post(
         "/v1/chapters",
         headers=auth_headers(),
-        data={"chapter_key": chapter_key, "force": str(force).lower()},
+        data=data,
         files={"archive": ("chapter.zip", chapter_zip(*pages), "application/zip")},
     )
 
@@ -230,6 +234,35 @@ def test_forced_chapter_submission_creates_a_new_job(tmp_path: Path) -> None:
     assert second_response.status_code == 202
     assert second["job_id"] != first["job_id"]
     assert second["cached"] is False
+    assert translator.calls == 2
+
+
+def test_page_retranslation_does_not_shadow_full_chapter_cache(tmp_path: Path) -> None:
+    translator = RecordingTranslator()
+    app = create_app(tmp_path, TOKEN, translator)
+    with TestClient(app) as client:
+        full = submit(client, "same-chapter").json()
+        wait_for_status(client, full["job_id"], "complete")
+
+        page_response = submit(
+            client,
+            "same-chapter",
+            pages=(b"replacement",),
+            force=True,
+            replacement_page_index=4,
+        )
+        page = page_response.json()
+        wait_for_status(client, page["job_id"], "complete")
+
+        cached_response = submit(client, "same-chapter")
+        cached = cached_response.json()
+
+    assert page_response.status_code == 202
+    assert page["chapter_key"] == "same-chapter"
+    assert page["replacement_page_index"] == 4
+    assert cached_response.status_code == 200
+    assert cached["job_id"] == full["job_id"]
+    assert cached["cached"] is True
     assert translator.calls == 2
 
 
