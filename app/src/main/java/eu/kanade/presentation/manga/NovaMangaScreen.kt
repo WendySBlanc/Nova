@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -58,17 +59,15 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.FloatingActionButtonMenuScope
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults
 import androidx.compose.material3.TooltipAnchorPosition
@@ -275,6 +274,12 @@ fun NovaMangaScreen(
                             onCoverLoaded = onCoverLoaded,
                         )
                     }
+                    item(contentType = "manga_synopsis") {
+                        NovaMangaSynopsis(
+                            description = state.manga.description.orEmpty(),
+                            mangaId = state.manga.id,
+                        )
+                    }
                     stickyHeader(
                         key = "manga_tabs",
                         contentType = "manga_tabs",
@@ -388,18 +393,18 @@ private fun NovaMangaHero(
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        val compact = maxWidth < 360.dp
+        val compact = maxWidth < 380.dp
         val tablet = maxWidth >= 600.dp
-        val showPoster = true
+        val showPoster = !compact
         val heroHeight = when {
-            compact -> (maxWidth * 1.08f).coerceIn(360.dp, 414.dp)
-            tablet -> (maxWidth * 0.62f).coerceIn(460.dp, 520.dp)
-            else -> (maxWidth * 1.12f).coerceIn(414.dp, 462.dp)
+            compact -> (maxWidth * 0.94f).coerceIn(320.dp, 348.dp)
+            tablet -> (maxWidth * 0.48f).coerceIn(380.dp, 440.dp)
+            else -> (maxWidth * 0.96f).coerceIn(356.dp, 400.dp)
         }
         val backdropHeight = when {
-            compact -> heroHeight * 0.67f
-            tablet -> heroHeight * 0.69f
-            else -> heroHeight * 0.69f
+            compact -> heroHeight * 0.72f
+            tablet -> heroHeight * 0.74f
+            else -> heroHeight * 0.73f
         }
         val posterWidth = when {
             compact -> (maxWidth * 0.22f).coerceIn(70.dp, 82.dp)
@@ -420,7 +425,6 @@ private fun NovaMangaHero(
             MaterialTheme.typography.headlineSmall
         }
         val infoMaxLines = if (compact) 1 else 2
-        val descriptionMaxLines = if (compact) 2 else 3
 
         Box(
             modifier = Modifier
@@ -550,15 +554,7 @@ private fun NovaMangaHero(
                         maxLines = infoMaxLines,
                         onSourceSearch = onSourceSearch,
                     )
-                    Spacer(Modifier.height(if (compact) 6.dp else 8.dp))
-                    Text(
-                        text = manga.description.orEmpty().ifBlank { "Description indisponible" },
-                        color = NovaVikiColors.TextSecondary,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = descriptionMaxLines,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(if (compact) 10.dp else 12.dp))
+                    Spacer(Modifier.height(if (compact) 8.dp else 10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             onClick = onContinueReading,
@@ -616,6 +612,52 @@ private fun NovaMangaHero(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NovaMangaSynopsis(
+    description: String,
+    mangaId: Long,
+) {
+    if (description.isBlank()) return
+
+    var expanded by rememberSaveable(mangaId) { mutableStateOf(false) }
+    var canExpand by remember(mangaId, description) { mutableStateOf(false) }
+    val motionScheme = MaterialTheme.motionScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = motionScheme.defaultSpatialSpec())
+            .padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 6.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Synopsis",
+                color = NovaVikiColors.TextPrimary,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.weight(1f),
+            )
+            if (expanded || canExpand) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Moins" else "Plus")
+                }
+            }
+        }
+        Text(
+            text = description,
+            color = NovaVikiColors.TextSecondary,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = if (expanded) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layoutResult ->
+                if (!expanded) canExpand = layoutResult.hasVisualOverflow
+            },
+        )
     }
 }
 
@@ -810,138 +852,127 @@ private fun NovaMangaTabs(
 ) {
     var downloadExpanded by remember { mutableStateOf(false) }
     var readStatusExpanded by remember { mutableStateOf(false) }
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainer),
+            .heightIn(min = 64.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        ListItem(
-            modifier = Modifier.fillMaxWidth(),
-            headlineContent = {
-                Text(
-                    text = "Chapitres",
-                    color = NovaVikiColors.TextPrimary,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = if (filterActive) {
-                        "$visibleChapterCount affichés sur $chapterCount"
-                    } else {
-                        "$chapterCount au total | $unreadCount à lire"
-                    },
-                    color = NovaVikiColors.TextSecondary,
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            colors = ListItemDefaults.colors(
-                containerColor = Color.Transparent,
-            ),
-        )
-        HorizontalFloatingToolbar(
-            expanded = true,
-            modifier = Modifier
-                .align(Alignment.End)
-                .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
-        ) {
-            if (onDownloadActionClicked != null) {
-                Box {
-                    DownloadDropdownMenu(
-                        expanded = downloadExpanded,
-                        onDismissRequest = { downloadExpanded = false },
-                        onDownloadClicked = onDownloadActionClicked,
-                        actionCounts = downloadActionCounts,
-                    )
-                    FilledTonalIconButton(
-                        onClick = { downloadExpanded = true },
-                        modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = "Télécharger des chapitres",
-                        )
-                    }
-                }
-            }
-            if (onMarkAllReadClicked != null || onMarkAllUnreadClicked != null) {
-                Box {
-                    DropdownMenu(
-                        expanded = readStatusExpanded,
-                        onDismissRequest = { readStatusExpanded = false },
-                    ) {
-                        if (onMarkAllReadClicked != null) {
-                            DropdownMenuItem(
-                                text = { Text("Tout marquer comme lu") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.DoneAll,
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    readStatusExpanded = false
-                                    onMarkAllReadClicked()
-                                },
-                            )
-                        }
-                        if (onMarkAllUnreadClicked != null) {
-                            DropdownMenuItem(
-                                text = { Text("Tout marquer comme non lu") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.RemoveDone,
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    readStatusExpanded = false
-                                    onMarkAllUnreadClicked()
-                                },
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = { readStatusExpanded = true },
-                        modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.DoneAll,
-                            contentDescription = "Modifier l'état de lecture",
-                            tint = NovaVikiColors.TextPrimary,
-                        )
-                    }
-                }
-            }
-            IconButton(
-                onClick = onFilterClicked,
-                modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (filterActive) {
-                        MaterialTheme.colorScheme.secondaryContainer
-                    } else {
-                        Color.Transparent
-                    },
-                    contentColor = if (filterActive) {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    } else {
-                        NovaVikiColors.TextPrimary
-                    },
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Chapitres",
+                color = NovaVikiColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+            )
+            Text(
+                text = novaChapterHeaderSummary(
+                    chapterCount = chapterCount,
+                    visibleChapterCount = visibleChapterCount,
+                    unreadCount = unreadCount,
+                    filterActive = filterActive,
                 ),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.FilterList,
-                    contentDescription = "Filtrer les chapitres",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (onDownloadActionClicked != null) {
+            Box {
+                DownloadDropdownMenu(
+                    expanded = downloadExpanded,
+                    onDismissRequest = { downloadExpanded = false },
+                    onDownloadClicked = onDownloadActionClicked,
+                    actionCounts = downloadActionCounts,
                 )
+                FilledTonalIconButton(
+                    onClick = { downloadExpanded = true },
+                    modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Download,
+                        contentDescription = "Télécharger des chapitres",
+                    )
+                }
             }
+        }
+        if (onMarkAllReadClicked != null || onMarkAllUnreadClicked != null) {
+            Box {
+                DropdownMenu(
+                    expanded = readStatusExpanded,
+                    onDismissRequest = { readStatusExpanded = false },
+                ) {
+                    if (onMarkAllReadClicked != null) {
+                        DropdownMenuItem(
+                            text = { Text("Tout marquer comme lu") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.DoneAll,
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                readStatusExpanded = false
+                                onMarkAllReadClicked()
+                            },
+                        )
+                    }
+                    if (onMarkAllUnreadClicked != null) {
+                        DropdownMenuItem(
+                            text = { Text("Tout marquer comme non lu") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.RemoveDone,
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                readStatusExpanded = false
+                                onMarkAllUnreadClicked()
+                            },
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = { readStatusExpanded = true },
+                    modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = "Modifier l'état de lecture",
+                        tint = NovaVikiColors.TextPrimary,
+                    )
+                }
+            }
+        }
+        IconButton(
+            onClick = onFilterClicked,
+            modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = if (filterActive) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    Color.Transparent
+                },
+                contentColor = if (filterActive) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    NovaVikiColors.TextPrimary
+                },
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FilterList,
+                contentDescription = "Filtrer les chapitres",
+            )
         }
     }
 }

@@ -45,12 +45,18 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,6 +68,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.home.NovaMeCategory
+import eu.kanade.presentation.home.novaMeCategories
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.theme.novaSpatialBackdrop
@@ -123,6 +131,9 @@ fun MoreScreen(
             pluralStringResource(MR.plurals.download_queue_summary, count = pending, pending)
         }
     }
+    val meCategories = remember { novaMeCategories() }
+    var selectedCategoryIndex by rememberSaveable { mutableIntStateOf(0) }
+    val selectedCategory = meCategories[selectedCategoryIndex]
 
     Scaffold(contentWindowInsets = WindowInsets(0)) { contentPadding ->
         Column(
@@ -139,6 +150,11 @@ fun MoreScreen(
                 ),
         ) {
             NovaMeTopBar()
+            NovaMeCategoryTabs(
+                categories = meCategories,
+                selectedIndex = selectedCategoryIndex,
+                onSelect = { selectedCategoryIndex = it },
+            )
             BoxWithConstraints(
                 modifier = Modifier
                     .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
@@ -161,70 +177,43 @@ fun MoreScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
                 ) {
-                    item(contentType = "me_identity") {
-                        NovaMeIdentity(
-                            downloadedOnly = downloadedOnly,
-                            incognitoMode = incognitoMode,
-                        )
-                    }
-                    item(contentType = "me_quick_actions") {
-                        NovaQuickActions(
-                            downloadQueueState = downloadQueueState,
-                            downloadQueueSubtitle = downloadQueueSubtitle,
-                            onClickDownloadQueue = onClickDownloadQueue,
-                            onClickStats = onClickStats,
-                            onClickCategories = onClickCategories,
-                            onClickSettings = onClickSettings,
-                        )
-                    }
-                    item(contentType = "me_sections") {
-                        if (expandedLayout) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
-                                ) {
-                                    NovaReadingModesSection(
-                                        downloadedOnly = downloadedOnly,
-                                        onDownloadedOnlyChange = onDownloadedOnlyChange,
-                                        incognitoMode = incognitoMode,
-                                        onIncognitoModeChange = onIncognitoModeChange,
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
-                                ) {
-                                    if (showBatchAdd) {
-                                        NovaLibraryToolsSection(onClickBatchAdd = onClickBatchAdd)
-                                    }
-                                    NovaApplicationSection(
-                                        onClickHelp = { uriHandler.openUri(Constants.URL_HELP) },
-                                    )
-                                }
-                            }
-                        } else {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(NovaVikiDimensions.SectionSpacing),
-                            ) {
-                                NovaReadingModesSection(
+                    when (selectedCategory) {
+                        NovaMeCategory.Overview -> {
+                            item(contentType = "me_identity") {
+                                NovaMeIdentity(
                                     downloadedOnly = downloadedOnly,
-                                    onDownloadedOnlyChange = onDownloadedOnlyChange,
                                     incognitoMode = incognitoMode,
-                                    onIncognitoModeChange = onIncognitoModeChange,
-                                )
-                                if (showBatchAdd) {
-                                    NovaLibraryToolsSection(onClickBatchAdd = onClickBatchAdd)
-                                }
-                                NovaApplicationSection(
-                                    onClickHelp = { uriHandler.openUri(Constants.URL_HELP) },
                                 )
                             }
+                            item(contentType = "me_overview_actions") {
+                                NovaQuickActions(
+                                    downloadQueueState = downloadQueueState,
+                                    downloadQueueSubtitle = downloadQueueSubtitle,
+                                    onClickDownloadQueue = onClickDownloadQueue,
+                                    onClickStats = onClickStats,
+                                )
+                            }
+                        }
+                        NovaMeCategory.Reading -> item(contentType = "me_reading") {
+                            NovaReadingModesSection(
+                                downloadedOnly = downloadedOnly,
+                                onDownloadedOnlyChange = onDownloadedOnlyChange,
+                                incognitoMode = incognitoMode,
+                                onIncognitoModeChange = onIncognitoModeChange,
+                            )
+                        }
+                        NovaMeCategory.Library -> item(contentType = "me_library") {
+                            NovaLibraryToolsSection(
+                                showBatchAdd = showBatchAdd,
+                                onClickCategories = onClickCategories,
+                                onClickBatchAdd = onClickBatchAdd,
+                            )
+                        }
+                        NovaMeCategory.Application -> item(contentType = "me_application") {
+                            NovaApplicationSection(
+                                onClickSettings = onClickSettings,
+                                onClickHelp = { uriHandler.openUri(Constants.URL_HELP) },
+                            )
                         }
                     }
                 }
@@ -257,6 +246,37 @@ private fun NovaMeTopBar() {
             titleContentColor = MaterialTheme.colorScheme.onSurface,
         ),
     )
+}
+
+@Composable
+private fun NovaMeCategoryTabs(
+    categories: List<NovaMeCategory>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+) {
+    PrimaryScrollableTabRow(
+        selectedTabIndex = selectedIndex,
+        edgePadding = NovaVikiDimensions.HorizontalPadding,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        categories.forEachIndexed { index, category ->
+            Tab(
+                selected = selectedIndex == index,
+                onClick = { onSelect(index) },
+                modifier = Modifier.height(NovaVikiDimensions.MinimumTouchTarget),
+                text = {
+                    Text(
+                        text = category.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selectedIndex == index) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -330,8 +350,6 @@ private fun NovaQuickActions(
     downloadQueueSubtitle: String?,
     onClickDownloadQueue: () -> Unit,
     onClickStats: () -> Unit,
-    onClickCategories: () -> Unit,
-    onClickSettings: () -> Unit,
 ) {
     val downloadBadge = when (downloadQueueState) {
         DownloadQueueState.Stopped -> null
@@ -388,35 +406,6 @@ private fun NovaQuickActions(
                         imageVector = Icons.Outlined.QueryStats,
                         contentDescription = null,
                         tint = NovaVikiColors.AccentWarm,
-                    )
-                },
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            NovaQuickAction(
-                modifier = Modifier.weight(1f),
-                onClick = onClickCategories,
-                label = "Cat\u00e9gories",
-                icon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Label,
-                        contentDescription = null,
-                        tint = NovaVikiColors.AccentGold,
-                    )
-                },
-            )
-            NovaQuickAction(
-                modifier = Modifier.weight(1f),
-                onClick = onClickSettings,
-                label = "Param\u00e8tres",
-                icon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Settings,
-                        contentDescription = null,
-                        tint = NovaVikiColors.Success,
                     )
                 },
             )
@@ -495,22 +484,39 @@ private fun NovaReadingModesSection(
 
 @Composable
 private fun NovaLibraryToolsSection(
+    showBatchAdd: Boolean,
+    onClickCategories: () -> Unit,
     onClickBatchAdd: () -> Unit,
 ) {
     NovaMoreSection(title = stringResource(MR.strings.label_library)) {
         NovaMoreActionRow(
-            title = stringResource(SYMR.strings.eh_batch_add),
-            icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
-            onClick = onClickBatchAdd,
+            title = "Cat\u00e9gories",
+            icon = Icons.AutoMirrored.Outlined.Label,
+            onClick = onClickCategories,
+            accent = NovaVikiColors.AccentGold,
         )
+        if (showBatchAdd) {
+            NovaMoreActionRow(
+                title = stringResource(SYMR.strings.eh_batch_add),
+                icon = Icons.AutoMirrored.Outlined.PlaylistAdd,
+                onClick = onClickBatchAdd,
+            )
+        }
     }
 }
 
 @Composable
 private fun NovaApplicationSection(
+    onClickSettings: () -> Unit,
     onClickHelp: () -> Unit,
 ) {
     NovaMoreSection(title = "Application") {
+        NovaMoreActionRow(
+            title = "Param\u00e8tres",
+            icon = Icons.Outlined.Settings,
+            onClick = onClickSettings,
+            accent = NovaVikiColors.Success,
+        )
         NovaMoreActionRow(
             title = stringResource(MR.strings.label_help),
             icon = Icons.AutoMirrored.Outlined.HelpOutline,

@@ -14,6 +14,13 @@ enum class NovaMeQuickRoute {
     Settings,
 }
 
+enum class NovaMeCategory(val label: String) {
+    Overview("Aper\u00e7u"),
+    Reading("Lecture"),
+    Library("Biblioth\u00e8que"),
+    Application("Application"),
+}
+
 fun novaDiscoverSections(
     feedEnabled: Boolean,
     feedFirst: Boolean,
@@ -26,3 +33,5 @@ fun novaDiscoverSections(
 }
 
 fun novaMeQuickRoutes(): List<NovaMeQuickRoute> = NovaMeQuickRoute.entries
+
+fun novaMeCategories(): List<NovaMeCategory> = NovaMeCategory.entries

@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -33,9 +32,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -52,6 +48,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -83,14 +82,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import eu.kanade.presentation.components.NovaFluidFixedTabRow
-import eu.kanade.presentation.components.NovaLiquidTabLabel
-import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.library.filterNovaLibraryShelf
 import eu.kanade.presentation.library.findNovaArchiveCategory
 import eu.kanade.presentation.library.novaCollectionCategories
+import eu.kanade.presentation.library.novaLibraryShelfOptions
 import eu.kanade.presentation.theme.NovaSpatialLibraryLayout
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
@@ -168,9 +165,9 @@ fun NovaVikiLibraryScreen(
     val shelfItems = remember(tabItems, selectedShelf, archiveCategory) {
         filterNovaLibraryShelf(tabItems, selectedShelf, archiveCategory?.id)
     }
-    val categoryCounts = remember(shelfItems, collectionCategories) {
+    val categoryCounts = remember(currentItems, collectionCategories) {
         collectionCategories.associate { category ->
-            category.id to shelfItems.count { item -> category.id in item.categoryIds }
+            category.id to currentItems.count { item -> category.id in item.categoryIds }
         }
     }
     val visibleItems = remember(shelfItems, selectedShelf, selectedCategoryId) {
@@ -203,9 +200,10 @@ fun NovaVikiLibraryScreen(
             selectedCategoryId = null
             return@LaunchedEffect
         }
-        val selectedId = selectedCategoryId ?: return@LaunchedEffect
-        if (collectionCategories.none { category -> category.id == selectedId }) {
+        val selectedId = selectedCategoryId
+        if (selectedId == null || collectionCategories.none { category -> category.id == selectedId }) {
             selectedCategoryId = null
+            selectedShelfIndex = NovaLibraryShelf.Current.ordinal
         }
     }
     LaunchedEffect(selectedTab, selectedShelfIndex, selectedCategoryId, sortOption, sortDescending) {
@@ -518,9 +516,6 @@ private fun NovaLibraryControlBand(
     ) {
         val compact = maxWidth < 360.dp
         val expandedLayout = maxWidth >= 600.dp
-        val showCompactSortLabel = !compact && maxWidth >= 520.dp
-        val showCollections = selectedShelf == NovaLibraryShelf.Collections && categories.isNotEmpty()
-        val activeTotalCount = if (selectedTab == 0) allSeriesCount else lightNovelCount
         val horizontalPadding = when {
             compact -> 10.dp
             expandedLayout -> 18.dp
@@ -533,10 +528,10 @@ private fun NovaLibraryControlBand(
                 .padding(
                     start = horizontalPadding,
                     end = horizontalPadding,
-                    top = 6.dp,
-                    bottom = 8.dp,
+                    top = 2.dp,
+                    bottom = 4.dp,
                 ),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             if (verticalLayout) {
                 Text(
@@ -547,12 +542,6 @@ private fun NovaLibraryControlBand(
                     modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
                 )
             }
-            NovaLibraryShelfSelector(
-                selectedShelf = selectedShelf,
-                currentCount = currentCount,
-                archiveCount = archiveCount,
-                onSelectShelf = onSelectShelf,
-            )
             if (verticalLayout) {
                 NovaLibraryModeSelector(
                     selectedTab = selectedTab,
@@ -561,20 +550,20 @@ private fun NovaLibraryControlBand(
                     onSelectTab = onSelectTab,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (showCollections) {
-                    NovaLibraryCategoryFilters(
-                        categories = categories,
-                        categoryCounts = categoryCounts,
-                        allCount = activeTotalCount,
-                        selectedCategoryId = selectedCategoryId,
-                        onSelectCategory = onSelectCategory,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                NovaLibraryShelfSelector(
+                    selectedShelf = selectedShelf,
+                    selectedCategoryId = selectedCategoryId,
+                    currentCount = currentCount,
+                    archiveCount = archiveCount,
+                    categories = categories,
+                    categoryCounts = categoryCounts,
+                    onSelectShelf = onSelectShelf,
+                    onSelectCategory = onSelectCategory,
+                )
                 NovaLibrarySortActions(
                     sortOption = sortOption,
                     sortDescending = sortDescending,
-                    showSortLabel = true,
+                    showSortLabel = false,
                     onSortOptionSelected = onSortOptionSelected,
                     onToggleDirection = onToggleDirection,
                 )
@@ -589,51 +578,26 @@ private fun NovaLibraryControlBand(
                         allSeriesCount = allSeriesCount,
                         lightNovelCount = lightNovelCount,
                         onSelectTab = onSelectTab,
-                        modifier = if (expandedLayout) {
-                            Modifier
-                                .widthIn(max = 460.dp)
-                                .weight(1f)
-                        } else if (!showCollections) {
-                            Modifier.weight(1f)
-                        } else {
-                            Modifier.fillMaxWidth()
-                        },
+                        modifier = Modifier.weight(1f),
                     )
-                    if (expandedLayout || !showCollections) {
-                        NovaLibrarySortActions(
-                            sortOption = sortOption,
-                            sortDescending = sortDescending,
-                            showSortLabel = expandedLayout,
-                            onSortOptionSelected = onSortOptionSelected,
-                            onToggleDirection = onToggleDirection,
-                        )
-                    }
+                    NovaLibrarySortActions(
+                        sortOption = sortOption,
+                        sortDescending = sortDescending,
+                        showSortLabel = expandedLayout,
+                        onSortOptionSelected = onSortOptionSelected,
+                        onToggleDirection = onToggleDirection,
+                    )
                 }
-                if (showCollections) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        NovaLibraryCategoryFilters(
-                            categories = categories,
-                            categoryCounts = categoryCounts,
-                            allCount = activeTotalCount,
-                            selectedCategoryId = selectedCategoryId,
-                            onSelectCategory = onSelectCategory,
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (!expandedLayout) {
-                            NovaLibrarySortActions(
-                                sortOption = sortOption,
-                                sortDescending = sortDescending,
-                                showSortLabel = showCompactSortLabel,
-                                onSortOptionSelected = onSortOptionSelected,
-                                onToggleDirection = onToggleDirection,
-                            )
-                        }
-                    }
-                }
+                NovaLibraryShelfSelector(
+                    selectedShelf = selectedShelf,
+                    selectedCategoryId = selectedCategoryId,
+                    currentCount = currentCount,
+                    archiveCount = archiveCount,
+                    categories = categories,
+                    categoryCounts = categoryCounts,
+                    onSelectShelf = onSelectShelf,
+                    onSelectCategory = onSelectCategory,
+                )
             }
         }
     }
@@ -642,37 +606,50 @@ private fun NovaLibraryControlBand(
 @Composable
 private fun NovaLibraryShelfSelector(
     selectedShelf: NovaLibraryShelf,
+    selectedCategoryId: Long?,
     currentCount: Int,
     archiveCount: Int,
+    categories: List<NovaLibraryCategory>,
+    categoryCounts: Map<Long, Int>,
     onSelectShelf: (NovaLibraryShelf) -> Unit,
+    onSelectCategory: (Long?) -> Unit,
 ) {
-    val shelves = listOf(
-        Triple(NovaLibraryShelf.Current, "En cours", currentCount),
-        Triple(NovaLibraryShelf.Archive, "Archives", archiveCount),
-        Triple(NovaLibraryShelf.Collections, "Collections", currentCount),
+    val options = novaLibraryShelfOptions(
+        currentCount = currentCount,
+        archiveCount = archiveCount,
+        categories = categories,
+        categoryCounts = categoryCounts,
     )
-    val selectedIndex = shelves.indexOfFirst { it.first == selectedShelf }.coerceAtLeast(0)
-    NovaFluidFixedTabRow(
-        selectedIndex = selectedIndex,
-        itemCount = shelves.size,
-        onSelect = { index -> onSelectShelf(shelves[index].first) },
-        background = NovaVikiColors.Surface,
-        outline = NovaVikiColors.OutlineStrong,
-        accent = NovaVikiColors.Accent,
-        secondary = NovaVikiColors.AccentWarm,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(NovaVikiDimensions.MinimumTouchTarget),
-    ) { index, selected ->
-        val (_, label, count) = shelves[index]
-        Text(
-            text = "$label  $count",
-            color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    val selectedIndex = options.indexOfFirst { option ->
+        option.shelf == selectedShelf && option.categoryId == selectedCategoryId
+    }.coerceAtLeast(0)
+    SecondaryScrollableTabRow(
+        selectedTabIndex = selectedIndex,
+        edgePadding = 0.dp,
+        containerColor = Color.Transparent,
+        contentColor = NovaVikiColors.TextPrimary,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        options.forEachIndexed { index, option ->
+            val selected = selectedIndex == index
+            Tab(
+                selected = selected,
+                onClick = {
+                    onSelectShelf(option.shelf)
+                    onSelectCategory(option.categoryId)
+                },
+                modifier = Modifier.height(NovaVikiDimensions.MinimumTouchTarget),
+                text = {
+                    Text(
+                        text = "${option.label}  ${option.count}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+            )
+        }
     }
 }
 
@@ -688,100 +665,27 @@ private fun NovaLibraryModeSelector(
         "All Series" to allSeriesCount,
         "Light Novel" to lightNovelCount,
     )
-    NovaFluidFixedTabRow(
-        selectedIndex = selectedTab,
-        itemCount = tabs.size,
-        onSelect = onSelectTab,
-        background = NovaVikiColors.Surface,
-        outline = NovaVikiColors.OutlineStrong,
-        accent = NovaVikiColors.Accent,
-        secondary = NovaVikiColors.AccentWarm,
-        modifier = modifier
-            .height(NovaVikiDimensions.MinimumTouchTarget),
-    ) { index, selected ->
-        val (label, count) = tabs[index]
-        Text(
-            text = "$label  $count",
-            color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun NovaLibraryCategoryFilters(
-    categories: List<NovaLibraryCategory>,
-    categoryCounts: Map<Long, Int>,
-    allCount: Int,
-    selectedCategoryId: Long?,
-    onSelectCategory: (Long?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .horizontalScroll(rememberScrollState())
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    PrimaryTabRow(
+        selectedTabIndex = selectedTab,
+        containerColor = Color.Transparent,
+        contentColor = NovaVikiColors.TextPrimary,
+        modifier = modifier,
     ) {
-        NovaLibraryCategoryChip(
-            label = "Toutes",
-            count = allCount,
-            selected = selectedCategoryId == null,
-            onClick = { onSelectCategory(null) },
-        )
-        categories.forEach { category ->
-            NovaLibraryCategoryChip(
-                label = category.name,
-                count = categoryCounts[category.id] ?: 0,
-                selected = selectedCategoryId == category.id,
-                onClick = { onSelectCategory(category.id) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun NovaLibraryCategoryChip(
-    label: String,
-    count: Int,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .height(NovaVikiDimensions.MinimumTouchTarget)
-            .widthIn(max = 220.dp)
-            .novaHollowPacket(
-                background = NovaVikiColors.Surface,
-                outline = if (selected) NovaVikiColors.Accent else NovaVikiColors.Outline,
-                accent = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                particleCount = if (selected) 5 else 0,
-            )
-            .selectable(
+        tabs.forEachIndexed { index, (label, count) ->
+            val selected = selectedTab == index
+            Tab(
                 selected = selected,
-                role = Role.RadioButton,
-                onClick = onClick,
-            )
-            .padding(horizontal = 4.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        NovaLiquidTabLabel(
-            selected = selected,
-            accent = NovaVikiColors.Accent,
-            outline = NovaVikiColors.OutlineStrong,
-        ) {
-            Text(
-                text = "$label  $count",
-                color = if (selected) NovaVikiColors.TextPrimary else NovaVikiColors.TextSecondary,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                onClick = { onSelectTab(index) },
+                modifier = Modifier.height(NovaVikiDimensions.MinimumTouchTarget),
+                text = {
+                    Text(
+                        text = "$label  $count",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
             )
         }
     }

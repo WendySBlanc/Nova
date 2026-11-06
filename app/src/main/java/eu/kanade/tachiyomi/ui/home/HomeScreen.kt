@@ -3,11 +3,14 @@ package eu.kanade.tachiyomi.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -16,6 +19,8 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -23,17 +28,25 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +61,7 @@ import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.home.NovaNavigationLayout
+import eu.kanade.presentation.home.resolveNovaNavigationDirection
 import eu.kanade.presentation.home.resolveNovaNavigationLayout
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.activity.NovaActivitySection
@@ -107,6 +121,20 @@ object HomeScreen : Screen() {
             tab = NovaHomeTab,
             key = TAB_NAVIGATOR_KEY,
         ) { tabNavigator ->
+            val enabledTabs = TABS.fastFilter { it.isEnabled() }
+            val selectedNavigationIndex = enabledTabs.indexOfFirst { tab ->
+                tabNavigator.current::class == tab::class
+            }.coerceAtLeast(0)
+            var previousNavigationIndex by remember { mutableIntStateOf(selectedNavigationIndex) }
+            var navigationDirection by remember { mutableIntStateOf(0) }
+            LaunchedEffect(selectedNavigationIndex) {
+                navigationDirection = resolveNovaNavigationDirection(
+                    previousIndex = previousNavigationIndex,
+                    currentIndex = selectedNavigationIndex,
+                )
+                previousNavigationIndex = selectedNavigationIndex
+            }
+
             // Provide usable navigator to content screen
             CompositionLocalProvider(LocalNavigator provides navigator) {
                 Scaffold(
@@ -116,13 +144,13 @@ object HomeScreen : Screen() {
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             ) {
-                                TABS
-                                    // SY -->
-                                    .fastFilter { it.isEnabled() }
-                                    // SY <--
-                                    .fastForEach {
-                                        NavigationRailItem(it/* SY --> */, alwaysShowLabel/* SY <-- */)
-                                    }
+                                enabledTabs.fastForEach {
+                                    NavigationRailItem(
+                                        tab = it,
+                                        alwaysShowLabel = alwaysShowLabel,
+                                        waveDirection = navigationDirection,
+                                    )
+                                }
                             }
                         }
                     },
@@ -144,7 +172,11 @@ object HomeScreen : Screen() {
                                     animationSpec = motionScheme.fastEffectsSpec(),
                                 ),
                             ) {
-                                NovaNavigationBar(alwaysShowLabel)
+                                NovaNavigationBar(
+                                    alwaysShowLabel = alwaysShowLabel,
+                                    enabledTabs = enabledTabs,
+                                    waveDirection = navigationDirection,
+                                )
                             }
                         }
                     },
@@ -235,6 +267,7 @@ object HomeScreen : Screen() {
         // SY -->
         alwaysShowLabel: Boolean,
         // SY <--
+        waveDirection: Int,
     ) {
         val tabNavigator = LocalTabNavigator.current
         val navigator = LocalNavigator.currentOrThrow
@@ -249,7 +282,14 @@ object HomeScreen : Screen() {
                     scope.launch { tab.onReselect(navigator) }
                 }
             },
-            icon = { NavigationIconItem(tab) },
+            icon = {
+                NovaWaveNavigationIcon(
+                    selected = selected,
+                    direction = waveDirection,
+                ) {
+                    NavigationIconItem(tab)
+                }
+            },
             label = {
                 Text(
                     text = tab.options.title,
@@ -259,6 +299,13 @@ object HomeScreen : Screen() {
                 )
             },
             alwaysShowLabel = /* SY --> */alwaysShowLabel, /* SY <-- */
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = Color.Transparent,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
         )
     }
 
@@ -268,6 +315,7 @@ object HomeScreen : Screen() {
         // SY -->
         alwaysShowLabel: Boolean,
         // SY <--
+        waveDirection: Int,
     ) {
         val tabNavigator = LocalTabNavigator.current
         val navigator = LocalNavigator.currentOrThrow
@@ -282,7 +330,14 @@ object HomeScreen : Screen() {
                     scope.launch { tab.onReselect(navigator) }
                 }
             },
-            icon = { NavigationIconItem(tab) },
+            icon = {
+                NovaWaveNavigationIcon(
+                    selected = selected,
+                    direction = waveDirection,
+                ) {
+                    NavigationIconItem(tab)
+                }
+            },
             label = {
                 Text(
                     text = tab.options.title,
@@ -295,7 +350,7 @@ object HomeScreen : Screen() {
             colors = androidx.compose.material3.NavigationRailItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                indicatorColor = Color.Transparent,
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ),
@@ -303,16 +358,81 @@ object HomeScreen : Screen() {
     }
 
     @Composable
-    private fun NovaNavigationBar(alwaysShowLabel: Boolean) {
-        val enabledTabs = TABS.fastFilter { it.isEnabled() }
+    private fun NovaNavigationBar(
+        alwaysShowLabel: Boolean,
+        enabledTabs: List<eu.kanade.presentation.util.Tab>,
+        waveDirection: Int,
+    ) {
         NavigationBar(
             modifier = Modifier.fillMaxWidth(),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
             enabledTabs.fastForEach {
-                NavigationBarItem(it, alwaysShowLabel)
+                NavigationBarItem(
+                    tab = it,
+                    alwaysShowLabel = alwaysShowLabel,
+                    waveDirection = waveDirection,
+                )
             }
+        }
+    }
+
+    @Composable
+    private fun NovaWaveNavigationIcon(
+        selected: Boolean,
+        direction: Int,
+        content: @Composable () -> Unit,
+    ) {
+        val motionScheme = MaterialTheme.motionScheme
+        val waveProgress = remember { Animatable(0f) }
+        val indicatorAlpha by animateFloatAsState(
+            targetValue = if (selected) 1f else 0f,
+            animationSpec = motionScheme.fastEffectsSpec(),
+            label = "navigation_indicator_alpha",
+        )
+        val density = LocalDensity.current
+        val mainTravelPx = with(density) { 6.dp.toPx() }
+        val trailingTravelPx = with(density) { 18.dp.toPx() }
+        val indicatorColor = MaterialTheme.colorScheme.primaryContainer
+        val waveSpec = motionScheme.defaultSpatialSpec<Float>()
+
+        LaunchedEffect(selected, direction, waveSpec) {
+            if (selected && direction != 0) {
+                waveProgress.snapTo(1f)
+                waveProgress.animateTo(0f, waveSpec)
+            } else {
+                waveProgress.snapTo(0f)
+            }
+        }
+
+        Box(
+            modifier = Modifier.size(width = 64.dp, height = 32.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 64.dp, height = 32.dp)
+                    .graphicsLayer {
+                        alpha = indicatorAlpha
+                        scaleX = 1f + (waveProgress.value * 0.16f)
+                        translationX = -direction * waveProgress.value * mainTravelPx
+                    }
+                    .clip(RoundedCornerShape(50))
+                    .background(indicatorColor),
+            )
+            Box(
+                modifier = Modifier
+                    .size(14.dp)
+                    .graphicsLayer {
+                        alpha = indicatorAlpha * waveProgress.value * 0.72f
+                        scaleX = 1f + (waveProgress.value * 0.24f)
+                        translationX = -direction * waveProgress.value * trailingTravelPx
+                    }
+                    .clip(RoundedCornerShape(50))
+                    .background(indicatorColor),
+            )
+            content()
         }
     }
 

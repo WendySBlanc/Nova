@@ -40,4 +40,14 @@ class NovaDestinationContentTest {
             NovaMeQuickRoute.Settings,
         )
     }
+
+    @Test
+    fun `me settings are grouped into four stable categories`() {
+        novaMeCategories() shouldContainExactly listOf(
+            NovaMeCategory.Overview,
+            NovaMeCategory.Reading,
+            NovaMeCategory.Library,
+            NovaMeCategory.Application,
+        )
+    }
 }

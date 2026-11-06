@@ -10,6 +10,13 @@ enum class NovaLibraryShelf {
     Collections,
 }
 
+data class NovaLibraryShelfOption(
+    val shelf: NovaLibraryShelf,
+    val categoryId: Long?,
+    val label: String,
+    val count: Int,
+)
+
 fun findNovaArchiveCategory(categories: List<NovaLibraryCategory>): NovaLibraryCategory? = categories
     .asSequence()
     .filter { category -> category.name.equals(NOVA_ARCHIVE_CATEGORY_NAME, ignoreCase = true) }
@@ -18,6 +25,26 @@ fun findNovaArchiveCategory(categories: List<NovaLibraryCategory>): NovaLibraryC
 fun novaCollectionCategories(categories: List<NovaLibraryCategory>): List<NovaLibraryCategory> {
     val archiveId = findNovaArchiveCategory(categories)?.id
     return categories.filterNot { category -> category.id == archiveId }
+}
+
+fun novaLibraryShelfOptions(
+    currentCount: Int,
+    archiveCount: Int,
+    categories: List<NovaLibraryCategory>,
+    categoryCounts: Map<Long, Int>,
+): List<NovaLibraryShelfOption> = buildList {
+    add(NovaLibraryShelfOption(NovaLibraryShelf.Current, null, "En cours", currentCount))
+    add(NovaLibraryShelfOption(NovaLibraryShelf.Archive, null, "Archives", archiveCount))
+    categories.forEach { category ->
+        add(
+            NovaLibraryShelfOption(
+                shelf = NovaLibraryShelf.Collections,
+                categoryId = category.id,
+                label = category.name,
+                count = categoryCounts[category.id] ?: 0,
+            ),
+        )
+    }
 }
 
 fun filterNovaLibraryShelf(

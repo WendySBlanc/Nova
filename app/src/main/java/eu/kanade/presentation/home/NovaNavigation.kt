@@ -21,6 +21,12 @@ enum class NovaScreenMotion {
 fun resolveNovaNavigationLayout(windowWidthDp: Int): NovaNavigationLayout =
     if (windowWidthDp >= 600) NovaNavigationLayout.Rail else NovaNavigationLayout.BottomBar
 
+fun resolveNovaNavigationDirection(previousIndex: Int, currentIndex: Int): Int = when {
+    currentIndex > previousIndex -> 1
+    currentIndex < previousIndex -> -1
+    else -> 0
+}
+
 fun defaultNovaDestination(): NovaDestination = NovaDestination.Home
 
 fun resolveNovaScreenMotion(

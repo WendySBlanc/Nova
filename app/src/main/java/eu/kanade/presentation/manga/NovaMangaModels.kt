@@ -49,3 +49,14 @@ fun resolveDownloadedState(
     hasDownloadError -> NovaChapterDownloadState.Error
     else -> NovaChapterDownloadState.Remote
 }
+
+fun novaChapterHeaderSummary(
+    chapterCount: Int,
+    visibleChapterCount: Int,
+    unreadCount: Int,
+    filterActive: Boolean,
+): String = if (filterActive) {
+    "$visibleChapterCount sur $chapterCount affichés"
+} else {
+    "$chapterCount chapitres - $unreadCount à lire"
+}

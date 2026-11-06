@@ -21,6 +21,7 @@ kotlin {
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
             "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
             "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
             "-opt-in=kotlinx.coroutines.FlowPreview",
         )
@@ -37,7 +38,7 @@ dependencies {
     // Compose
     implementation(compose.activity)
     implementation(compose.foundation)
-    implementation(compose.material3.core)
+    implementation("androidx.compose.material3:material3:1.5.0-alpha10")
     implementation(compose.material.icons)
     implementation(compose.animation)
     implementation(compose.animation.graphics)

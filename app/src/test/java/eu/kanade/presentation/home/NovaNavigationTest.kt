@@ -34,6 +34,13 @@ class NovaNavigationTest {
     }
 
     @Test
+    fun `navigation wave follows destination direction`() {
+        resolveNovaNavigationDirection(previousIndex = 1, currentIndex = 4) shouldBe 1
+        resolveNovaNavigationDirection(previousIndex = 4, currentIndex = 1) shouldBe -1
+        resolveNovaNavigationDirection(previousIndex = 2, currentIndex = 2) shouldBe 0
+    }
+
+    @Test
     fun `title details use one focused transition in both directions`() {
         resolveNovaScreenMotion(
             initialIsTitleDetail = false,

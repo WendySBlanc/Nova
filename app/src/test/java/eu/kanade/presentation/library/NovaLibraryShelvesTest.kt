@@ -44,6 +44,24 @@ class NovaLibraryShelvesTest {
         ) shouldContainExactly listOf(NovaLibraryCategory(8, "Action"))
     }
 
+    @Test
+    fun `library tabs expose current archive and real categories`() {
+        novaLibraryShelfOptions(
+            currentCount = 12,
+            archiveCount = 3,
+            categories = listOf(
+                NovaLibraryCategory(8, "Action"),
+                NovaLibraryCategory(11, "A lire"),
+            ),
+            categoryCounts = mapOf(8L to 7, 11L to 2),
+        ) shouldContainExactly listOf(
+            NovaLibraryShelfOption(NovaLibraryShelf.Current, null, "En cours", 12),
+            NovaLibraryShelfOption(NovaLibraryShelf.Archive, null, "Archives", 3),
+            NovaLibraryShelfOption(NovaLibraryShelf.Collections, 8, "Action", 7),
+            NovaLibraryShelfOption(NovaLibraryShelf.Collections, 11, "A lire", 2),
+        )
+    }
+
     private fun entry(id: Long, categories: Set<Long> = emptySet()) = NovaLibraryEntry(
         id = id,
         title = "Title $id",

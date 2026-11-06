@@ -49,4 +49,21 @@ class NovaMangaModelsTest {
             hasDownloadError = false,
         ) shouldBe NovaChapterDownloadState.Downloading
     }
+
+    @Test
+    fun `chapter header summary stays compact and reflects filters`() {
+        novaChapterHeaderSummary(
+            chapterCount = 120,
+            visibleChapterCount = 120,
+            unreadCount = 7,
+            filterActive = false,
+        ) shouldBe "120 chapitres - 7 à lire"
+
+        novaChapterHeaderSummary(
+            chapterCount = 120,
+            visibleChapterCount = 18,
+            unreadCount = 7,
+            filterActive = true,
+        ) shouldBe "18 sur 120 affichés"
+    }
 }
