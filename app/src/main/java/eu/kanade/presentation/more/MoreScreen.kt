@@ -35,10 +35,9 @@ import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.ButtonGroup
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -60,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NovaVikiColors
@@ -349,13 +349,12 @@ private fun NovaQuickActions(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
-        ButtonGroup(
-            overflowIndicator = { menuState ->
-                ButtonGroupDefaults.OverflowIndicator(menuState)
-            },
+        Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            clickableItem(
+            NovaQuickAction(
+                modifier = Modifier.weight(1f),
                 onClick = onClickDownloadQueue,
                 label = "T\u00e9l\u00e9chargements",
                 icon = {
@@ -380,7 +379,8 @@ private fun NovaQuickActions(
                     }
                 },
             )
-            clickableItem(
+            NovaQuickAction(
+                modifier = Modifier.weight(1f),
                 onClick = onClickStats,
                 label = "Statistiques",
                 icon = {
@@ -391,7 +391,13 @@ private fun NovaQuickActions(
                     )
                 },
             )
-            clickableItem(
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NovaQuickAction(
+                modifier = Modifier.weight(1f),
                 onClick = onClickCategories,
                 label = "Cat\u00e9gories",
                 icon = {
@@ -402,7 +408,8 @@ private fun NovaQuickActions(
                     )
                 },
             )
-            clickableItem(
+            NovaQuickAction(
+                modifier = Modifier.weight(1f),
                 onClick = onClickSettings,
                 label = "Param\u00e8tres",
                 icon = {
@@ -428,6 +435,31 @@ private fun NovaQuickActions(
                 modifier = Modifier.animateContentSize(
                     animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
                 ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NovaQuickAction(
+    modifier: Modifier,
+    onClick: () -> Unit,
+    label: String,
+    icon: @Composable () -> Unit,
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            icon()
+            Text(
+                text = label,
+                textAlign = TextAlign.Center,
             )
         }
     }
