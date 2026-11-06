@@ -2,7 +2,6 @@ package eu.kanade.presentation.manga.components
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -395,7 +394,9 @@ fun ExpandableMangaDescription(
                 modifier = Modifier
                     .padding(top = 8.dp)
                     .padding(vertical = 12.dp)
-                    .animateContentSize(animationSpec = spring())
+                    .animateContentSize(
+                        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                    )
                     .fillMaxWidth(),
             ) {
                 var showMenu by remember { mutableStateOf(false) }
@@ -929,6 +930,7 @@ private fun MangaSummary(
     val loadImages = remember { preferences.imagesInDescription().get() }
     val animProgress by animateFloatAsState(
         targetValue = if (expanded) 1f else 0f,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "summary",
     )
     var infoHeight by remember { mutableIntStateOf(0) }

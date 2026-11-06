@@ -1,10 +1,10 @@
 package eu.kanade.presentation.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
@@ -24,6 +24,7 @@ fun NavigatorAdaptiveSheet(
     enableSwipeDismiss: (Navigator) -> Boolean = { true },
     onDismissRequest: () -> Unit,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     Navigator(
         screen = screen,
         content = { sheetNavigator ->
@@ -34,8 +35,8 @@ fun NavigatorAdaptiveSheet(
                 ScreenTransition(
                     navigator = sheetNavigator,
                     transition = {
-                        fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
-                            fadeOut(animationSpec = tween(90))
+                        fadeIn(animationSpec = motionScheme.fastEffectsSpec()) togetherWith
+                            fadeOut(animationSpec = motionScheme.fastEffectsSpec())
                     },
                 )
 

@@ -1,9 +1,7 @@
 package eu.kanade.presentation.library.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -260,6 +258,7 @@ fun NovaVikiLibraryScreen(
                 val splitLayout = novaSpatialLibraryLayout(maxWidth.value.toInt()) == NovaSpatialLibraryLayout.Split
                 val dividerColor by animateColorAsState(
                     targetValue = if (hasScrolled || splitLayout) NovaVikiColors.Outline else Color.Transparent,
+                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
                     label = "library_controls_divider",
                 )
                 val selectShelf: (NovaLibraryShelf) -> Unit = { shelf ->
@@ -499,6 +498,7 @@ private fun NovaLibraryControlBand(
 ) {
     val background by animateColorAsState(
         targetValue = if (elevated) NovaVikiColors.Surface else NovaVikiColors.Background,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "library_controls_background",
     )
     BoxWithConstraints(
@@ -901,10 +901,7 @@ private fun NovaLibraryGridCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.985f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "library_card_scale",
     )
     val progressPercent = item.progress

@@ -1,12 +1,10 @@
 package eu.kanade.presentation.reader.appbars
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,28 +16,20 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.reader.MangaTranslationProgress
 import eu.kanade.presentation.reader.MangaTranslationUiModel
-import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.presentation.theme.NovaVikiColors
-import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.lnreader.LnReaderWebViewViewer
 import kotlinx.collections.immutable.ImmutableSet
-
-private val readerBarsSlideAnimationSpec = tween<IntOffset>(NovaSignalMotion.Control)
-private val readerBarsFadeAnimationSpec = tween<Float>(NovaSignalMotion.Feedback)
 
 // SY -->
 enum class NavBarType {
@@ -109,29 +99,23 @@ fun ReaderAppBars(
     // SY <--
 ) {
     val backgroundColor = NovaVikiColors.Surface.copy(alpha = 0.97f)
+    val motionScheme = MaterialTheme.motionScheme
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxHeight()) {
             AnimatedVisibility(
                 visible = visible,
-                enter = slideInVertically(initialOffsetY = { -it }, animationSpec = readerBarsSlideAnimationSpec) +
-                    fadeIn(animationSpec = readerBarsFadeAnimationSpec),
-                exit = slideOutVertically(targetOffsetY = { -it }, animationSpec = readerBarsSlideAnimationSpec) +
-                    fadeOut(animationSpec = readerBarsFadeAnimationSpec),
+                enter = slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                ) + fadeIn(animationSpec = motionScheme.fastEffectsSpec()),
+                exit = slideOutVertically(
+                    targetOffsetY = { -it },
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
             ) {
                 Column {
                     ReaderTopBar(
-                        modifier = Modifier
-                            .novaSpatialBackdrop(
-                                background = backgroundColor,
-                                primary = NovaVikiColors.Accent,
-                                secondary = NovaVikiColors.AccentWarm,
-                                tertiary = NovaVikiColors.AccentGold,
-                                wireColor = NovaVikiColors.OutlineStrong,
-                                wireAlpha = 0.055f,
-                                planeAlpha = 0.02f,
-                                showMark = false,
-                            ),
                         mangaTitle = mangaTitle,
                         chapterTitle = chapterTitle,
                         navigateUp = navigateUp,
@@ -176,10 +160,14 @@ fun ReaderAppBars(
 
             AnimatedVisibility(
                 visible = visible,
-                enter = slideInVertically(initialOffsetY = { it }, animationSpec = readerBarsSlideAnimationSpec) +
-                    fadeIn(animationSpec = readerBarsFadeAnimationSpec),
-                exit = slideOutVertically(targetOffsetY = { it }, animationSpec = readerBarsSlideAnimationSpec) +
-                    fadeOut(animationSpec = readerBarsFadeAnimationSpec),
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                ) + fadeIn(animationSpec = motionScheme.fastEffectsSpec()),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
             ) {
                 Box(
                     modifier = Modifier
@@ -188,36 +176,24 @@ fun ReaderAppBars(
                         .windowInsetsPadding(WindowInsets.navigationBars),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Surface(
+                    ReaderBottomBar(
                         modifier = Modifier
                             .widthIn(max = 680.dp)
-                            .fillMaxWidth()
-                            .border(
-                                width = 1.dp,
-                                color = NovaVikiColors.Accent.copy(alpha = 0.38f),
-                                shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
-                            ),
-                        shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
-                        color = backgroundColor,
-                        shadowElevation = 0.dp,
-                        tonalElevation = 0.dp,
-                    ) {
-                        ReaderBottomBar(
-                            onPreviousChapter = onPreviousChapter,
-                            enabledPrevious = enabledPrevious,
-                            onClickScrollToTop = onClickScrollToTop,
-                            onClickChapterList = onClickChapterList,
-                            onClickSettings = onClickSettings,
-                            onNextChapter = onNextChapter,
-                            enabledNext = enabledNext,
-                            currentPage = currentPage,
-                            currentPageText = currentPageText,
-                            totalPages = totalPages,
-                            isTextReader = viewer is LnReaderWebViewViewer,
-                            showProgressSlider = true,
-                            onPageIndexChange = onPageIndexChange,
-                        )
-                    }
+                            .fillMaxWidth(),
+                        onPreviousChapter = onPreviousChapter,
+                        enabledPrevious = enabledPrevious,
+                        onClickScrollToTop = onClickScrollToTop,
+                        onClickChapterList = onClickChapterList,
+                        onClickSettings = onClickSettings,
+                        onNextChapter = onNextChapter,
+                        enabledNext = enabledNext,
+                        currentPage = currentPage,
+                        currentPageText = currentPageText,
+                        totalPages = totalPages,
+                        isTextReader = viewer is LnReaderWebViewViewer,
+                        showProgressSlider = true,
+                        onPageIndexChange = onPageIndexChange,
+                    )
                 }
             }
         }

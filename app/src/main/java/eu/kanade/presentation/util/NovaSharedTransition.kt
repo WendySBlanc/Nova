@@ -6,13 +6,13 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
@@ -47,13 +47,6 @@ internal val LocalNovaAnimatedVisibilityScope = compositionLocalOf<AnimatedVisib
 
 private data class NovaMangaArtworkKey(val mangaId: Long)
 
-private val MangaArtworkBoundsTransform = BoundsTransform { _, _ ->
-    spring(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMediumLow,
-    )
-}
-
 @Composable
 fun Modifier.novaMangaSharedArtwork(
     mangaId: Long,
@@ -62,6 +55,10 @@ fun Modifier.novaMangaSharedArtwork(
     if (!enabled) return this
     val sharedScope = LocalNovaSharedTransitionScope.current ?: return this
     val visibilityScope = LocalNovaAnimatedVisibilityScope.current ?: return this
+    val motionScheme = MaterialTheme.motionScheme
+    val artworkBoundsTransform = remember(motionScheme) {
+        BoundsTransform { _, _ -> motionScheme.slowSpatialSpec() }
+    }
 
     return with(sharedScope) {
         this@novaMangaSharedArtwork.sharedBounds(
@@ -69,7 +66,7 @@ fun Modifier.novaMangaSharedArtwork(
                 key = NovaMangaArtworkKey(mangaId),
             ),
             animatedVisibilityScope = visibilityScope,
-            boundsTransform = MangaArtworkBoundsTransform,
+            boundsTransform = artworkBoundsTransform,
         )
     }
 }

@@ -1,3 +1,5 @@
+@file:Suppress("PropertyName")
+
 package eu.kanade.presentation.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -7,31 +9,26 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object NovaSignalDimensions {
     val SmallCorner = 4.dp
-    val ContentCorner = 6.dp
-    val ControlCorner = 8.dp
+    val ContentCorner = 8.dp
+    val ControlCorner = 12.dp
+    val LargeCorner = 16.dp
+    val ExtraLargeCorner = 28.dp
     val MinimumTouchTarget = 48.dp
     val CompactHorizontalPadding = 16.dp
     val ExpandedHorizontalPadding = 24.dp
     val ListRowMinHeight = 64.dp
-    val NavigationBarHeight = 64.dp
+    val NavigationBarHeight = 80.dp
     val SectionSpacing = 24.dp
     val CompactContentMaxWidth = 760.dp
     val WideContentMaxWidth = 1200.dp
     val GridContentMaxWidth = 1440.dp
     val SignalRailWidth = 3.dp
-}
-
-object NovaSignalMotion {
-    const val Feedback = 90
-    const val Control = 160
-    const val Content = 220
 }
 
 enum class NovaSignalStatus(
@@ -50,8 +47,8 @@ val NovaSignalShapes = Shapes(
     extraSmall = RoundedCornerShape(NovaSignalDimensions.SmallCorner),
     small = RoundedCornerShape(NovaSignalDimensions.ContentCorner),
     medium = RoundedCornerShape(NovaSignalDimensions.ControlCorner),
-    large = RoundedCornerShape(NovaSignalDimensions.ControlCorner),
-    extraLarge = RoundedCornerShape(NovaSignalDimensions.ControlCorner),
+    large = RoundedCornerShape(NovaSignalDimensions.LargeCorner),
+    extraLarge = RoundedCornerShape(NovaSignalDimensions.ExtraLargeCorner),
 )
 
 private val DefaultTypography = Typography()
@@ -115,21 +112,18 @@ val NovaSignalTypography = Typography(
         letterSpacing = 0.sp,
     ),
     labelLarge = DefaultTypography.labelLarge.copy(
-        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.sp,
     ),
     labelMedium = DefaultTypography.labelMedium.copy(
-        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.sp,
     ),
     labelSmall = DefaultTypography.labelSmall.copy(
-        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,

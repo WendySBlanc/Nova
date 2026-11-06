@@ -1,5 +1,6 @@
 package eu.kanade.presentation.manga
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -32,28 +33,53 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.RemoveDone
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.SwapCalls
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.FloatingActionButtonMenuScope
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +95,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -80,7 +107,6 @@ import coil3.compose.AsyncImage
 import eu.kanade.domain.manga.model.PagePreview
 import eu.kanade.presentation.components.DownloadDropdownMenu
 import eu.kanade.presentation.components.DropdownMenu
-import eu.kanade.presentation.components.novaHollowPacket
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
@@ -187,8 +213,25 @@ fun NovaMangaScreen(
             tertiaryAccent = tertiaryAccent,
         )
     }
+    var fabMenuExpanded by rememberSaveable(state.manga.id) { mutableStateOf(false) }
+    BackHandler(enabled = fabMenuExpanded) {
+        fabMenuExpanded = false
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            NovaMangaFabMenu(
+                expanded = fabMenuExpanded,
+                onExpandedChange = { fabMenuExpanded = it },
+                onWebViewClicked = onWebViewClicked,
+                onShareClicked = onShareClicked,
+                onTrackingClicked = onTrackingClicked,
+                onEditCategoryClicked = onEditCategoryClicked,
+                onMigrateClicked = onMigrateClicked,
+                onEditNotesClicked = onEditNotesClicked,
+                onSourceSettingsClicked = onSourceSettingsClicked,
+            )
+        },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
     ) { contentPadding ->
         PullRefresh(
@@ -216,7 +259,7 @@ fun NovaMangaScreen(
                     modifier = Modifier
                         .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
                         .fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 20.dp),
+                    contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding() + 112.dp),
                 ) {
                     item(contentType = "manga_hero") {
                         NovaMangaHero(
@@ -226,13 +269,6 @@ fun NovaMangaScreen(
                             navigateUp = navigateUp,
                             onContinueReading = onContinueReading,
                             onAddToLibraryClicked = onAddToLibraryClicked,
-                            onWebViewClicked = onWebViewClicked,
-                            onShareClicked = onShareClicked,
-                            onTrackingClicked = onTrackingClicked,
-                            onMigrateClicked = onMigrateClicked,
-                            onEditCategoryClicked = onEditCategoryClicked,
-                            onEditNotesClicked = onEditNotesClicked,
-                            onSourceSettingsClicked = onSourceSettingsClicked,
                             onTitleSearch = onTitleSearch,
                             onSourceSearch = onSourceSearch,
                             coverGradient = coverGradient,
@@ -261,7 +297,6 @@ fun NovaMangaScreen(
                             }.takeIf {
                                 allChapters.any { it.chapter.read || it.chapter.lastPageRead > 0L }
                             },
-                            coverGradient = coverGradient,
                         )
                     }
                     if (chapters.isEmpty()) {
@@ -327,13 +362,6 @@ private fun NovaMangaHero(
     navigateUp: () -> Unit,
     onContinueReading: () -> Unit,
     onAddToLibraryClicked: () -> Unit,
-    onWebViewClicked: (() -> Unit)?,
-    onShareClicked: (() -> Unit)?,
-    onTrackingClicked: () -> Unit,
-    onMigrateClicked: (() -> Unit)?,
-    onEditCategoryClicked: (() -> Unit)?,
-    onEditNotesClicked: () -> Unit,
-    onSourceSettingsClicked: (() -> Unit)?,
     onTitleSearch: (String) -> Unit,
     onSourceSearch: (String) -> Unit,
     coverGradient: NovaCoverGradientPalette,
@@ -356,7 +384,7 @@ private fun NovaMangaHero(
             hasPageProgress = hasStartedReading,
         )
     }
-    var moreActionsExpanded by remember { mutableStateOf(false) }
+    val motionScheme = MaterialTheme.motionScheme
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -381,15 +409,11 @@ private fun NovaMangaHero(
         val posterHeight = posterWidth * 1.5f
         val topBarHeight = if (compact) 50.dp else 56.dp
         val topButtonSize = NovaVikiDimensions.MinimumTouchTarget
-        val topButtonModifier = Modifier
-            .size(topButtonSize)
-            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-            .background(NovaVikiColors.Surface.copy(alpha = 0.78f))
-            .border(
-                1.dp,
-                NovaVikiColors.OutlineStrong.copy(alpha = 0.8f),
-                RoundedCornerShape(NovaVikiDimensions.CardCorner),
-            )
+        val topButtonModifier = Modifier.size(topButtonSize)
+        val topButtonColors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f),
+            contentColor = Color.White,
+        )
         val titleStyle = if (tablet) {
             MaterialTheme.typography.headlineMedium
         } else {
@@ -444,9 +468,10 @@ private fun NovaMangaHero(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
+                FilledIconButton(
                     onClick = navigateUp,
                     modifier = topButtonModifier,
+                    colors = topButtonColors,
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -455,51 +480,6 @@ private fun NovaMangaHero(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                Box {
-                    DropdownMenu(
-                        expanded = moreActionsExpanded,
-                        onDismissRequest = { moreActionsExpanded = false },
-                    ) {
-                        onWebViewClicked?.let { action ->
-                            NovaMangaActionItem(
-                                stringResource(MR.strings.action_open_in_web_view),
-                                action,
-                            ) { moreActionsExpanded = false }
-                        }
-                        onShareClicked?.let { action ->
-                            NovaMangaActionItem(stringResource(MR.strings.action_share), action) {
-                                moreActionsExpanded = false
-                            }
-                        }
-                        NovaMangaActionItem("Suivi", onTrackingClicked) { moreActionsExpanded = false }
-                        onEditCategoryClicked?.let { action ->
-                            NovaMangaActionItem("Catégories", action) { moreActionsExpanded = false }
-                        }
-                        onMigrateClicked?.let { action ->
-                            NovaMangaActionItem(stringResource(MR.strings.action_migrate), action) {
-                                moreActionsExpanded = false
-                            }
-                        }
-                        NovaMangaActionItem(stringResource(MR.strings.action_edit_notes), onEditNotesClicked) {
-                            moreActionsExpanded = false
-                        }
-                        onSourceSettingsClicked?.let { action ->
-                            NovaMangaActionItem(stringResource(MR.strings.source_settings), action) {
-                                moreActionsExpanded = false
-                            }
-                        }
-                    }
-                    IconButton(
-                        onClick = { moreActionsExpanded = true },
-                        modifier = topButtonModifier,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.MoreVert,
-                            contentDescription = "Plus d'actions",
-                            tint = Color.White,
-                        )
-                    }
-                }
             }
             Row(
                 modifier = Modifier
@@ -582,7 +562,6 @@ private fun NovaMangaHero(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             onClick = onContinueReading,
-                            shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(NovaVikiDimensions.MinimumTouchTarget),
@@ -590,7 +569,13 @@ private fun NovaMangaHero(
                             Icon(Icons.Filled.PlayArrow, contentDescription = null)
                             AnimatedContent(
                                 targetState = primaryReadAction,
-                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                transitionSpec = {
+                                    fadeIn(
+                                        animationSpec = motionScheme.fastEffectsSpec(),
+                                    ) togetherWith fadeOut(
+                                        animationSpec = motionScheme.fastEffectsSpec(),
+                                    )
+                                },
                                 label = "primary-read-action",
                             ) { action ->
                                 Text(
@@ -601,15 +586,16 @@ private fun NovaMangaHero(
                                     },
                                     modifier = Modifier
                                         .padding(start = 6.dp)
-                                        .animateContentSize(),
+                                        .animateContentSize(
+                                            animationSpec = motionScheme.fastSpatialSpec(),
+                                        ),
                                     fontWeight = FontWeight.Black,
                                     maxLines = 1,
                                 )
                             }
                         }
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = onAddToLibraryClicked,
-                            shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(NovaVikiDimensions.MinimumTouchTarget),
@@ -617,12 +603,10 @@ private fun NovaMangaHero(
                             Icon(
                                 imageVector = if (manga.favorite) Icons.Filled.Bookmark else Icons.Outlined.BookmarkAdd,
                                 contentDescription = null,
-                                tint = NovaVikiColors.TextPrimary,
                             )
                             Text(
-                                text = if (manga.favorite) "Ajoute" else "Ajouter",
+                                text = if (manga.favorite) "Ajout\u00e9" else "Ajouter",
                                 modifier = Modifier.padding(start = 6.dp),
-                                color = NovaVikiColors.TextPrimary,
                                 fontWeight = FontWeight.Black,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -636,13 +620,119 @@ private fun NovaMangaHero(
 }
 
 @Composable
-private fun NovaMangaActionItem(
+private fun NovaMangaFabMenu(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onWebViewClicked: (() -> Unit)?,
+    onShareClicked: (() -> Unit)?,
+    onTrackingClicked: () -> Unit,
+    onEditCategoryClicked: (() -> Unit)?,
+    onMigrateClicked: (() -> Unit)?,
+    onEditNotesClicked: () -> Unit,
+    onSourceSettingsClicked: (() -> Unit)?,
+) {
+    FloatingActionButtonMenu(
+        expanded = expanded,
+        button = {
+            TooltipBox(
+                positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+                tooltip = {
+                    PlainTooltip {
+                        Text("Actions de l'œuvre")
+                    }
+                },
+                state = rememberTooltipState(),
+                focusable = false,
+            ) {
+                ToggleFloatingActionButton(
+                    checked = expanded,
+                    onCheckedChange = onExpandedChange,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Actions de l'œuvre"
+                        stateDescription = if (expanded) "Menu ouvert" else "Menu fermé"
+                    },
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Outlined.Close else Icons.Outlined.MoreVert,
+                        contentDescription = null,
+                        modifier = with(ToggleFloatingActionButtonDefaults) {
+                            Modifier.animateIcon(checkedProgress = { checkedProgress })
+                        },
+                    )
+                }
+            }
+        },
+    ) {
+        onWebViewClicked?.let { action ->
+            NovaMangaFabMenuItem(
+                label = stringResource(MR.strings.action_open_in_web_view),
+                icon = Icons.Outlined.Public,
+                action = action,
+                dismiss = { onExpandedChange(false) },
+            )
+        }
+        onShareClicked?.let { action ->
+            NovaMangaFabMenuItem(
+                label = stringResource(MR.strings.action_share),
+                icon = Icons.Outlined.Share,
+                action = action,
+                dismiss = { onExpandedChange(false) },
+            )
+        }
+        NovaMangaFabMenuItem(
+            label = "Suivi",
+            icon = Icons.Outlined.Sync,
+            action = onTrackingClicked,
+            dismiss = { onExpandedChange(false) },
+        )
+        onEditCategoryClicked?.let { action ->
+            NovaMangaFabMenuItem(
+                label = "Catégories",
+                icon = Icons.AutoMirrored.Outlined.Label,
+                action = action,
+                dismiss = { onExpandedChange(false) },
+            )
+        }
+        onMigrateClicked?.let { action ->
+            NovaMangaFabMenuItem(
+                label = stringResource(MR.strings.action_migrate),
+                icon = Icons.Outlined.SwapCalls,
+                action = action,
+                dismiss = { onExpandedChange(false) },
+            )
+        }
+        NovaMangaFabMenuItem(
+            label = stringResource(MR.strings.action_edit_notes),
+            icon = Icons.Filled.EditNote,
+            action = onEditNotesClicked,
+            dismiss = { onExpandedChange(false) },
+        )
+        onSourceSettingsClicked?.let { action ->
+            NovaMangaFabMenuItem(
+                label = stringResource(MR.strings.source_settings),
+                icon = Icons.Outlined.Settings,
+                action = action,
+                dismiss = { onExpandedChange(false) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FloatingActionButtonMenuScope.NovaMangaFabMenuItem(
     label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     action: () -> Unit,
     dismiss: () -> Unit,
 ) {
-    DropdownMenuItem(
+    FloatingActionButtonMenuItem(
         text = { Text(label) },
+        icon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+            )
+        },
         onClick = {
             dismiss()
             action()
@@ -717,132 +807,141 @@ private fun NovaMangaTabs(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onMarkAllReadClicked: (() -> Unit)?,
     onMarkAllUnreadClicked: (() -> Unit)?,
-    coverGradient: NovaCoverGradientPalette,
 ) {
     var downloadExpanded by remember { mutableStateOf(false) }
     var readStatusExpanded by remember { mutableStateOf(false) }
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .novaSpatialBackdrop(
-                background = NovaVikiColors.SurfaceRaised,
-                primary = coverGradient.primary,
-                secondary = coverGradient.secondary,
-                tertiary = coverGradient.tertiary,
-                wireColor = coverGradient.outline,
-                wireAlpha = 0.08f,
-                planeAlpha = 0.06f,
-                colorIntensity = 2.8f,
-                showMark = false,
-            )
-            .novaHollowPacket(
-                background = NovaVikiColors.SurfaceRaised.copy(alpha = 0.76f),
-                outline = coverGradient.outline,
-                accent = coverGradient.primary,
-                secondary = coverGradient.secondary,
-                particleCount = 8,
-            )
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Chapitres",
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-            )
-            Text(
-                text = if (filterActive) {
-                    "$visibleChapterCount affichés sur $chapterCount"
-                } else {
-                    "$chapterCount au total | $unreadCount à lire"
-                },
-                color = NovaVikiColors.TextSecondary,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (onDownloadActionClicked != null) {
-            Box {
-                DownloadDropdownMenu(
-                    expanded = downloadExpanded,
-                    onDismissRequest = { downloadExpanded = false },
-                    onDownloadClicked = onDownloadActionClicked,
-                    actionCounts = downloadActionCounts,
+        ListItem(
+            modifier = Modifier.fillMaxWidth(),
+            headlineContent = {
+                Text(
+                    text = "Chapitres",
+                    color = NovaVikiColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
                 )
-                IconButton(
-                    onClick = { downloadExpanded = true },
-                    modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Download,
-                        contentDescription = "Télécharger des chapitres",
-                        tint = NovaVikiColors.TextPrimary,
-                    )
-                }
-            }
-        }
-        if (onMarkAllReadClicked != null || onMarkAllUnreadClicked != null) {
-            Box {
-                DropdownMenu(
-                    expanded = readStatusExpanded,
-                    onDismissRequest = { readStatusExpanded = false },
-                ) {
-                    if (onMarkAllReadClicked != null) {
-                        DropdownMenuItem(
-                            text = { Text("Tout marquer comme lu") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.DoneAll,
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                readStatusExpanded = false
-                                onMarkAllReadClicked()
-                            },
-                        )
-                    }
-                    if (onMarkAllUnreadClicked != null) {
-                        DropdownMenuItem(
-                            text = { Text("Tout marquer comme non lu") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.RemoveDone,
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                readStatusExpanded = false
-                                onMarkAllUnreadClicked()
-                            },
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = { readStatusExpanded = true },
-                    modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.DoneAll,
-                        contentDescription = "Modifier l'état de lecture",
-                        tint = NovaVikiColors.TextPrimary,
-                    )
-                }
-            }
-        }
-        IconButton(
-            onClick = onFilterClicked,
-            modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+            },
+            supportingContent = {
+                Text(
+                    text = if (filterActive) {
+                        "$visibleChapterCount affichés sur $chapterCount"
+                    } else {
+                        "$chapterCount au total | $unreadCount à lire"
+                    },
+                    color = NovaVikiColors.TextSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+            ),
+        )
+        HorizontalFloatingToolbar(
+            expanded = true,
+            modifier = Modifier
+                .align(Alignment.End)
+                .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp),
         ) {
-            Icon(
-                imageVector = Icons.Outlined.FilterList,
-                contentDescription = "Filtrer les chapitres",
-                tint = if (filterActive) NovaVikiColors.Accent else NovaVikiColors.TextPrimary,
-            )
+            if (onDownloadActionClicked != null) {
+                Box {
+                    DownloadDropdownMenu(
+                        expanded = downloadExpanded,
+                        onDismissRequest = { downloadExpanded = false },
+                        onDownloadClicked = onDownloadActionClicked,
+                        actionCounts = downloadActionCounts,
+                    )
+                    FilledTonalIconButton(
+                        onClick = { downloadExpanded = true },
+                        modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Download,
+                            contentDescription = "Télécharger des chapitres",
+                        )
+                    }
+                }
+            }
+            if (onMarkAllReadClicked != null || onMarkAllUnreadClicked != null) {
+                Box {
+                    DropdownMenu(
+                        expanded = readStatusExpanded,
+                        onDismissRequest = { readStatusExpanded = false },
+                    ) {
+                        if (onMarkAllReadClicked != null) {
+                            DropdownMenuItem(
+                                text = { Text("Tout marquer comme lu") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.DoneAll,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    readStatusExpanded = false
+                                    onMarkAllReadClicked()
+                                },
+                            )
+                        }
+                        if (onMarkAllUnreadClicked != null) {
+                            DropdownMenuItem(
+                                text = { Text("Tout marquer comme non lu") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.RemoveDone,
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    readStatusExpanded = false
+                                    onMarkAllUnreadClicked()
+                                },
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { readStatusExpanded = true },
+                        modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.DoneAll,
+                            contentDescription = "Modifier l'état de lecture",
+                            tint = NovaVikiColors.TextPrimary,
+                        )
+                    }
+                }
+            }
+            IconButton(
+                onClick = onFilterClicked,
+                modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = if (filterActive) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                    contentColor = if (filterActive) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        NovaVikiColors.TextPrimary
+                    },
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FilterList,
+                    contentDescription = "Filtrer les chapitres",
+                )
+            }
         }
     }
 }

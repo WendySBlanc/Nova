@@ -5,7 +5,13 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -22,7 +28,6 @@ import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.transitions.ScreenTransitionContent
 import eu.kanade.presentation.home.NovaScreenMotion
 import eu.kanade.presentation.home.resolveNovaScreenMotion
-import eu.kanade.presentation.theme.NovaSignalMotion
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -32,10 +37,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.plus
 import logcat.LogPriority
 import logcat.logcat
-import soup.compose.material.motion.animation.materialFadeThroughIn
-import soup.compose.material.motion.animation.materialFadeThroughOut
-import soup.compose.material.motion.animation.materialSharedAxisX
-import soup.compose.material.motion.animation.rememberSlideDistance
 
 /**
  * For invoking back press to the parent activity
@@ -78,13 +79,25 @@ fun DefaultNavigatorScreenTransition(
     navigator: Navigator,
     modifier: Modifier = Modifier,
 ) {
-    val slideDistance = rememberSlideDistance()
+    val motionScheme = MaterialTheme.motionScheme
     ScreenTransition(
         navigator = navigator,
         transition = {
-            materialSharedAxisX(
-                forward = navigator.lastEvent != StackEvent.Pop,
-                slideDistance = slideDistance,
+            val direction = if (navigator.lastEvent != StackEvent.Pop) {
+                AnimatedContentTransitionScope.SlideDirection.Left
+            } else {
+                AnimatedContentTransitionScope.SlideDirection.Right
+            }
+            slideIntoContainer(
+                towards = direction,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+            ) + fadeIn(
+                animationSpec = motionScheme.defaultEffectsSpec(),
+            ) togetherWith slideOutOfContainer(
+                towards = direction,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+            ) + fadeOut(
+                animationSpec = motionScheme.defaultEffectsSpec(),
             )
         },
         modifier = modifier,
@@ -100,6 +113,7 @@ fun ScreenTransition(
     content: ScreenTransitionContent = { it.Content() },
 ) {
     val sharedTransitionState = remember { NovaSharedTransitionState() }
+    val motionScheme = MaterialTheme.motionScheme
     SharedTransitionLayout(modifier = modifier) {
         CompositionLocalProvider(
             LocalNovaSharedTransitionScope provides this@SharedTransitionLayout,
@@ -114,7 +128,7 @@ fun ScreenTransition(
                             targetIsTitleDetail = targetState is NovaTitleDetailScreen,
                         )
                     ) {
-                        NovaScreenMotion.TitleDetail -> titleDetailTransform()
+                        NovaScreenMotion.TitleDetail -> titleDetailTransform(motionScheme)
                         NovaScreenMotion.SharedAxis -> transition()
                     }
                 },
@@ -135,8 +149,17 @@ fun ScreenTransition(
     }
 }
 
-private fun AnimatedContentTransitionScope<Screen>.titleDetailTransform(): ContentTransform =
-    materialFadeThroughIn(
-        initialScale = 1f,
-        durationMillis = NovaSignalMotion.Content,
-    ) togetherWith materialFadeThroughOut(durationMillis = NovaSignalMotion.Content)
+private fun AnimatedContentTransitionScope<Screen>.titleDetailTransform(
+    motionScheme: MotionScheme,
+): ContentTransform =
+    fadeIn(
+        animationSpec = motionScheme.slowEffectsSpec(),
+    ) + scaleIn(
+        initialScale = 0.94f,
+        animationSpec = motionScheme.slowSpatialSpec(),
+    ) togetherWith fadeOut(
+        animationSpec = motionScheme.slowEffectsSpec(),
+    ) + scaleOut(
+        targetScale = 0.98f,
+        animationSpec = motionScheme.slowSpatialSpec(),
+    )

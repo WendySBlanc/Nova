@@ -11,20 +11,16 @@ import org.junit.jupiter.api.Test
 class NovaSignalThemeTest {
 
     @Test
-    fun `shape spacing and touch tokens match the Nova Signal contract`() {
+    fun `shape spacing and touch tokens follow the Material 3 contract`() {
         NovaSignalDimensions.SmallCorner shouldBe 4.dp
-        NovaSignalDimensions.ContentCorner shouldBe 6.dp
-        NovaSignalDimensions.ControlCorner shouldBe 8.dp
+        NovaSignalDimensions.ContentCorner shouldBe 8.dp
+        NovaSignalDimensions.ControlCorner shouldBe 12.dp
+        NovaSignalDimensions.LargeCorner shouldBe 16.dp
+        NovaSignalDimensions.ExtraLargeCorner shouldBe 28.dp
         NovaSignalDimensions.MinimumTouchTarget shouldBe 48.dp
+        NovaSignalDimensions.NavigationBarHeight shouldBe 80.dp
         NovaSignalDimensions.CompactHorizontalPadding shouldBe 16.dp
         NovaSignalDimensions.ExpandedHorizontalPadding shouldBe 24.dp
-    }
-
-    @Test
-    fun `motion durations keep feedback fast and content transitions calm`() {
-        NovaSignalMotion.Feedback shouldBe 90
-        NovaSignalMotion.Control shouldBe 160
-        NovaSignalMotion.Content shouldBe 220
     }
 
     @Test

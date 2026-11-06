@@ -2,7 +2,6 @@ package eu.kanade.presentation.more.settings.widget
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -183,7 +182,7 @@ internal fun ThemeColorPickerWidget(
                         containerColor = animateColorAsState(
                             label = "animateColorAsState",
                             targetValue = MaterialTheme.colorScheme.primary,
-                            animationSpec = tween(durationMillis = 500),
+                            animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
                         ).value,
                     ),
                     interactionSource = interactionSource,

@@ -1,9 +1,7 @@
 package eu.kanade.presentation.library.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,8 +42,11 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -239,82 +240,42 @@ internal fun NovaVikiSearchHeader(
     subtitle: String? = null,
     onSearch: () -> Unit,
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .novaSpatialBackdrop(
-                background = NovaVikiColors.Background,
-                primary = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                tertiary = NovaVikiColors.AccentGold,
-                wireColor = NovaVikiColors.OutlineStrong,
-                wireAlpha = 0.06f,
-            ),
-    ) {
-        val compact = maxWidth < 360.dp
-        Row(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
-                .fillMaxWidth()
-                .height(
-                    when {
-                        subtitle != null && compact -> 62.dp
-                        subtitle != null -> 68.dp
-                        compact -> 54.dp
-                        else -> 58.dp
-                    },
-                )
-                .padding(horizontal = if (compact) 10.dp else 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "NOVA / INDEX",
-                    color = NovaVikiColors.Accent,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
+    TopAppBar(
+        title = {
+            Column {
                 Text(
                     text = title,
-                    color = NovaVikiColors.TextPrimary,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (subtitle != null) {
+                subtitle?.let {
                     Text(
-                        text = subtitle,
-                        color = NovaVikiColors.TextSecondary,
-                        style = MaterialTheme.typography.labelSmall,
+                        text = it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Row(
-                modifier = Modifier
-                    .size(NovaVikiDimensions.MinimumTouchTarget)
-                    .novaGlassSurface(
-                        color = NovaVikiColors.SurfaceStrong,
-                        outline = NovaVikiColors.Accent.copy(alpha = 0.52f),
-                        corner = NovaVikiDimensions.CardCorner,
-                    )
-                    .clickable(role = Role.Button, onClick = onSearch),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        },
+        actions = {
+            IconButton(onClick = onSearch) {
                 Icon(
                     imageVector = Icons.Outlined.Search,
                     contentDescription = stringResource(MR.strings.action_search),
-                    tint = NovaVikiColors.TextPrimary,
-                    modifier = Modifier.size(20.dp),
                 )
             }
-        }
-    }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    )
 }
 
 @Composable
@@ -797,10 +758,7 @@ private fun NovaSpatialPosterCard(
     val pressed by interactionSource.collectIsPressedAsState()
     val cardScale by animateFloatAsState(
         targetValue = if (pressed) 0.975f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "home_spatial_card_scale",
     )
     val readingState = when {

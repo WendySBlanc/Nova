@@ -3,7 +3,6 @@ package eu.kanade.presentation.manga.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -84,10 +83,17 @@ fun MangaBottomActionMenu(
     onDownloadClicked: (() -> Unit)? = null,
     onDeleteClicked: (() -> Unit)? = null,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     AnimatedVisibility(
         visible = visible,
-        enter = expandVertically(expandFrom = Alignment.Bottom),
-        exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
+        enter = expandVertically(
+            animationSpec = motionScheme.defaultSpatialSpec(),
+            expandFrom = Alignment.Bottom,
+        ) + fadeIn(animationSpec = motionScheme.defaultEffectsSpec()),
+        exit = shrinkVertically(
+            animationSpec = motionScheme.defaultSpatialSpec(),
+            shrinkTowards = Alignment.Bottom,
+        ) + fadeOut(animationSpec = motionScheme.defaultEffectsSpec()),
     ) {
         val scope = rememberCoroutineScope()
         Surface(
@@ -196,8 +202,10 @@ internal fun RowScope.Button(
     // KMK <--
     content: (@Composable () -> Unit)? = null,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     val animatedWeight by animateFloatAsState(
         targetValue = if (toConfirm) 2f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
         label = "weight",
     )
     // KMK -->
@@ -209,6 +217,7 @@ internal fun RowScope.Button(
                 alpha = 0.38f,
             )
         },
+        animationSpec = motionScheme.fastEffectsSpec(),
         label = "color",
     )
     // KMK <--
@@ -237,8 +246,14 @@ internal fun RowScope.Button(
             )
             AnimatedVisibility(
                 visible = toConfirm,
-                enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                enter = expandVertically(
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                    expandFrom = Alignment.Top,
+                ) + fadeIn(animationSpec = motionScheme.fastEffectsSpec()),
+                exit = shrinkVertically(
+                    animationSpec = motionScheme.fastSpatialSpec(),
+                    shrinkTowards = Alignment.Top,
+                ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
             ) {
                 Text(
                     text = title,
@@ -276,10 +291,19 @@ fun LibraryBottomActionMenu(
     // SY <--
     modifier: Modifier = Modifier,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     AnimatedVisibility(
         visible = visible,
-        enter = expandVertically(animationSpec = tween(delayMillis = 300)),
-        exit = shrinkVertically(animationSpec = tween()),
+        enter = expandVertically(
+            animationSpec = motionScheme.defaultSpatialSpec(),
+        ) + fadeIn(
+            animationSpec = motionScheme.defaultEffectsSpec(),
+        ),
+        exit = shrinkVertically(
+            animationSpec = motionScheme.defaultSpatialSpec(),
+        ) + fadeOut(
+            animationSpec = motionScheme.defaultEffectsSpec(),
+        ),
     ) {
         val scope = rememberCoroutineScope()
         Surface(

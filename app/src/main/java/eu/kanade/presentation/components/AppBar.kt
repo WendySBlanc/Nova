@@ -8,13 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,7 +22,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -64,9 +60,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import eu.kanade.presentation.theme.NovaVikiColors
-import eu.kanade.presentation.theme.NovaVikiDimensions
-import eu.kanade.presentation.theme.novaSpatialBackdrop
 import kotlinx.collections.immutable.ImmutableList
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -148,60 +141,47 @@ fun AppBar(
 
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
-    val barBackground = backgroundColor ?: NovaVikiColors.Background
-    Column(
-        modifier = modifier.novaSpatialBackdrop(
-            background = barBackground,
-            primary = NovaVikiColors.Accent,
-            secondary = NovaVikiColors.AccentWarm,
-            tertiary = NovaVikiColors.AccentGold,
-            wireColor = NovaVikiColors.OutlineStrong,
-            wireAlpha = 0.06f,
-            planeAlpha = 0.025f,
-            showMark = false,
-        ),
-    ) {
-        TopAppBar(
-            navigationIcon = {
-                if (isActionMode) {
-                    IconButton(onClick = onCancelActionMode) {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = stringResource(MR.strings.action_cancel),
-                        )
-                    }
-                } else {
-                    // KMK -->
-                    Row {
-                        // KMK <--
-                        navigateUp?.let {
-                            IconButton(onClick = it) {
-                                UpIcon(navigationIcon = navigationIcon)
-                            }
-                        }
-                        // KMK -->
-                        goHome?.let {
-                            IconButton(onClick = { it.invoke() }) {
-                                UpIcon(navigationIcon = Icons.Filled.Home)
-                            }
-                        }
-                        // KMK <--
-                    }
+    val barBackground = backgroundColor ?: MaterialTheme.colorScheme.surface
+    TopAppBar(
+        modifier = modifier,
+        navigationIcon = {
+            if (isActionMode) {
+                IconButton(onClick = onCancelActionMode) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = stringResource(MR.strings.action_cancel),
+                    )
                 }
-            },
-            title = titleContent,
-            actions = actions,
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
-                navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-            scrollBehavior = scrollBehavior,
-        )
-        HorizontalDivider(color = NovaVikiColors.Outline.copy(alpha = 0.72f))
-    }
+            } else {
+                // KMK -->
+                Row {
+                    // KMK <--
+                    navigateUp?.let {
+                        IconButton(onClick = it) {
+                            UpIcon(navigationIcon = navigationIcon)
+                        }
+                    }
+                    // KMK -->
+                    goHome?.let {
+                        IconButton(onClick = { it.invoke() }) {
+                            UpIcon(navigationIcon = Icons.Filled.Home)
+                        }
+                    }
+                    // KMK <--
+                }
+            }
+        },
+        title = titleContent,
+        actions = actions,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = barBackground,
+            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        scrollBehavior = scrollBehavior,
+    )
 }
 
 @Composable
@@ -210,37 +190,28 @@ fun AppBarTitle(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
 ) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .heightIn(min = if (subtitle == null) 24.dp else 36.dp)
-                .background(NovaVikiColors.Accent),
-        )
-        Spacer(Modifier.width(10.dp))
-        Column {
-            title?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            subtitle?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee(
-                        repeatDelayMillis = 2_000,
-                    ),
-                )
-            }
+    Column(modifier = modifier) {
+        title?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        subtitle?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(
+                    repeatDelayMillis = 2_000,
+                ),
+            )
         }
     }
 }
@@ -375,19 +346,20 @@ fun SearchToolbar(
                 keyboardController?.hide()
                 focusManager.moveFocus(FocusDirection.Next)
             }
+            val searchFieldShape = MaterialTheme.shapes.extraLarge
 
             BasicTextField(
                 value = searchQuery,
                 onValueChange = onChangeSearchQuery,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = NovaVikiDimensions.MinimumTouchTarget)
-                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
+                    .heightIn(min = 56.dp)
+                    .clip(searchFieldShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .border(
                         1.dp,
                         MaterialTheme.colorScheme.outline,
-                        RoundedCornerShape(NovaVikiDimensions.CardCorner),
+                        searchFieldShape,
                     )
                     .padding(horizontal = 12.dp)
                     .focusRequester(focusRequester)

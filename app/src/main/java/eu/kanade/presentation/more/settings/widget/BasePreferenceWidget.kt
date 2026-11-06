@@ -1,7 +1,6 @@
 package eu.kanade.presentation.more.settings.widget
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -126,16 +126,16 @@ internal fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
             highlightFlag = false
         }
     }
-    val highlight by animateColorAsState(
+    val highlight = animateColorAsState(
         targetValue = if (highlightFlag) {
             MaterialTheme.colorScheme.surfaceTint.copy(alpha = .12f)
         } else {
             Color.Transparent
         },
-        animationSpec = tween(180),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "highlight",
     )
-    return this.background(color = highlight)
+    return this.drawBehind { drawRect(highlight.value) }
 }
 
 internal val TrailingWidgetBuffer = 16.dp

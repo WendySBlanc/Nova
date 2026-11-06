@@ -4,32 +4,26 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -39,16 +33,27 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.QueryStats
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -230,48 +235,28 @@ fun MoreScreen(
 
 @Composable
 private fun NovaMeTopBar() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(72.dp)
-            .novaSpatialBackdrop(
-                background = NovaVikiColors.Background.copy(alpha = 0.96f),
-                primary = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                tertiary = NovaVikiColors.AccentGold,
-                wireColor = NovaVikiColors.OutlineStrong,
-                wireAlpha = 0.05f,
-                planeAlpha = 0.02f,
-                showMark = false,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            modifier = Modifier
-                .widthIn(max = NovaVikiDimensions.WideContentMaxWidth)
-                .fillMaxWidth()
-                .padding(horizontal = NovaVikiDimensions.HorizontalPadding),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    MediumTopAppBar(
+        title = {
             Column {
                 Text(
-                    text = "05 / PROFILE",
-                    color = NovaVikiColors.Accent,
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "Moi",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
                 Text(
-                    text = "Moi",
-                    color = NovaVikiColors.TextPrimary,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
+                    text = "Lecture et pr\u00e9f\u00e9rences",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
             }
-        }
-    }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    )
 }
 
 @Composable
@@ -279,59 +264,51 @@ private fun NovaMeIdentity(
     downloadedOnly: Boolean,
     incognitoMode: Boolean,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     val status = when {
         downloadedOnly && incognitoMode -> "T\u00e9l\u00e9charg\u00e9s uniquement \u2022 Historique suspendu"
         downloadedOnly -> "T\u00e9l\u00e9charg\u00e9s uniquement"
         incognitoMode -> "Historique suspendu"
         else -> "Manhwa & Light Novel"
     }
-    Box(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 108.dp)
-            .animateContentSize()
-            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-            .background(NovaVikiColors.Surface.copy(alpha = 0.88f))
-            .border(1.dp, NovaVikiColors.OutlineStrong, RoundedCornerShape(NovaVikiDimensions.CardCorner)),
+            .animateContentSize(animationSpec = motionScheme.defaultSpatialSpec()),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(4.dp)
-                .background(NovaVikiColors.Accent),
-        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                    .background(NovaVikiColors.SurfaceStrong.copy(alpha = 0.82f))
-                    .border(
-                        1.dp,
-                        NovaVikiColors.Accent.copy(alpha = 0.72f),
-                        RoundedCornerShape(NovaVikiDimensions.CardCorner),
-                    ),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(56.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
-                Text(
-                    text = "N/",
-                    color = NovaVikiColors.TextPrimary,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "N",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "NOVA",
+                    text = "Nova",
                     color = NovaVikiColors.TextPrimary,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(3.dp))
@@ -356,107 +333,102 @@ private fun NovaQuickActions(
     onClickCategories: () -> Unit,
     onClickSettings: () -> Unit,
 ) {
+    val downloadBadge = when (downloadQueueState) {
+        DownloadQueueState.Stopped -> null
+        is DownloadQueueState.Paused -> downloadQueueState.pending
+        is DownloadQueueState.Downloading -> downloadQueueState.pending
+    }?.takeIf { it > 0 }?.let { count -> if (count > 99) "99+" else count.toString() }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "// ACC\u00c8S RAPIDES",
-            color = NovaVikiColors.Accent,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Black,
+            text = "Acc\u00e8s rapides",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val columns = if (maxWidth < 600.dp) 2 else 4
-            val gap = 8.dp
-            val actionWidth = (maxWidth - gap * (columns - 1).toFloat()) / columns.toFloat()
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(gap),
-                verticalArrangement = Arrangement.spacedBy(gap),
-                maxItemsInEachRow = columns,
-            ) {
-                NovaQuickAction(
-                    title = "T\u00e9l\u00e9chargements",
-                    status = downloadQueueSubtitle,
-                    icon = Icons.Outlined.GetApp,
-                    accent = when (downloadQueueState) {
-                        DownloadQueueState.Stopped -> NovaMoreAccent
-                        is DownloadQueueState.Paused -> NovaVikiColors.AccentGold
-                        is DownloadQueueState.Downloading -> NovaVikiColors.Success
-                    },
-                    onClick = onClickDownloadQueue,
-                    modifier = Modifier.width(actionWidth),
-                )
-                NovaQuickAction(
-                    title = "Statistiques",
-                    icon = Icons.Outlined.QueryStats,
-                    accent = NovaVikiColors.AccentWarm,
-                    onClick = onClickStats,
-                    modifier = Modifier.width(actionWidth),
-                )
-                NovaQuickAction(
-                    title = "Cat\u00e9gories",
-                    icon = Icons.AutoMirrored.Outlined.Label,
-                    accent = NovaVikiColors.AccentGold,
-                    onClick = onClickCategories,
-                    modifier = Modifier.width(actionWidth),
-                )
-                NovaQuickAction(
-                    title = "Param\u00e8tres",
-                    icon = Icons.Outlined.Settings,
-                    accent = NovaVikiColors.Success,
-                    onClick = onClickSettings,
-                    modifier = Modifier.width(actionWidth),
-                )
-            }
+        ButtonGroup(
+            overflowIndicator = { menuState ->
+                ButtonGroupDefaults.OverflowIndicator(menuState)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            clickableItem(
+                onClick = onClickDownloadQueue,
+                label = "T\u00e9l\u00e9chargements",
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            downloadBadge?.let {
+                                Badge {
+                                    Text(text = it)
+                                }
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.GetApp,
+                            contentDescription = null,
+                            tint = when (downloadQueueState) {
+                                DownloadQueueState.Stopped -> NovaMoreAccent
+                                is DownloadQueueState.Paused -> NovaVikiColors.AccentGold
+                                is DownloadQueueState.Downloading -> NovaVikiColors.Success
+                            },
+                        )
+                    }
+                },
+            )
+            clickableItem(
+                onClick = onClickStats,
+                label = "Statistiques",
+                icon = {
+                    Icon(
+                        imageVector = Icons.Outlined.QueryStats,
+                        contentDescription = null,
+                        tint = NovaVikiColors.AccentWarm,
+                    )
+                },
+            )
+            clickableItem(
+                onClick = onClickCategories,
+                label = "Cat\u00e9gories",
+                icon = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Label,
+                        contentDescription = null,
+                        tint = NovaVikiColors.AccentGold,
+                    )
+                },
+            )
+            clickableItem(
+                onClick = onClickSettings,
+                label = "Param\u00e8tres",
+                icon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = null,
+                        tint = NovaVikiColors.Success,
+                    )
+                },
+            )
         }
-    }
-}
-
-@Composable
-private fun NovaQuickAction(
-    title: String,
-    icon: ImageVector,
-    accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    status: String? = null,
-) {
-    Column(
-        modifier = modifier
-            .height(88.dp)
-            .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-            .background(NovaVikiColors.SurfaceStrong.copy(alpha = 0.86f))
-            .border(1.dp, accent.copy(alpha = 0.44f), RoundedCornerShape(NovaVikiDimensions.CardCorner))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = accent,
-            modifier = Modifier.size(24.dp),
-        )
-        Column {
+        if (!downloadQueueSubtitle.isNullOrBlank()) {
             Text(
-                text = title,
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
+                text = "T\u00e9l\u00e9chargements : $downloadQueueSubtitle",
+                color = when (downloadQueueState) {
+                    DownloadQueueState.Stopped -> MaterialTheme.colorScheme.onSurfaceVariant
+                    is DownloadQueueState.Paused -> NovaVikiColors.AccentGold
+                    is DownloadQueueState.Downloading -> NovaVikiColors.Success
+                },
+                style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.animateContentSize(
+                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                ),
             )
-            if (!status.isNullOrBlank()) {
-                Text(
-                    text = status,
-                    color = accent,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }
@@ -524,17 +496,20 @@ private fun NovaMoreSection(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            text = "// ${title.uppercase()}",
-            color = NovaVikiColors.Accent,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Black,
+            text = title,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
-        Column(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
         ) {
-            HorizontalDivider(color = NovaVikiColors.Outline)
-            content()
+            Column(content = content)
         }
     }
 }
@@ -601,33 +576,15 @@ private fun NovaMoreBaseRow(
     modifier: Modifier = Modifier,
     trailing: @Composable () -> Unit,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize(animationSpec = motionScheme.fastSpatialSpec()),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = NovaVikiDimensions.ListRowMinHeight)
-                .background(NovaMoreRow)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                    .background(accent.copy(alpha = 0.17f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                NovaMoreIcon(
-                    icon = icon,
-                    tint = accent,
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        ListItem(
+            modifier = Modifier.heightIn(min = NovaVikiDimensions.ListRowMinHeight),
+            headlineContent = {
                 Text(
                     text = title,
                     color = NovaVikiColors.TextPrimary,
@@ -636,8 +593,9 @@ private fun NovaMoreBaseRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (!subtitle.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
+            },
+            supportingContent = if (!subtitle.isNullOrBlank()) {
+                {
                     Text(
                         text = subtitle,
                         color = NovaVikiColors.TextSecondary,
@@ -646,11 +604,33 @@ private fun NovaMoreBaseRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-            Spacer(Modifier.width(10.dp))
-            trailing()
-        }
-        HorizontalDivider(color = NovaVikiColors.Outline.copy(alpha = 0.72f))
+            } else {
+                null
+            },
+            leadingContent = {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = accent.copy(alpha = 0.17f),
+                    contentColor = accent,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        NovaMoreIcon(
+                            icon = icon,
+                            tint = accent,
+                        )
+                    }
+                }
+            },
+            trailingContent = trailing,
+            colors = ListItemDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        )
+        HorizontalDivider(
+            modifier = Modifier.padding(start = 64.dp),
+            color = NovaVikiColors.Outline.copy(alpha = 0.72f),
+        )
     }
 }
 
@@ -675,7 +655,5 @@ private fun NovaMoreIcon(
     }
 }
 
-private val NovaMoreRow: Color
-    @Composable get() = NovaVikiColors.SurfaceRaised
 private val NovaMoreAccent: Color
     @Composable get() = NovaVikiColors.Accent
