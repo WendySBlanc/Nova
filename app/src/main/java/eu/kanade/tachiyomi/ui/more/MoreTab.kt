@@ -13,13 +13,27 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.presentation.home.NovaMeSettingDestination
 import eu.kanade.presentation.more.MoreScreen
+import eu.kanade.presentation.more.settings.screen.SettingsAdvancedScreen
+import eu.kanade.presentation.more.settings.screen.SettingsAppearanceScreen
+import eu.kanade.presentation.more.settings.screen.SettingsBrowseScreen
+import eu.kanade.presentation.more.settings.screen.SettingsConnectionScreen
+import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
+import eu.kanade.presentation.more.settings.screen.SettingsDownloadScreen
+import eu.kanade.presentation.more.settings.screen.SettingsEhScreen
+import eu.kanade.presentation.more.settings.screen.SettingsLibraryScreen
+import eu.kanade.presentation.more.settings.screen.SettingsMangadexScreen
+import eu.kanade.presentation.more.settings.screen.SettingsReaderScreen
+import eu.kanade.presentation.more.settings.screen.SettingsSearchScreen
+import eu.kanade.presentation.more.settings.screen.SettingsSecurityScreen
+import eu.kanade.presentation.more.settings.screen.SettingsTrackingScreen
+import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
@@ -27,7 +41,6 @@ import eu.kanade.tachiyomi.data.connections.discord.DiscordScreen
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
-import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.stats.StatsScreen
 import exh.ui.batchadd.BatchAddScreen
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,14 +62,10 @@ data object MoreTab : Tab {
             val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_more_enter)
             return TabOptions(
                 index = 4u,
-                title = "Moi",
+                title = "Param\u00e8tres",
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
         }
-
-    override suspend fun onReselect(navigator: Navigator) {
-        navigator.push(SettingsScreen())
-    }
 
     @Composable
     override fun Content() {
@@ -73,7 +82,28 @@ data object MoreTab : Tab {
             onClickDownloadQueue = { navigator.push(DownloadQueueScreen) },
             onClickCategories = { navigator.push(CategoryScreen()) },
             onClickStats = { navigator.push(StatsScreen()) },
-            onClickSettings = { navigator.push(SettingsScreen()) },
+            onClickSetting = { destination ->
+                navigator.push(
+                    when (destination) {
+                        NovaMeSettingDestination.Appearance -> SettingsAppearanceScreen
+                        NovaMeSettingDestination.Reader -> SettingsReaderScreen
+                        NovaMeSettingDestination.Library -> SettingsLibraryScreen
+                        NovaMeSettingDestination.Downloads -> SettingsDownloadScreen
+                        NovaMeSettingDestination.Browse -> SettingsBrowseScreen
+                        NovaMeSettingDestination.Tracking -> SettingsTrackingScreen
+                        NovaMeSettingDestination.Connections -> SettingsConnectionScreen
+                        NovaMeSettingDestination.DataAndStorage -> SettingsDataScreen
+                        NovaMeSettingDestination.Security -> SettingsSecurityScreen
+                        NovaMeSettingDestination.Ehentai -> SettingsEhScreen
+                        NovaMeSettingDestination.Mangadex -> SettingsMangadexScreen
+                        NovaMeSettingDestination.Advanced -> SettingsAdvancedScreen
+                        NovaMeSettingDestination.About -> AboutScreen()
+                    },
+                )
+            },
+            onClickSettingsSearch = { navigator.push(SettingsSearchScreen()) },
+            showEhSettings = SettingsEhScreen.isEnabled(),
+            showMangadexSettings = SettingsMangadexScreen.isEnabled(),
             // SY -->
             onClickBatchAdd = { navigator.push(BatchAddScreen()) },
             // SY <--

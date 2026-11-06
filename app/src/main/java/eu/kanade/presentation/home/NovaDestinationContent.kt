@@ -11,14 +11,29 @@ enum class NovaMeQuickRoute {
     Downloads,
     Categories,
     Statistics,
-    Settings,
 }
 
 enum class NovaMeCategory(val label: String) {
     Overview("Aper\u00e7u"),
     Reading("Lecture"),
     Library("Biblioth\u00e8que"),
-    Application("Application"),
+    Application("Param\u00e8tres"),
+}
+
+enum class NovaMeSettingDestination {
+    Appearance,
+    Reader,
+    Library,
+    Downloads,
+    Browse,
+    Tracking,
+    Connections,
+    DataAndStorage,
+    Security,
+    Ehentai,
+    Mangadex,
+    Advanced,
+    About,
 }
 
 fun novaDiscoverSections(
@@ -35,3 +50,5 @@ fun novaDiscoverSections(
 fun novaMeQuickRoutes(): List<NovaMeQuickRoute> = NovaMeQuickRoute.entries
 
 fun novaMeCategories(): List<NovaMeCategory> = NovaMeCategory.entries
+
+fun novaMeSettingDestinations(): List<NovaMeSettingDestination> = NovaMeSettingDestination.entries

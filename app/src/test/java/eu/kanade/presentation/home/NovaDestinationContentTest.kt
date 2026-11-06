@@ -32,12 +32,11 @@ class NovaDestinationContentTest {
     }
 
     @Test
-    fun `me quick routes do not duplicate updates or history`() {
+    fun `me quick routes do not hide settings behind a separate hub`() {
         novaMeQuickRoutes() shouldContainExactly listOf(
             NovaMeQuickRoute.Downloads,
             NovaMeQuickRoute.Categories,
             NovaMeQuickRoute.Statistics,
-            NovaMeQuickRoute.Settings,
         )
     }
 
@@ -48,6 +47,25 @@ class NovaDestinationContentTest {
             NovaMeCategory.Reading,
             NovaMeCategory.Library,
             NovaMeCategory.Application,
+        )
+    }
+
+    @Test
+    fun `me exposes every settings destination directly`() {
+        novaMeSettingDestinations() shouldContainExactly listOf(
+            NovaMeSettingDestination.Appearance,
+            NovaMeSettingDestination.Reader,
+            NovaMeSettingDestination.Library,
+            NovaMeSettingDestination.Downloads,
+            NovaMeSettingDestination.Browse,
+            NovaMeSettingDestination.Tracking,
+            NovaMeSettingDestination.Connections,
+            NovaMeSettingDestination.DataAndStorage,
+            NovaMeSettingDestination.Security,
+            NovaMeSettingDestination.Ehentai,
+            NovaMeSettingDestination.Mangadex,
+            NovaMeSettingDestination.Advanced,
+            NovaMeSettingDestination.About,
         )
     }
 }

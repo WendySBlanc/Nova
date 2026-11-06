@@ -23,6 +23,31 @@ class NovaUiComponentPolicyTest {
             .shouldNotContain("CircularProgressIndicator")
     }
 
+    @Test
+    fun `me exposes settings directly instead of opening a settings hub`() {
+        val moreScreen = source("app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt")
+        val moreTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/more/MoreTab.kt")
+
+        moreScreen.shouldContain("NovaMeSettingDestination.Appearance")
+        moreScreen.shouldContain("NovaMeSettingDestination.Reader")
+        moreScreen.shouldContain("NovaMeSettingDestination.Library")
+        moreScreen.shouldContain("NovaMeSettingDestination.Downloads")
+        moreScreen.shouldContain("NovaMeSettingDestination.DataAndStorage")
+        moreScreen.shouldContain("NovaMeSettingDestination.Advanced")
+        moreTab.shouldNotContain("navigator.push(SettingsScreen())")
+    }
+
+    @Test
+    fun `settings destination is named settings everywhere`() {
+        val moreScreen = source("app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt")
+        val moreTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/more/MoreTab.kt")
+
+        moreScreen.shouldContain("text = \"Param\\u00e8tres\"")
+        moreScreen.shouldNotContain("text = \"Moi\"")
+        moreTab.shouldContain("title = \"Param\\u00e8tres\"")
+        moreTab.shouldNotContain("title = \"Moi\"")
+    }
+
     private fun source(relativePath: String): String = File(repositoryRoot(), relativePath).readText()
 
     private fun repositoryRoot(): File {
