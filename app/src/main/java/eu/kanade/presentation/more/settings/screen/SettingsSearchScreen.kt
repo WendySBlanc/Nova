@@ -52,6 +52,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.components.UpIcon
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.theme.NovaVikiDimensions
+import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -65,6 +66,7 @@ class SettingsSearchScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val backPress = LocalBackPress.current
         val softKeyboardController = LocalSoftwareKeyboardController.current
         val focusManager = LocalFocusManager.current
         val focusRequester = remember { FocusRequester() }
@@ -95,9 +97,16 @@ class SettingsSearchScreen : Screen() {
                 Column {
                     TopAppBar(
                         navigationIcon = {
-                            val canPop = remember { navigator.canPop }
-                            if (canPop) {
-                                IconButton(onClick = navigator::pop) {
+                            if (navigator.canPop || backPress != null) {
+                                IconButton(
+                                    onClick = {
+                                        if (navigator.canPop) {
+                                            navigator.pop()
+                                        } else {
+                                            backPress?.invoke()
+                                        }
+                                    },
+                                ) {
                                     UpIcon()
                                 }
                             }

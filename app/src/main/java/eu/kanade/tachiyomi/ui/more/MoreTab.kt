@@ -20,20 +20,8 @@ import eu.kanade.core.preference.asState
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.presentation.home.NovaMeSettingDestination
 import eu.kanade.presentation.more.MoreScreen
-import eu.kanade.presentation.more.settings.screen.SettingsAdvancedScreen
-import eu.kanade.presentation.more.settings.screen.SettingsAppearanceScreen
-import eu.kanade.presentation.more.settings.screen.SettingsBrowseScreen
-import eu.kanade.presentation.more.settings.screen.SettingsConnectionScreen
-import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
-import eu.kanade.presentation.more.settings.screen.SettingsDownloadScreen
 import eu.kanade.presentation.more.settings.screen.SettingsEhScreen
-import eu.kanade.presentation.more.settings.screen.SettingsLibraryScreen
 import eu.kanade.presentation.more.settings.screen.SettingsMangadexScreen
-import eu.kanade.presentation.more.settings.screen.SettingsReaderScreen
-import eu.kanade.presentation.more.settings.screen.SettingsSearchScreen
-import eu.kanade.presentation.more.settings.screen.SettingsSecurityScreen
-import eu.kanade.presentation.more.settings.screen.SettingsTrackingScreen
-import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
@@ -41,6 +29,7 @@ import eu.kanade.tachiyomi.data.connections.discord.DiscordScreen
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
+import eu.kanade.tachiyomi.ui.setting.SettingsScreen
 import eu.kanade.tachiyomi.ui.stats.StatsScreen
 import exh.ui.batchadd.BatchAddScreen
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,25 +72,9 @@ data object MoreTab : Tab {
             onClickCategories = { navigator.push(CategoryScreen()) },
             onClickStats = { navigator.push(StatsScreen()) },
             onClickSetting = { destination ->
-                navigator.push(
-                    when (destination) {
-                        NovaMeSettingDestination.Appearance -> SettingsAppearanceScreen
-                        NovaMeSettingDestination.Reader -> SettingsReaderScreen
-                        NovaMeSettingDestination.Library -> SettingsLibraryScreen
-                        NovaMeSettingDestination.Downloads -> SettingsDownloadScreen
-                        NovaMeSettingDestination.Browse -> SettingsBrowseScreen
-                        NovaMeSettingDestination.Tracking -> SettingsTrackingScreen
-                        NovaMeSettingDestination.Connections -> SettingsConnectionScreen
-                        NovaMeSettingDestination.DataAndStorage -> SettingsDataScreen
-                        NovaMeSettingDestination.Security -> SettingsSecurityScreen
-                        NovaMeSettingDestination.Ehentai -> SettingsEhScreen
-                        NovaMeSettingDestination.Mangadex -> SettingsMangadexScreen
-                        NovaMeSettingDestination.Advanced -> SettingsAdvancedScreen
-                        NovaMeSettingDestination.About -> AboutScreen()
-                    },
-                )
+                navigator.push(SettingsScreen(destination.toSettingsDestination()))
             },
-            onClickSettingsSearch = { navigator.push(SettingsSearchScreen()) },
+            onClickSettingsSearch = { navigator.push(SettingsScreen(SettingsScreen.Destination.Search)) },
             showEhSettings = SettingsEhScreen.isEnabled(),
             showMangadexSettings = SettingsMangadexScreen.isEnabled(),
             // SY -->
@@ -116,6 +89,24 @@ data object MoreTab : Tab {
             }
         }
         // <-- AM (DISCORD)
+    }
+}
+
+internal fun NovaMeSettingDestination.toSettingsDestination(): SettingsScreen.Destination {
+    return when (this) {
+        NovaMeSettingDestination.Appearance -> SettingsScreen.Destination.Appearance
+        NovaMeSettingDestination.Reader -> SettingsScreen.Destination.Reader
+        NovaMeSettingDestination.Library -> SettingsScreen.Destination.Library
+        NovaMeSettingDestination.Downloads -> SettingsScreen.Destination.Downloads
+        NovaMeSettingDestination.Browse -> SettingsScreen.Destination.Browse
+        NovaMeSettingDestination.Tracking -> SettingsScreen.Destination.Tracking
+        NovaMeSettingDestination.Connections -> SettingsScreen.Destination.Connections
+        NovaMeSettingDestination.DataAndStorage -> SettingsScreen.Destination.DataAndStorage
+        NovaMeSettingDestination.Security -> SettingsScreen.Destination.Security
+        NovaMeSettingDestination.Ehentai -> SettingsScreen.Destination.Ehentai
+        NovaMeSettingDestination.Mangadex -> SettingsScreen.Destination.Mangadex
+        NovaMeSettingDestination.Advanced -> SettingsScreen.Destination.Advanced
+        NovaMeSettingDestination.About -> SettingsScreen.Destination.About
     }
 }
 

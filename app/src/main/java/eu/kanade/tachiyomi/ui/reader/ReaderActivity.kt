@@ -660,8 +660,10 @@ class ReaderActivity : BaseActivity() {
         } else {
             cropBorderContinuousVertical
         }
-        val readerBottomButtons by readerPreferences.readerBottomButtons().changes().map { it.toImmutableSet() }
-            .collectAsState(persistentSetOf())
+        val readerBottomButtonsFlow = remember {
+            readerPreferences.readerBottomButtons().changes().map { it.toImmutableSet() }
+        }
+        val readerBottomButtons by readerBottomButtonsFlow.collectAsState(persistentSetOf())
         val dualPageSplitPaged by readerPreferences.dualPageSplitPaged().collectAsState()
 
         val navBarType = NavBarType.Bottom

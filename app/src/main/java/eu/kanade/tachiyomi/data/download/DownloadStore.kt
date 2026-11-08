@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.source.online.HttpSource
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -90,27 +90,48 @@ class DownloadStore(
     /**
      * Returns the list of downloads to restore. It should be called in a background thread.
      */
-    fun restore(): List<Download> {
-        val objs = preferences.all
-            .mapNotNull { it.value as? String }
-            .mapNotNull { deserialize(it) }
-            .sortedBy { it.order }
+    suspend fun restore(): List<Download> {
+        sourceManager.isInitialized.first { it }
+
+        val storedEntries = preferences.all.mapNotNull { (key, value) ->
+            val serialized = value as? String ?: return@mapNotNull null
+            StoredDownload(key, deserialize(serialized))
+        }
+        val objs = storedEntries
+            .mapNotNull { entry ->
+                entry.download?.let { download -> RestorableDownload(entry.key, download) }
+            }
+            .sortedBy { it.download.order }
+        counter = maxOf(counter, (objs.maxOfOrNull { it.download.order } ?: -1) + 1)
 
         val downloads = mutableListOf<Download>()
+        val restoredKeys = mutableListOf<String>()
+        val invalidKeys = storedEntries.filter { it.download == null }.mapTo(mutableListOf()) { it.key }
         if (objs.isNotEmpty()) {
             val cachedManga = mutableMapOf<Long, Manga?>()
-            for ((mangaId, chapterId) in objs) {
+            for ((key, obj) in objs) {
+                val (mangaId, chapterId) = obj
                 val manga = cachedManga.getOrPut(mangaId) {
-                    runBlocking { getManga.await(mangaId) }
-                } ?: continue
+                    getManga.await(mangaId)
+                }
+                if (manga == null) {
+                    invalidKeys += key
+                    continue
+                }
                 val source = sourceManager.get(manga.source) as? HttpSource ?: continue
-                val chapter = runBlocking { getChapter.await(chapterId) } ?: continue
+                val chapter = getChapter.await(chapterId)
+                if (chapter == null) {
+                    invalidKeys += key
+                    continue
+                }
                 downloads.add(Download(source, manga, chapter))
+                restoredKeys += key
             }
         }
 
-        // Clear the store, downloads will be added again immediately.
-        clear()
+        preferences.edit {
+            (restoredKeys + invalidKeys).forEach(::remove)
+        }
         return downloads
     }
 
@@ -147,3 +168,13 @@ class DownloadStore(
  */
 @Serializable
 private data class DownloadObject(val mangaId: Long, val chapterId: Long, val order: Int)
+
+private data class StoredDownload(
+    val key: String,
+    val download: DownloadObject?,
+)
+
+private data class RestorableDownload(
+    val key: String,
+    val download: DownloadObject,
+)

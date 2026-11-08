@@ -289,16 +289,21 @@ class DownloadCache(
     fun getDownloadCount(manga: Manga): Int {
         renewCache()
 
-        val sourceDir = rootDownloadsDir.sourceDirs[manga.source]
-        if (sourceDir != null) {
-            val mangaDir = sourceDir.mangaDirs[
-                provider.getMangaDirName(/* SY --> */ manga.ogTitle /* SY <-- */),
-            ]
-            if (mangaDir != null) {
-                return mangaDir.chapterDirs.size
-            }
-        }
-        return 0
+        val mangaDirName = provider.getMangaDirName(/* SY --> */ manga.ogTitle /* SY <-- */)
+        val preferredCount = rootDownloadsDir.sourceDirs[manga.source]
+            ?.mangaDirs
+            ?.get(mangaDirName)
+            ?.chapterDirs
+            ?.size
+            ?.takeIf { it > 0 }
+        val fallbackCounts = rootDownloadsDir.sourceDirs
+            .asSequence()
+            .filter { (sourceId, _) -> sourceId != manga.source }
+            .mapNotNull { (_, sourceDir) -> sourceDir.mangaDirs[mangaDirName]?.chapterDirs?.size }
+            .filter { it > 0 }
+            .toList()
+
+        return resolveRestoredDownloadCount(preferredCount, fallbackCounts)
     }
 
     /**
@@ -612,6 +617,10 @@ class DownloadCache(
     private companion object {
         const val UNKNOWN_SOURCE_ID_START = Long.MIN_VALUE / 2
     }
+}
+
+internal fun resolveRestoredDownloadCount(preferredCount: Int?, fallbackCounts: List<Int>): Int {
+    return preferredCount ?: fallbackCounts.singleOrNull() ?: 0
 }
 
 /**

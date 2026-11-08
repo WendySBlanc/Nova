@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -58,7 +59,7 @@ class MangaTranslationArchive(
             BufferedInputStream(streamProvider()).use { input ->
                 input.mark(IMAGE_HEADER_SIZE)
                 val header = ByteArray(IMAGE_HEADER_SIZE)
-                val headerSize = input.readNBytes(header, 0, IMAGE_HEADER_SIZE)
+                val headerSize = input.readAtMost(header)
                 input.reset()
                 val extension = detectImageExtension(header, headerSize)
                     ?: throw MangaTranslationProtocolException(
@@ -79,6 +80,16 @@ class MangaTranslationArchive(
             throw MangaTranslationProtocolException("Impossible de lire la page ${page.index + 1}", error)
         }
     }
+}
+
+internal fun InputStream.readAtMost(buffer: ByteArray): Int {
+    var totalRead = 0
+    while (totalRead < buffer.size) {
+        val count = read(buffer, totalRead, buffer.size - totalRead)
+        if (count <= 0) break
+        totalRead += count
+    }
+    return totalRead
 }
 
 internal fun String.sha256(): String = MessageDigest.getInstance("SHA-256")

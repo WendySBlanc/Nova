@@ -207,23 +207,23 @@ class LnReaderWebViewViewer(
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            allowFileAccess = true
-            allowContentAccess = true
+            allowFileAccess = false
+            allowContentAccess = false
             setSupportZoom(false)
             builtInZoomControls = true
             displayZoomControls = false
             loadWithOverviewMode = true
             useWideViewPort = true
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                allowFileAccessFromFileURLs = true
-                allowUniversalAccessFromFileURLs = true
+                allowFileAccessFromFileURLs = false
+                allowUniversalAccessFromFileURLs = false
             }
         }
         webView.addJavascriptInterface(Bridge(), "AndroidReader")
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                return request?.url?.let(::readerImageResponse)
+                return request?.url?.let { uri -> readerAssetResponse(uri) ?: readerImageResponse(uri) }
                     ?: super.shouldInterceptRequest(view, request)
             }
 
@@ -231,7 +231,7 @@ class LnReaderWebViewViewer(
             override fun shouldInterceptRequest(view: WebView?, url: String?): WebResourceResponse? {
                 return url
                     ?.let { runCatching { Uri.parse(it) }.getOrNull() }
-                    ?.let(::readerImageResponse)
+                    ?.let { uri -> readerAssetResponse(uri) ?: readerImageResponse(uri) }
                     ?: super.shouldInterceptRequest(view, url)
             }
 
@@ -264,6 +264,28 @@ class LnReaderWebViewViewer(
         }
     }
 
+    private fun readerAssetResponse(uri: Uri): WebResourceResponse? {
+        if (uri.scheme != "https" || uri.host != NOVA_READER_IMAGE_HOST) return null
+        val pathSegments = uri.pathSegments
+        if (pathSegments.firstOrNull() != NOVA_READER_ASSET_PATH) return null
+        val assetSegments = pathSegments.drop(1)
+        if (assetSegments.isEmpty() || assetSegments.any { it == "." || it == ".." }) {
+            return emptyReaderImageResponse(400)
+        }
+
+        val assetPath = assetSegments.joinToString("/")
+        val stream = runCatching { activity.assets.open(assetPath) }
+            .getOrElse { return emptyReaderImageResponse(404) }
+        val mimeType = when (assetPath.substringAfterLast('.', missingDelimiterValue = "")) {
+            "css" -> "text/css"
+            "js" -> "application/javascript"
+            "ttf" -> "font/ttf"
+            else -> "application/octet-stream"
+        }
+        val encoding = if (mimeType.startsWith("text/") || mimeType.endsWith("javascript")) "UTF-8" else null
+        return WebResourceResponse(mimeType, encoding, stream)
+    }
+
     private fun readerImageResponse(uri: Uri): WebResourceResponse? {
         if (uri.scheme != "https" || uri.host != NOVA_READER_IMAGE_HOST) return null
         val segments = uri.pathSegments.takeIf { it.firstOrNull() == NOVA_READER_IMAGE_PATH }
@@ -281,8 +303,13 @@ class LnReaderWebViewViewer(
             ?.pages
             ?.firstOrNull { page -> page.index == pageIndex }
             ?: return emptyReaderImageResponse(404)
-        val streamProvider = page.stream ?: page.awaitStreamForWebView()
-            ?: return emptyReaderImageResponse(404)
+        val streamProvider = page.stream ?: run {
+            if (page.status is Page.State.Error) {
+                page.chapter.pageLoader?.retryPage(page)
+            }
+            (page.chapter.pageLoader as? HttpPageLoader)?.boostPage(page)
+            return emptyReaderImageResponse(503)
+        }
 
         return runCatching {
             streamProvider.toWebResourceResponse()
@@ -290,24 +317,6 @@ class LnReaderWebViewViewer(
             logcat(LogPriority.ERROR, error) { "Unable to serve local reader image: $uri" }
             emptyReaderImageResponse(500)
         }
-    }
-
-    private fun ReaderPage.awaitStreamForWebView(): (() -> InputStream)? {
-        if (status is Page.State.Error) {
-            chapter.pageLoader?.retryPage(this)
-        }
-        (chapter.pageLoader as? HttpPageLoader)?.boostPage(this)
-
-        repeat(IMAGE_STREAM_WAIT_ATTEMPTS) {
-            stream?.let { return it }
-            try {
-                Thread.sleep(IMAGE_STREAM_WAIT_STEP_MS)
-            } catch (e: InterruptedException) {
-                Thread.currentThread().interrupt()
-                return null
-            }
-        }
-        return stream
     }
 
     private fun (() -> InputStream).toWebResourceResponse(): WebResourceResponse {
@@ -985,10 +994,11 @@ class LnReaderWebViewViewer(
             <html dir="ltr">
               <head>
                 <meta name="viewport" content="$viewport">
-                <link rel="stylesheet" href="file:///android_asset/css/index.css">
-                <link rel="stylesheet" href="file:///android_asset/css/pageReader.css">
-                <link rel="stylesheet" href="file:///android_asset/css/toolWrapper.css">
-                <link rel="stylesheet" href="file:///android_asset/css/tts.css">
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+                <link rel="stylesheet" href="${ASSET_BASE_URL}css/index.css">
+                <link rel="stylesheet" href="${ASSET_BASE_URL}css/pageReader.css">
+                <link rel="stylesheet" href="${ASSET_BASE_URL}css/toolWrapper.css">
+                <link rel="stylesheet" href="${ASSET_BASE_URL}css/tts.css">
                 <style>
                   :root {
                     --StatusBar-currentHeight: 0px;
@@ -1028,17 +1038,17 @@ class LnReaderWebViewViewer(
                   }
                   @font-face {
                     font-family: arbutus-slab;
-                    src: url("file:///android_asset/fonts/arbutus-slab.ttf");
+                    src: url("${ASSET_BASE_URL}fonts/arbutus-slab.ttf");
                   }
-                  @font-face { font-family: domine; src: url("file:///android_asset/fonts/domine.ttf"); }
-                  @font-face { font-family: lato; src: url("file:///android_asset/fonts/lato.ttf"); }
-                  @font-face { font-family: lora; src: url("file:///android_asset/fonts/lora.ttf"); }
-                  @font-face { font-family: noto-sans; src: url("file:///android_asset/fonts/noto-sans.ttf"); }
-                  @font-face { font-family: nunito; src: url("file:///android_asset/fonts/nunito.ttf"); }
-                  @font-face { font-family: open-sans; src: url("file:///android_asset/fonts/open-sans.ttf"); }
-                  @font-face { font-family: OpenDyslexic3-Regular; src: url("file:///android_asset/fonts/OpenDyslexic3-Regular.ttf"); }
-                  @font-face { font-family: pt-sans-bold; src: url("file:///android_asset/fonts/pt-sans-bold.ttf"); }
-                  @font-face { font-family: pt-serif; src: url("file:///android_asset/fonts/pt-serif.ttf"); }
+                  @font-face { font-family: domine; src: url("${ASSET_BASE_URL}fonts/domine.ttf"); }
+                  @font-face { font-family: lato; src: url("${ASSET_BASE_URL}fonts/lato.ttf"); }
+                  @font-face { font-family: lora; src: url("${ASSET_BASE_URL}fonts/lora.ttf"); }
+                  @font-face { font-family: noto-sans; src: url("${ASSET_BASE_URL}fonts/noto-sans.ttf"); }
+                  @font-face { font-family: nunito; src: url("${ASSET_BASE_URL}fonts/nunito.ttf"); }
+                  @font-face { font-family: open-sans; src: url("${ASSET_BASE_URL}fonts/open-sans.ttf"); }
+                  @font-face { font-family: OpenDyslexic3-Regular; src: url("${ASSET_BASE_URL}fonts/OpenDyslexic3-Regular.ttf"); }
+                  @font-face { font-family: pt-sans-bold; src: url("${ASSET_BASE_URL}fonts/pt-sans-bold.ttf"); }
+                  @font-face { font-family: pt-serif; src: url("${ASSET_BASE_URL}fonts/pt-serif.ttf"); }
                   #reader-footer-wrapper,
                   #reader-footer {
                     display: none !important;
@@ -1145,12 +1155,12 @@ class LnReaderWebViewViewer(
                   var initialPageReaderConfig = ${JSONObject().put("nextChapterScreenVisible", false)};
                   var initialReaderConfig = $initialReaderConfig;
                 </script>
-                <script src="file:///android_asset/js/polyfill-onscrollend.js"></script>
-                <script src="file:///android_asset/js/icons.js"></script>
-                <script src="file:///android_asset/js/van.js"></script>
-                <script src="file:///android_asset/js/text-vibe.js"></script>
-                <script src="file:///android_asset/js/core.js"></script>
-                <script src="file:///android_asset/js/index.js"></script>
+                <script src="${ASSET_BASE_URL}js/polyfill-onscrollend.js"></script>
+                <script src="${ASSET_BASE_URL}js/icons.js"></script>
+                <script src="${ASSET_BASE_URL}js/van.js"></script>
+                <script src="${ASSET_BASE_URL}js/text-vibe.js"></script>
+                <script src="${ASSET_BASE_URL}js/core.js"></script>
+                <script src="${ASSET_BASE_URL}js/index.js"></script>
                 ${if (imageReader) novaImageReaderScript() else ""}
                 <script>
                   if (window.reader) { reader.hidden.val = ${(!activity.viewModel.state.value.menuVisible)}; }
@@ -1523,13 +1533,12 @@ class LnReaderWebViewViewer(
     )
 
     private companion object {
-        const val ASSET_BASE_URL = "file:///android_asset/"
+        const val ASSET_BASE_URL = "https://nova.local/assets/"
         const val NOVA_READER_IMAGE_HOST = "nova.local"
+        const val NOVA_READER_ASSET_PATH = "assets"
         const val NOVA_READER_IMAGE_PATH = "reader-page"
         const val IMAGE_HEADER_READ_LIMIT = 512
         const val IMAGE_TRANSCODE_QUALITY = 94
-        const val IMAGE_STREAM_WAIT_ATTEMPTS = 120
-        const val IMAGE_STREAM_WAIT_STEP_MS = 100L
         const val MAX_PRELOADED_CHAPTERS = 4
         const val READER_IMAGE_CACHE_SECONDS = 3600
     }

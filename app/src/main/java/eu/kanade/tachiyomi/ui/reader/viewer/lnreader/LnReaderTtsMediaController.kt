@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -29,7 +30,7 @@ import java.io.File
 import java.net.URL
 import kotlin.math.max
 
-@UnstableApi
+@androidx.annotation.OptIn(UnstableApi::class)
 internal class LnReaderTtsMediaController(
     private val context: Context,
     private val callbacks: Callbacks,
@@ -158,12 +159,12 @@ internal class LnReaderTtsMediaController(
             addAction(actionNext)
             addAction(actionRewind)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            appContext.registerReceiver(mediaReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            appContext.registerReceiver(mediaReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            appContext,
+            mediaReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         receiverRegistered = true
     }
 

@@ -1110,6 +1110,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 .bufferedReader()
                 .use { it.readText() }
                 .toReaderContentHtml()
+                .sanitizeReaderContentHtml()
         }
 
         if (source is HttpSource) {
@@ -1192,7 +1193,7 @@ class ReaderViewModel @JvmOverloads constructor(
         return runCatching {
             source.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                response.body.string().toNovelFranceHtml()
+                response.body.string().toNovelFranceHtml().sanitizeReaderContentHtml()
             }
         }.getOrNull()
     }

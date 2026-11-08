@@ -192,7 +192,7 @@ class MangaTranslationCache(
                     }
                     val header = ByteArray(IMAGE_HEADER_SIZE)
                     val headerSize = outputFile.inputStream().buffered().use { input ->
-                        input.readNBytes(header, 0, IMAGE_HEADER_SIZE)
+                        input.readAtMost(header)
                     }
                     if (detectImageExtension(header, headerSize) == null) {
                         throw MangaTranslationProtocolException("Page traduite corrompue")
