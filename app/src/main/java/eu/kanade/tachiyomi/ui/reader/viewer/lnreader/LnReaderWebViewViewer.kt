@@ -416,31 +416,17 @@ class LnReaderWebViewViewer(
         }
         currentChapter = chapter
         val chapterKey = chapter.imageUrlChapterKey()
-        val sources = JSONObject().apply {
-            chapter.pages.orEmpty()
-                .filterNot { it is InsertPage }
-                .forEach { page ->
-                    put(
-                        page.index.toString(),
-                        "https://$NOVA_READER_IMAGE_HOST/$NOVA_READER_IMAGE_PATH/" +
-                            "$chapterKey/${page.index}?v=${page.streamVersion}",
-                    )
-                }
-        }
+        val sources = chapter.pages.orEmpty()
+            .filterNot { it is InsertPage }
+            .associate { page ->
+                page.index to ReaderLensPageSource(
+                    url = "https://$NOVA_READER_IMAGE_HOST/$NOVA_READER_IMAGE_PATH/" +
+                        "$chapterKey/${page.index}?v=${page.streamVersion}",
+                    translated = page.isUsingTranslatedStream,
+                )
+            }
         webView.evaluateJavascript(
-            """
-                (function(sources) {
-                  var scrollTop = window.scrollY;
-                  Object.keys(sources).forEach(function(pageIndex) {
-                    var figure = document.querySelector('.nova-reader-page[data-page-index="' + pageIndex + '"]');
-                    var image = figure && figure.querySelector('img');
-                    if (!image) return;
-                    image.dataset.originalSrc = sources[pageIndex];
-                    image.src = sources[pageIndex];
-                  });
-                  requestAnimationFrame(function() { window.scrollTo(0, scrollTop); });
-                })($sources);
-            """.trimIndent(),
+            buildReaderLensRefreshScript(sources),
             null,
         )
     }
@@ -1096,6 +1082,25 @@ class LnReaderWebViewViewer(
                     touch-action: pan-y pinch-zoom;
                     user-select: none;
                     -webkit-user-drag: none;
+                  }
+                  .nova-image-chapter .nova-lens-overlay {
+                    position: absolute;
+                    inset: 0;
+                    z-index: 1;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1);
+                  }
+                  .nova-image-chapter .nova-lens-overlay.nova-lens-visible {
+                    opacity: 1;
+                  }
+                  @media (prefers-reduced-motion: reduce) {
+                    .nova-image-chapter .nova-lens-overlay {
+                      transition: none;
+                    }
                   }
                   .nova-reader-page {
                     position: relative;
