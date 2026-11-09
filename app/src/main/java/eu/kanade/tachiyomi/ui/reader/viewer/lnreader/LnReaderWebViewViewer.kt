@@ -19,6 +19,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
@@ -404,31 +405,12 @@ class LnReaderWebViewViewer(
         preloadAdjacentChapterContent(chapters.nextChapter)
     }
 
-    fun refreshCurrentChapter(chapters: ViewerChapters) {
-        viewerChapters = chapters
-        preloadAdjacentChapterContent(chapters.prevChapter)
-        preloadAdjacentChapterContent(chapters.nextChapter)
+    fun showReaderLensOverlay(pageIndex: Int, regions: List<ReaderLensRegion>) {
+        webView.evaluateJavascript(buildReaderLensOverlayScript(pageIndex, regions), null)
+    }
 
-        val chapter = chapters.currChapter
-        if (currentChapter?.chapter?.id != chapter.chapter.id) {
-            loadChapter(chapter)
-            return
-        }
-        currentChapter = chapter
-        val chapterKey = chapter.imageUrlChapterKey()
-        val sources = chapter.pages.orEmpty()
-            .filterNot { it is InsertPage }
-            .associate { page ->
-                page.index to ReaderLensPageSource(
-                    url = "https://$NOVA_READER_IMAGE_HOST/$NOVA_READER_IMAGE_PATH/" +
-                        "$chapterKey/${page.index}?v=${page.streamVersion}",
-                    translated = page.isUsingTranslatedStream,
-                )
-            }
-        webView.evaluateJavascript(
-            buildReaderLensRefreshScript(sources),
-            null,
-        )
+    fun clearReaderLensOverlays() {
+        webView.evaluateJavascript(CLEAR_READER_LENS_OVERLAYS_SCRIPT, null)
     }
 
     fun beginChapterNavigation(): Boolean {
@@ -651,6 +633,7 @@ class LnReaderWebViewViewer(
                 val pageIndex = event.optInt("pageIndex", -1)
                 if (currentChapterUsesImages && pageIndex >= 0) {
                     currentImagePageIndex = pageIndex
+                    activity.viewModel.onReaderLensPageVisible(pageIndex)
                 }
             }
             "next" -> {
@@ -1083,22 +1066,39 @@ class LnReaderWebViewViewer(
                     user-select: none;
                     -webkit-user-drag: none;
                   }
-                  .nova-image-chapter .nova-lens-overlay {
+                  .nova-image-chapter .nova-lens-text-layer {
                     position: absolute;
                     inset: 0;
-                    z-index: 1;
+                    z-index: 2;
                     width: 100%;
                     height: 100%;
-                    object-fit: contain;
                     opacity: 0;
                     pointer-events: none;
                     transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1);
+                    container-type: inline-size;
                   }
-                  .nova-image-chapter .nova-lens-overlay.nova-lens-visible {
+                  .nova-image-chapter .nova-lens-text-layer.nova-lens-visible {
                     opacity: 1;
                   }
+                  .nova-image-chapter .nova-lens-text {
+                    position: absolute;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                    padding: 3px 5px;
+                    border-radius: 7px;
+                    background: rgba(250, 250, 250, 0.94);
+                    color: #161616;
+                    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.24);
+                    font: 650 clamp(9px, 2.8cqw, 21px)/1.08 system-ui, sans-serif;
+                    text-align: center;
+                    white-space: pre-line;
+                    overflow-wrap: anywhere;
+                  }
                   @media (prefers-reduced-motion: reduce) {
-                    .nova-image-chapter .nova-lens-overlay {
+                    .nova-image-chapter .nova-lens-text-layer {
                       transition: none;
                     }
                   }

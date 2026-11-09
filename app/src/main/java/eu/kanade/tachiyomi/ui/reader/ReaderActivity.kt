@@ -65,14 +65,12 @@ import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterListDialog
 import eu.kanade.presentation.reader.DisplayRefreshHost
-import eu.kanade.presentation.reader.MangaTranslationAction
 import eu.kanade.presentation.reader.OrientationSelectDialog
 import eu.kanade.presentation.reader.ReaderContentOverlay
 import eu.kanade.presentation.reader.ReaderPageActionsDialog
 import eu.kanade.presentation.reader.ReadingModeSelectDialog
 import eu.kanade.presentation.reader.appbars.NavBarType
 import eu.kanade.presentation.reader.appbars.ReaderAppBars
-import eu.kanade.presentation.reader.mangaTranslationUiModel
 import eu.kanade.presentation.reader.settings.ReaderSettingsDialog
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.R
@@ -296,13 +294,11 @@ class ReaderActivity : BaseActivity() {
                             }
                         }
                     }
-                    ReaderViewModel.Event.RefreshCurrentChapterImages -> {
-                        val chapters = viewModel.state.value.viewerChapters
-                        val viewer = viewModel.state.value.viewer
-                        if (chapters != null && viewer is LnReaderWebViewViewer) {
-                            viewer.refreshCurrentChapter(chapters)
-                        }
-                    }
+                    ReaderViewModel.Event.ClearReaderLensOverlays ->
+                        (viewModel.state.value.viewer as? LnReaderWebViewViewer)?.clearReaderLensOverlays()
+                    is ReaderViewModel.Event.ShowReaderLensOverlay ->
+                        (viewModel.state.value.viewer as? LnReaderWebViewViewer)
+                            ?.showReaderLensOverlay(event.pageIndex, event.regions)
                     ReaderViewModel.Event.PageChanged -> {
                         displayRefreshHost.flash()
                     }
@@ -321,7 +317,7 @@ class ReaderActivity : BaseActivity() {
                     is ReaderViewModel.Event.SetCoverResult -> {
                         onSetAsCoverResult(event.result)
                     }
-                    is ReaderViewModel.Event.MangaTranslationError -> {
+                    is ReaderViewModel.Event.ReaderLensError -> {
                         toast(event.message)
                     }
                 }
@@ -667,13 +663,6 @@ class ReaderActivity : BaseActivity() {
         val dualPageSplitPaged by readerPreferences.dualPageSplitPaged().collectAsState()
 
         val navBarType = NavBarType.Bottom
-        val mangaTranslation = mangaTranslationUiModel(
-            available = state.mangaTranslationAvailable,
-            configured = state.mangaTranslationConfigured,
-            state = state.mangaTranslationState,
-            hasTranslation = state.hasMangaTranslation,
-            showingTranslation = state.showingMangaTranslation,
-        )
         // SY <--
 
         ReaderAppBars(
@@ -688,29 +677,13 @@ class ReaderActivity : BaseActivity() {
             onOpenInWebView = ::openChapterInWebView.takeIf { isHttpSource },
             onOpenInBrowser = ::openChapterInBrowser.takeIf { isHttpSource },
             onShare = ::shareChapter.takeIf { isHttpSource },
-            mangaTranslation = mangaTranslation,
-            onMangaTranslationAction = {
-                if (
-                    mangaTranslation?.action == MangaTranslationAction.Translate &&
-                    !state.mangaTranslationConfigured
-                ) {
-                    openMangaTranslationSettings()
-                } else {
-                    viewModel.onMangaTranslationAction()
-                }
-            },
-            onRetranslateCurrentPage = if (mangaTranslation?.canRetranslatePage == true) {
-                {
-                    if (state.mangaTranslationConfigured) {
-                        val pageIndex = (state.viewer as? LnReaderWebViewViewer)?.currentImagePageIndex
-                            ?: (state.currentPage - 1)
-                        viewModel.onRetranslateCurrentMangaPage(pageIndex)
-                    } else {
-                        openMangaTranslationSettings()
-                    }
-                }
-            } else {
-                null
+            readerLensAvailable = state.readerLensAvailable,
+            readerLensEnabled = state.readerLensEnabled,
+            readerLensWorking = state.readerLensWorking,
+            onReaderLensToggle = {
+                val pageIndex = (state.viewer as? LnReaderWebViewViewer)?.currentImagePageIndex
+                    ?: (state.currentPage - 1).coerceAtLeast(0)
+                viewModel.onReaderLensToggle(pageIndex)
             },
 
             viewer = state.viewer,
@@ -1012,15 +985,6 @@ class ReaderActivity : BaseActivity() {
                 },
             )
         }
-    }
-
-    private fun openMangaTranslationSettings() {
-        startActivity(
-            Intent(this, MainActivity::class.java).apply {
-                action = MainActivity.INTENT_READER_SETTINGS
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            },
-        )
     }
 
     private fun openChapterInWebView() {

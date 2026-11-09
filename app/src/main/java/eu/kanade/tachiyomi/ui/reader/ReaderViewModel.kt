@@ -22,17 +22,16 @@ import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
+import eu.kanade.tachiyomi.data.lens.ReaderLensException
+import eu.kanade.tachiyomi.data.lens.ReaderLensPageQueue
+import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
+import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
+import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.data.sync.SyncDataJob
-import eu.kanade.tachiyomi.data.translation.MangaTranslationException
-import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
-import eu.kanade.tachiyomi.data.translation.MangaTranslationProtocolException
-import eu.kanade.tachiyomi.data.translation.MangaTranslationRepository
-import eu.kanade.tachiyomi.data.translation.MangaTranslationState
-import eu.kanade.tachiyomi.data.translation.buildMangaTranslationChapterKey
-import eu.kanade.tachiyomi.data.translation.isActive
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
@@ -43,7 +42,6 @@ import eu.kanade.tachiyomi.ui.reader.chapter.ReaderChapterItem
 import eu.kanade.tachiyomi.ui.reader.loader.ChapterLoader
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
 import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
-import eu.kanade.tachiyomi.ui.reader.loader.TranslatedPageLoader
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
@@ -173,8 +171,8 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadProvider: DownloadProvider = Injekt.get(),
     private val tempFileManager: UniFileTempFileManager = Injekt.get(),
     private val imageSaver: ImageSaver = Injekt.get(),
-    private val mangaTranslationRepository: MangaTranslationRepository = Injekt.get(),
-    private val mangaTranslationPreferences: MangaTranslationPreferences = Injekt.get(),
+    private val readerLensEngine: ReaderLensEngine = Injekt.get(),
+    private val readerLensPreferences: ReaderLensPreferences = Injekt.get(),
     val readerPreferences: ReaderPreferences = Injekt.get(),
     private val basePreferences: BasePreferences = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
@@ -198,9 +196,7 @@ class ReaderViewModel @JvmOverloads constructor(
     // SY <--
 ) : ViewModel() {
 
-    private val mutableState = MutableStateFlow(
-        State(mangaTranslationConfigured = mangaTranslationPreferences.connection().isConfigured),
-    )
+    private val mutableState = MutableStateFlow(State(readerLensEnabled = readerLensPreferences.enabled.get()))
     val state = mutableState.asStateFlow()
 
     private val eventChannel = Channel<Event>()
@@ -208,9 +204,11 @@ class ReaderViewModel @JvmOverloads constructor(
 
     private val chapterLoadRequestGate = ChapterLoadRequestGate()
     private val chapterLoadStateLock = Any()
-    private var mangaTranslationChapterKey: String? = null
-    private var mangaTranslationObservationJob: Job? = null
-    private var mangaTranslationActionJob: Job? = null
+    private val readerLensQueue = ReaderLensPageQueue()
+    private var readerLensChapterKey: String? = null
+    private var readerLensWorkerJob: Job? = null
+    private var readerLensWorkerGeneration = 0L
+    private var readerLensVisiblePageIndex = 0
 
     private fun beginChapterLoad(isAdjacent: Boolean = false): Long = synchronized(chapterLoadStateLock) {
         chapterLoadRequestGate.next(isAdjacent).also {
@@ -430,15 +428,10 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
     init {
-        combine(
-            mangaTranslationPreferences.serverUrl().changes(),
-            mangaTranslationPreferences.accessToken().changes(),
-        ) { serverUrl, accessToken ->
-            serverUrl.isNotBlank() && accessToken.isNotBlank()
-        }
+        readerLensPreferences.enabled.changes()
             .distinctUntilChanged()
-            .onEach { configured ->
-                mutableState.update { it.copy(mangaTranslationConfigured = configured) }
+            .onEach { enabled ->
+                mutableState.update { it.copy(readerLensEnabled = enabled) }
             }
             .launchIn(viewModelScope)
 
@@ -564,7 +557,6 @@ class ReaderViewModel @JvmOverloads constructor(
                         context = context,
                         downloadManager = downloadManager,
                         downloadProvider = downloadProvider,
-                        mangaTranslationRepository = mangaTranslationRepository,
                         manga = manga,
                         source = source,
                         // SY -->
@@ -639,7 +631,7 @@ class ReaderViewModel @JvmOverloads constructor(
         withUIContext {
             if (!chapterLoadRequestGate.isCurrent(request)) return@withUIContext
 
-            bindMangaTranslation(newChapters.currChapter)
+            bindReaderLens(newChapters.currChapter)
             mutableState.update {
                 // Add new references first to avoid unnecessary recycling
                 newChapters.ref()
@@ -1105,7 +1097,7 @@ class ReaderViewModel @JvmOverloads constructor(
             }
 
         if (localIndex != null) {
-            updateMangaTranslationAvailability(readerChapter, available = false)
+            updateReaderLensAvailability(readerChapter, available = false)
             return@withIOContext localIndex.openInputStream()
                 .bufferedReader()
                 .use { it.readText() }
@@ -1115,13 +1107,13 @@ class ReaderViewModel @JvmOverloads constructor(
 
         if (source is HttpSource) {
             fetchNovelFranceChapterHtml(source, chapter)?.let {
-                updateMangaTranslationAvailability(readerChapter, available = false)
+                updateReaderLensAvailability(readerChapter, available = false)
                 return@withIOContext it
             }
         }
 
         readerChapter.toImageReaderContentHtml().also { html ->
-            updateMangaTranslationAvailability(readerChapter, available = html != null)
+            updateReaderLensAvailability(readerChapter, available = html != null)
         }
     }
 
@@ -1256,7 +1248,7 @@ class ReaderViewModel @JvmOverloads constructor(
 
         val chapterKey = chapter.id?.toString() ?: chapter.url.hashCode().toString()
         val figures = pages.map { page ->
-            val imageSource = "$NOVA_READER_IMAGE_URL_PREFIX$chapterKey/${page.index}?v=${page.streamVersion}"
+            val imageSource = "$NOVA_READER_IMAGE_URL_PREFIX$chapterKey/${page.index}"
             val loadingMode = if (page.index < 3) "eager" else "lazy"
             val fetchPriority = if (page.index < 2) "high" else "auto"
             """
@@ -1286,328 +1278,136 @@ class ReaderViewModel @JvmOverloads constructor(
         const val NOVA_READER_IMAGE_URL_PREFIX = "https://nova.local/reader-page/"
     }
 
-    fun onMangaTranslationAction() {
-        val snapshot = state.value
-        val chapterKey = mangaTranslationChapterKey ?: return
-        val chapter = snapshot.currentChapter ?: return
-        if (!snapshot.mangaTranslationAvailable) return
-        if (!snapshot.mangaTranslationState.isActive && !snapshot.hasMangaTranslation && !snapshot.mangaTranslationConfigured) {
-            return
-        }
-
-        when {
-            snapshot.mangaTranslationState.isActive -> {
-                mangaTranslationActionJob?.cancel()
-                mangaTranslationActionJob = viewModelScope.launch {
-                    mangaTranslationRepository.cancel(chapterKey)
-                }
-            }
-            snapshot.hasMangaTranslation && snapshot.showingMangaTranslation -> {
-                mutableState.update { it.copy(mangaTranslationState = MangaTranslationState.Preparing) }
-                mangaTranslationActionJob = viewModelScope.launch {
-                    try {
-                        val pages = prepareMangaRetranslationPages(chapter)
-                        mangaTranslationRepository.translate(chapterKey, pages, force = true)
-                    } catch (_: TimeoutCancellationException) {
-                        setMangaTranslationFailure("Certaines pages n'ont pas pu être chargées à temps")
-                    } catch (error: MangaTranslationException) {
-                        setMangaTranslationFailure(error.message ?: "Impossible de préparer le chapitre")
-                    }
-                }
-            }
-            snapshot.hasMangaTranslation -> {
-                mangaTranslationActionJob = viewModelScope.launch {
-                    try {
-                        val pages = prepareMangaTranslationPages(chapter)
-                        val pageIndexes = pages.map { it.index }
-                        if (mangaTranslationRepository.hasUsableTranslation(chapterKey, pageIndexes)) {
-                            showTranslatedChapter(chapterKey, chapter)
-                        } else {
-                            mutableState.update {
-                                it.copy(
-                                    mangaTranslationState = MangaTranslationState.Preparing,
-                                    hasMangaTranslation = false,
-                                    showingMangaTranslation = false,
-                                )
-                            }
-                            mangaTranslationRepository.translate(chapterKey, pages)
-                        }
-                    } catch (_: TimeoutCancellationException) {
-                        setMangaTranslationFailure("Certaines pages n'ont pas pu être chargées à temps")
-                    } catch (error: MangaTranslationException) {
-                        setMangaTranslationFailure(error.message ?: "Impossible de préparer le chapitre")
-                    }
-                }
-            }
-            else -> {
-                mutableState.update { it.copy(mangaTranslationState = MangaTranslationState.Preparing) }
-                mangaTranslationActionJob = viewModelScope.launch {
-                    try {
-                        val pages = prepareMangaTranslationPages(chapter)
-                        mangaTranslationRepository.translate(chapterKey, pages)
-                    } catch (_: TimeoutCancellationException) {
-                        setMangaTranslationFailure("Certaines pages n'ont pas pu être chargées à temps")
-                    } catch (error: MangaTranslationException) {
-                        setMangaTranslationFailure(error.message ?: "Impossible de préparer le chapitre")
-                    }
-                }
-            }
-        }
-    }
-
-    fun onRetranslateCurrentMangaPage(pageIndex: Int) {
-        val snapshot = state.value
-        val chapterKey = mangaTranslationChapterKey ?: return
-        val chapter = snapshot.currentChapter ?: return
-        if (
-            pageIndex < 0 ||
-            !snapshot.mangaTranslationAvailable ||
-            !snapshot.mangaTranslationConfigured ||
-            !snapshot.hasMangaTranslation ||
-            !snapshot.showingMangaTranslation ||
-            snapshot.mangaTranslationState.isActive
-        ) {
-            return
-        }
-
-        mutableState.update { it.copy(mangaTranslationState = MangaTranslationState.Preparing) }
-        mangaTranslationActionJob = viewModelScope.launch {
-            try {
-                val page = prepareMangaRetranslationPage(chapter, pageIndex)
-                mangaTranslationRepository.retranslatePage(chapterKey, pageIndex, page)
-            } catch (_: TimeoutCancellationException) {
-                setMangaTranslationFailure("La page n'a pas pu être chargée à temps")
-            } catch (error: MangaTranslationException) {
-                setMangaTranslationFailure(error.message ?: "Impossible de préparer la page")
-            }
-        }
-    }
-
-    private fun bindMangaTranslation(readerChapter: ReaderChapter) {
-        mangaTranslationObservationJob?.cancel()
-        val chapterKey = mangaTranslationKey(readerChapter)
-        mangaTranslationChapterKey = chapterKey
-        if (chapterKey == null) {
-            mutableState.update {
-                it.copy(
-                    mangaTranslationAvailable = false,
-                    mangaTranslationState = MangaTranslationState.Idle,
-                    hasMangaTranslation = false,
-                    showingMangaTranslation = false,
-                )
-            }
-            return
-        }
-
-        val pages = mangaTranslationPages(readerChapter)
-        val pageIndexes = pages.map { it.index }
-        val hasTranslation = mangaTranslationRepository.hasTranslation(chapterKey, pageIndexes)
-        val showingTranslation = hasTranslation &&
-            (readerChapter.pageLoader is TranslatedPageLoader || applyTranslatedStreams(chapterKey, pages))
-        if (!showingTranslation) {
-            pages.filter { it.isUsingTranslatedStream }.forEach { it.useOriginalStream() }
+    fun onReaderLensToggle(pageIndex: Int) {
+        val enabled = !state.value.readerLensEnabled
+        readerLensPreferences.enabled.set(enabled)
+        mutableState.update { it.copy(readerLensEnabled = enabled, readerLensWorking = false) }
+        if (enabled) {
+            onReaderLensPageVisible(pageIndex)
         } else {
-            discardOriginalDownload(readerChapter)
+            readerLensWorkerGeneration++
+            readerLensWorkerJob?.cancel()
+            readerLensWorkerJob = null
+            readerLensQueue.clear()
+            eventChannel.trySend(Event.ClearReaderLensOverlays)
         }
+    }
+
+    fun onReaderLensPageVisible(pageIndex: Int) {
+        val snapshot = state.value
+        val chapter = snapshot.currentChapter ?: return
+        if (pageIndex < 0 || !snapshot.readerLensAvailable || !snapshot.readerLensEnabled) return
+        val pages = readerLensPages(chapter)
+        val pagePosition = pages.indexOfFirst { it.index == pageIndex }
+        if (pagePosition < 0) return
+        readerLensVisiblePageIndex = pageIndex
+        readerLensQueue.offerVisible(pageIndex, pages.getOrNull(pagePosition + 1)?.index)
+        startReaderLensWorker(chapter)
+    }
+
+    private fun bindReaderLens(readerChapter: ReaderChapter) {
+        readerLensWorkerGeneration++
+        readerLensWorkerJob?.cancel()
+        readerLensWorkerJob = null
+        readerLensQueue.clear()
+        readerLensChapterKey = readerLensKey(readerChapter)
+        readerLensVisiblePageIndex = 0
         mutableState.update {
             it.copy(
-                mangaTranslationAvailable = hasTranslation,
-                mangaTranslationState = mangaTranslationRepository.observe(chapterKey).value,
-                hasMangaTranslation = hasTranslation,
-                showingMangaTranslation = showingTranslation,
+                readerLensAvailable = false,
+                readerLensWorking = false,
             )
         }
-        mangaTranslationObservationJob = mangaTranslationRepository.observe(chapterKey)
-            .onEach { translationState ->
-                if (mangaTranslationChapterKey != chapterKey) return@onEach
-                val cached = if (translationState is MangaTranslationState.Ready) {
-                    mangaTranslationRepository.hasTranslation(chapterKey, pageIndexes)
-                } else {
-                    state.value.hasMangaTranslation
+    }
+
+    private fun updateReaderLensAvailability(readerChapter: ReaderChapter, available: Boolean) {
+        val chapterKey = readerLensKey(readerChapter) ?: return
+        if (chapterKey != readerLensChapterKey) return
+        mutableState.update { it.copy(readerLensAvailable = available) }
+        if (!available || !state.value.readerLensEnabled) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            readerLensPages(readerChapter).forEach { page ->
+                readerLensEngine.cached(chapterKey, page.index)?.let { regions ->
+                    eventChannel.send(Event.ShowReaderLensOverlay(page.index, regions))
                 }
-                mutableState.update {
-                    it.copy(
-                        mangaTranslationState = translationState,
-                        hasMangaTranslation = cached,
-                    )
-                }
-                if (translationState is MangaTranslationState.Ready) {
-                    if (showTranslatedChapter(chapterKey, readerChapter)) {
-                        discardOriginalDownload(readerChapter)
+            }
+        }
+    }
+
+    private fun startReaderLensWorker(readerChapter: ReaderChapter) {
+        if (readerLensWorkerJob?.isActive == true) return
+        val chapterKey = readerLensChapterKey ?: return
+        val workerGeneration = readerLensWorkerGeneration
+        readerLensWorkerJob = viewModelScope.launch {
+            mutableState.update { it.copy(readerLensWorking = true) }
+            try {
+                while (state.value.readerLensEnabled && readerLensChapterKey == chapterKey) {
+                    val pageIndex = readerLensQueue.poll() ?: break
+                    val page = readerLensPages(readerChapter).firstOrNull { it.index == pageIndex } ?: continue
+                    try {
+                        val regions = readerLensEngine.cached(chapterKey, pageIndex)
+                            ?: readerLensEngine.analyze(
+                                chapterKey = chapterKey,
+                                pageIndex = pageIndex,
+                                streamProvider = prepareReaderLensStream(readerChapter, page),
+                            )
+                        if (readerLensChapterKey != chapterKey || !state.value.readerLensEnabled) return@launch
+                        readerLensQueue.markCompleted(pageIndex)
+                        eventChannel.send(Event.ShowReaderLensOverlay(pageIndex, regions))
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: ReaderLensException) {
+                        if (pageIndex == readerLensVisiblePageIndex) {
+                            eventChannel.send(Event.ReaderLensError(error.message ?: "Lens n'a pas pu analyser cette page"))
+                        }
+                    } catch (error: Throwable) {
+                        logcat(LogPriority.WARN, error) { "Reader Lens failed for page $pageIndex" }
+                        if (pageIndex == readerLensVisiblePageIndex) {
+                            eventChannel.send(Event.ReaderLensError("Lens n'a pas pu analyser cette page"))
+                        }
                     }
-                } else if (translationState is MangaTranslationState.Failed) {
-                    eventChannel.trySend(Event.MangaTranslationError(translationState.message))
+                }
+            } finally {
+                if (workerGeneration == readerLensWorkerGeneration && readerLensChapterKey == chapterKey) {
+                    mutableState.update { it.copy(readerLensWorking = false) }
+                    readerLensWorkerJob = null
+                    if (!readerLensQueue.isEmpty() && state.value.readerLensEnabled) {
+                        startReaderLensWorker(readerChapter)
+                    }
                 }
             }
-            .launchIn(viewModelScope)
-        viewModelScope.launch {
-            mangaTranslationRepository.resume(chapterKey)
-        }
-        viewModelScope.launch {
-            val usable = mangaTranslationRepository.hasUsableTranslation(chapterKey, pageIndexes)
-            if (mangaTranslationChapterKey != chapterKey) return@launch
-            mutableState.update {
-                it.copy(
-                    hasMangaTranslation = usable,
-                    showingMangaTranslation = usable && it.showingMangaTranslation,
-                )
-            }
         }
     }
 
-    private fun updateMangaTranslationAvailability(readerChapter: ReaderChapter, available: Boolean) {
-        val chapterKey = mangaTranslationKey(readerChapter) ?: return
-        if (chapterKey != mangaTranslationChapterKey) return
-        mutableState.update { it.copy(mangaTranslationAvailable = available) }
-    }
-
-    private suspend fun prepareMangaTranslationPages(
+    private suspend fun prepareReaderLensStream(
         readerChapter: ReaderChapter,
-        pages: List<ReaderPage> = mangaTranslationPages(readerChapter),
-        httpLoader: HttpPageLoader? = readerChapter.pageLoader as? HttpPageLoader,
-    ): List<ReaderPage> {
-        if (pages.isEmpty()) throw MangaTranslationProtocolException("Ce chapitre ne contient aucune image")
-        pages.filter { it.stream == null }.forEach { page ->
+        page: ReaderPage,
+    ): () -> java.io.InputStream {
+        val httpLoader = readerChapter.pageLoader as? HttpPageLoader
+        if (page.stream == null) {
             if (page.status is Page.State.Error) httpLoader?.retryPage(page)
             httpLoader?.boostPage(page)
-        }
-        withTimeout(MANGA_TRANSLATION_PAGE_TIMEOUT_MS) {
-            pages.forEach { page ->
-                if (page.stream == null) {
-                    val status = page.statusFlow.first {
-                        it is Page.State.Ready || it is Page.State.Error
-                    }
-                    if (status is Page.State.Error) {
-                        throw MangaTranslationProtocolException(
-                            "Impossible de charger la page ${page.number}",
-                            status.error,
-                        )
-                    }
+            withTimeout(READER_LENS_PAGE_TIMEOUT_MS) {
+                val status = page.statusFlow.first {
+                    it is Page.State.Ready || it is Page.State.Error
                 }
-                if (!page.rememberOriginalStream()) {
-                    throw MangaTranslationProtocolException("La page ${page.number} n'est pas disponible")
+                if (status is Page.State.Error) {
+                    throw ReaderLensException("La page ${page.number} n'est pas disponible", status.error)
                 }
             }
         }
-        return pages
+        return page.stream ?: throw ReaderLensException("La page ${page.number} n'est pas disponible")
     }
 
-    private suspend fun prepareMangaRetranslationPages(readerChapter: ReaderChapter): List<ReaderPage> {
-        if (readerChapter.pageLoader !is TranslatedPageLoader) {
-            mangaTranslationPages(readerChapter)
-                .filter { it.isUsingTranslatedStream }
-                .forEach { it.useOriginalStream() }
-            return prepareMangaTranslationPages(readerChapter)
-        }
-
-        val source = getSourceForReaderChapter(readerChapter) as? HttpSource
-            ?: throw MangaTranslationProtocolException("La source originale de ce chapitre n'est pas disponible")
-        val sourceLoader = HttpPageLoader(readerChapter, source)
-        return try {
-            val sourcePages = sourceLoader.getPages().onEach { it.chapter = readerChapter }
-            prepareMangaTranslationPages(readerChapter, sourcePages, sourceLoader)
-        } finally {
-            sourceLoader.recycle()
-        }
-    }
-
-    private suspend fun prepareMangaRetranslationPage(
-        readerChapter: ReaderChapter,
-        pageIndex: Int,
-    ): ReaderPage {
-        if (readerChapter.pageLoader !is TranslatedPageLoader) {
-            val page = mangaTranslationPages(readerChapter)
-                .firstOrNull { it.index == pageIndex }
-                ?: throw MangaTranslationProtocolException("Page ${pageIndex + 1} introuvable")
-            val translatedStream = page.stream
-            if (page.isUsingTranslatedStream) {
-                if (!page.useOriginalStream()) {
-                    throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
-                }
-                val sourceStream = page.stream
-                    ?: throw MangaTranslationProtocolException("La page ${pageIndex + 1} n'est pas disponible")
-                translatedStream?.let(page::useTranslatedStream)
-                return ReaderPage(index = pageIndex, stream = sourceStream)
-            }
-
-            val prepared = prepareMangaTranslationPages(readerChapter, listOf(page)).single()
-            return ReaderPage(index = pageIndex, stream = prepared.stream)
-        }
-
-        val source = getSourceForReaderChapter(readerChapter) as? HttpSource
-            ?: throw MangaTranslationProtocolException("La source originale de ce chapitre n'est pas disponible")
-        val sourceLoader = HttpPageLoader(readerChapter, source)
-        return try {
-            val sourcePage = sourceLoader.getPages()
-                .onEach { it.chapter = readerChapter }
-                .firstOrNull { it.index == pageIndex }
-                ?: throw MangaTranslationProtocolException("Page ${pageIndex + 1} introuvable")
-            val prepared = prepareMangaTranslationPages(readerChapter, listOf(sourcePage), sourceLoader).single()
-            ReaderPage(index = pageIndex, stream = prepared.stream)
-        } finally {
-            sourceLoader.recycle()
-        }
-    }
-
-    private fun showTranslatedChapter(chapterKey: String, readerChapter: ReaderChapter): Boolean {
-        if (chapterKey != mangaTranslationChapterKey) return false
-        val pages = mangaTranslationPages(readerChapter)
-        if (!applyTranslatedStreams(chapterKey, pages)) return false
-        mutableState.update {
-            it.copy(
-                hasMangaTranslation = true,
-                showingMangaTranslation = true,
-            )
-        }
-        eventChannel.trySend(Event.RefreshCurrentChapterImages)
-        return true
-    }
-
-    private fun discardOriginalDownload(readerChapter: ReaderChapter) {
-        val manga = getMangaForReaderChapter(readerChapter) ?: return
-        val source = getSourceForReaderChapter(readerChapter) ?: return
-        if (source.isLocal()) return
-        val chapter = readerChapter.chapter.toDomainChapter() ?: return
-        downloadManager.deleteChapters(
-            chapters = listOf(chapter),
-            manga = manga,
-            source = source,
-            ignoreCategoryExclusion = true,
-        )
-    }
-
-    private fun applyTranslatedStreams(chapterKey: String, pages: List<ReaderPage>): Boolean {
-        val translatedPages = pages.map { page ->
-            page to (mangaTranslationRepository.translatedPage(chapterKey, page.index) ?: return false)
-        }
-        if (!pages.all { it.rememberOriginalStream() }) return false
-        translatedPages.forEach { (page, file) ->
-            page.useTranslatedStream(file::inputStream)
-        }
-        return true
-    }
-
-    private fun mangaTranslationKey(readerChapter: ReaderChapter): String? {
+    private fun readerLensKey(readerChapter: ReaderChapter): String? {
         val chapterId = readerChapter.chapter.id ?: return null
         val manga = getMangaForReaderChapter(readerChapter) ?: return null
-        return buildMangaTranslationChapterKey(manga.source, manga.id, chapterId)
+        return buildReaderLensChapterKey(manga.source, manga.id, chapterId)
     }
 
-    private fun mangaTranslationPages(readerChapter: ReaderChapter): List<ReaderPage> =
+    private fun readerLensPages(readerChapter: ReaderChapter): List<ReaderPage> =
         readerChapter.pages.orEmpty().filterNot { it is InsertPage }
-
-    private fun setMangaTranslationFailure(message: String) {
-        val conciseMessage = message.take(240)
-        mutableState.update {
-            it.copy(
-                mangaTranslationState = MangaTranslationState.Failed(
-                    message = conciseMessage,
-                    canRetry = true,
-                ),
-            )
-        }
-        eventChannel.trySend(Event.MangaTranslationError(conciseMessage))
-    }
 
     /**
      * Bookmarks the currently active chapter.
@@ -2133,11 +1933,9 @@ class ReaderViewModel @JvmOverloads constructor(
         val autoScroll: Boolean = false,
         val isAutoScrollEnabled: Boolean = false,
         val ehAutoscrollFreq: String = "",
-        val mangaTranslationAvailable: Boolean = false,
-        val mangaTranslationConfigured: Boolean = false,
-        val mangaTranslationState: MangaTranslationState = MangaTranslationState.Idle,
-        val hasMangaTranslation: Boolean = false,
-        val showingMangaTranslation: Boolean = false,
+        val readerLensAvailable: Boolean = false,
+        val readerLensEnabled: Boolean = true,
+        val readerLensWorking: Boolean = false,
         // SY <--
     ) {
         val currentChapter: ReaderChapter?
@@ -2173,11 +1971,12 @@ class ReaderViewModel @JvmOverloads constructor(
 
     sealed interface Event {
         data object ReloadViewerChapters : Event
-        data object RefreshCurrentChapterImages : Event
+        data object ClearReaderLensOverlays : Event
+        data class ShowReaderLensOverlay(val pageIndex: Int, val regions: List<ReaderLensRegion>) : Event
         data object PageChanged : Event
         data class SetOrientation(val orientation: Int) : Event
         data class SetCoverResult(val result: SetAsCoverResult) : Event
-        data class MangaTranslationError(val message: String) : Event
+        data class ReaderLensError(val message: String) : Event
 
         data class SavedImage(val result: SaveImageResult) : Event
         data class ShareImage(
@@ -2193,4 +1992,4 @@ class ReaderViewModel @JvmOverloads constructor(
 
 private const val TEXT_READER_COMPLETE_PERCENT = 95
 private const val ADJACENT_CHAPTER_IMAGE_PRELOAD_COUNT = 3
-private const val MANGA_TRANSLATION_PAGE_TIMEOUT_MS = 120_000L
+private const val READER_LENS_PAGE_TIMEOUT_MS = 30_000L

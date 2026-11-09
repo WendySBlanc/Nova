@@ -9,16 +9,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -35,10 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
-import eu.kanade.presentation.reader.MangaTranslationAction
-import eu.kanade.presentation.reader.MangaTranslationUiModel
-import eu.kanade.presentation.reader.contentDescriptionText
-import eu.kanade.presentation.reader.labelText
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.R
@@ -56,12 +53,16 @@ fun ReaderTopBar(
     onOpenInWebView: (() -> Unit)?,
     onOpenInBrowser: (() -> Unit)?,
     onShare: (() -> Unit)?,
-    mangaTranslation: MangaTranslationUiModel?,
-    onMangaTranslationAction: () -> Unit,
-    onRetranslateCurrentPage: (() -> Unit)?,
+    readerLensAvailable: Boolean,
+    readerLensEnabled: Boolean,
+    readerLensWorking: Boolean,
+    onReaderLensToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var moreExpanded by remember { mutableStateOf(false) }
+    val readerLensStateDescription = stringResource(
+        if (readerLensEnabled) MR.strings.reader_lens_active else MR.strings.reader_lens_inactive,
+    )
 
     TopAppBar(
         modifier = modifier,
@@ -112,8 +113,7 @@ fun ReaderTopBar(
             }
 
             if (
-                mangaTranslation != null ||
-                onRetranslateCurrentPage != null ||
+                readerLensAvailable ||
                 onOpenInWebView != null ||
                 onOpenInBrowser != null ||
                 onShare != null
@@ -129,40 +129,28 @@ fun ReaderTopBar(
                         expanded = moreExpanded,
                         onDismissRequest = { moreExpanded = false },
                     ) {
-                        mangaTranslation?.let { translation ->
-                            val description = translation.contentDescriptionText()
+                        if (readerLensAvailable) {
                             DropdownMenuItem(
-                                text = { Text(translation.labelText()) },
-                                enabled = translation.enabled,
+                                text = { Text(stringResource(MR.strings.reader_lens_realtime)) },
                                 leadingIcon = {
-                                    Icon(
-                                        imageVector = if (translation.action == MangaTranslationAction.Cancel) {
-                                            Icons.Outlined.Close
-                                        } else {
-                                            Icons.Outlined.Public
-                                        },
-                                        contentDescription = null,
+                                    if (readerLensWorking) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Outlined.Translate, contentDescription = null)
+                                    }
+                                },
+                                trailingIcon = {
+                                    Switch(
+                                        checked = readerLensEnabled,
+                                        onCheckedChange = null,
                                     )
                                 },
                                 onClick = {
-                                    if (!translation.enabled) return@DropdownMenuItem
                                     moreExpanded = false
-                                    onMangaTranslationAction()
+                                    onReaderLensToggle()
                                 },
                                 modifier = Modifier.semantics {
-                                    stateDescription = description
-                                },
-                            )
-                        }
-                        onRetranslateCurrentPage?.let { retranslateCurrentPage ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(MR.strings.manga_translation_retranslate_page)) },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Refresh, contentDescription = null)
-                                },
-                                onClick = {
-                                    moreExpanded = false
-                                    retranslateCurrentPage()
+                                    stateDescription = readerLensStateDescription
                                 },
                             )
                         }

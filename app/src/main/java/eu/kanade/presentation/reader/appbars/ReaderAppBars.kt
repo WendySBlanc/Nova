@@ -22,8 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import eu.kanade.presentation.reader.MangaTranslationProgress
-import eu.kanade.presentation.reader.MangaTranslationUiModel
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
@@ -53,9 +51,10 @@ fun ReaderAppBars(
     onOpenInWebView: (() -> Unit)?,
     onOpenInBrowser: (() -> Unit)?,
     onShare: (() -> Unit)?,
-    mangaTranslation: MangaTranslationUiModel?,
-    onMangaTranslationAction: () -> Unit,
-    onRetranslateCurrentPage: (() -> Unit)?,
+    readerLensAvailable: Boolean,
+    readerLensEnabled: Boolean,
+    readerLensWorking: Boolean,
+    onReaderLensToggle: () -> Unit,
 
     viewer: Viewer?,
     onNextChapter: () -> Unit,
@@ -125,16 +124,11 @@ fun ReaderAppBars(
                         onOpenInWebView = onOpenInWebView,
                         onOpenInBrowser = onOpenInBrowser,
                         onShare = onShare,
-                        mangaTranslation = mangaTranslation,
-                        onMangaTranslationAction = onMangaTranslationAction,
-                        onRetranslateCurrentPage = onRetranslateCurrentPage,
+                        readerLensAvailable = readerLensAvailable,
+                        readerLensEnabled = readerLensEnabled,
+                        readerLensWorking = readerLensWorking,
+                        onReaderLensToggle = onReaderLensToggle,
                     )
-                    mangaTranslation?.let { translation ->
-                        MangaTranslationProgress(
-                            model = translation,
-                            onCancel = onMangaTranslationAction,
-                        )
-                    }
                     HorizontalDivider(color = NovaVikiColors.Outline)
                     if (isExhToolsVisible) {
                         ExhUtils(

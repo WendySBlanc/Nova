@@ -19,18 +19,10 @@ import eu.kanade.tachiyomi.data.connections.ConnectionsManager
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
+import eu.kanade.tachiyomi.data.lens.ReaderLensCache
+import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
-import eu.kanade.tachiyomi.data.translation.MangaTranslationArchive
-import eu.kanade.tachiyomi.data.translation.MangaTranslationArchiveGateway
-import eu.kanade.tachiyomi.data.translation.MangaTranslationCache
-import eu.kanade.tachiyomi.data.translation.MangaTranslationCacheGateway
-import eu.kanade.tachiyomi.data.translation.MangaTranslationClient
-import eu.kanade.tachiyomi.data.translation.MangaTranslationJobStore
-import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
-import eu.kanade.tachiyomi.data.translation.MangaTranslationRepository
-import eu.kanade.tachiyomi.data.translation.MangaTranslationService
-import eu.kanade.tachiyomi.data.translation.PreferenceMangaTranslationJobStore
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.InstalledExtensionsInventory
@@ -47,7 +39,6 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import nl.adaptivity.xmlutil.XmlDeclMode
 import nl.adaptivity.xmlutil.core.XmlVersion
 import nl.adaptivity.xmlutil.serialization.XML
-import okhttp3.OkHttpClient
 import tachiyomi.core.common.storage.AndroidStorageFolderProvider
 import tachiyomi.core.common.storage.UniFileTempFileManager
 import tachiyomi.data.AndroidDatabaseHandler
@@ -170,32 +161,12 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { NetworkHelper(app, get(), isDebugBuildType) }
         addSingletonFactory { JavaScriptEngine(app) }
-        addSingletonFactory<MangaTranslationService> {
-            val preferences = get<MangaTranslationPreferences>()
-            MangaTranslationClient(
-                client = OkHttpClient(),
-                json = get(),
-                connection = preferences::connection,
-            )
-        }
-        addSingletonFactory<MangaTranslationArchiveGateway> {
-            MangaTranslationArchive(File(app.cacheDir, "manga-translation/uploads"))
-        }
-        addSingletonFactory<MangaTranslationCacheGateway> {
-            MangaTranslationCache(File(app.filesDir, "manga-translation/cache"), get())
-        }
-        addSingletonFactory<MangaTranslationJobStore> {
-            PreferenceMangaTranslationJobStore(get(), get())
-        }
         addSingletonFactory {
-            MangaTranslationRepository(
-                service = get(),
-                archive = get(),
-                cache = get(),
-                jobStore = get(),
-                resultDirectory = File(app.cacheDir, "manga-translation/results"),
-            )
+            File(app.filesDir, "manga-translation").deleteRecursively()
+            File(app.cacheDir, "manga-translation").deleteRecursively()
+            ReaderLensCache(File(app.filesDir, "reader-lens"), get())
         }
+        addSingletonFactory { ReaderLensEngine(get()) }
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }

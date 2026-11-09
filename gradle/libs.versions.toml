@@ -113,6 +113,13 @@ stringSimilarity = { module = "com.aallam.similarity:string-similarity-kotlin", 
 
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 
+mlkit-language-id = "com.google.mlkit:language-id:17.0.6"
+mlkit-translate = "com.google.mlkit:translate:17.0.3"
+mlkit-text-recognition = "com.google.mlkit:text-recognition:16.0.1"
+mlkit-text-recognition-chinese = "com.google.mlkit:text-recognition-chinese:16.0.1"
+mlkit-text-recognition-japanese = "com.google.mlkit:text-recognition-japanese:16.0.1"
+mlkit-text-recognition-korean = "com.google.mlkit:text-recognition-korean:16.0.1"
+
 [plugins]
 google-services = { id = "com.google.gms.google-services", version = "4.4.4" }
 aboutLibraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutlib_version" }
@@ -130,3 +137,4 @@ sqldelight = ["sqldelight-android-driver", "sqldelight-coroutines", "sqldelight-
 voyager = ["voyager-navigator", "voyager-screenmodel", "voyager-tab-navigator", "voyager-transitions"]
 test = ["junit-jupiter", "kotest-assertions", "mockk"]
 markdown = ["markdown-core", "markdown-coil"]
+reader-lens = ["mlkit-language-id", "mlkit-translate", "mlkit-text-recognition", "mlkit-text-recognition-chinese", "mlkit-text-recognition-japanese", "mlkit-text-recognition-korean"]

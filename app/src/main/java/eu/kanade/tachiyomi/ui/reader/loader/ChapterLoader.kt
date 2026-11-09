@@ -4,8 +4,6 @@ import android.content.Context
 import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
-import eu.kanade.tachiyomi.data.translation.MangaTranslationRepository
-import eu.kanade.tachiyomi.data.translation.buildMangaTranslationChapterKey
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.all.MergedSource
@@ -31,7 +29,6 @@ class ChapterLoader(
     private val context: Context,
     private val downloadManager: DownloadManager,
     private val downloadProvider: DownloadProvider,
-    private val mangaTranslationRepository: MangaTranslationRepository,
     private val manga: Manga,
     private val source: Source,
     // SY -->
@@ -101,11 +98,6 @@ class ChapterLoader(
         val allowRestoredMatch = canUseRestoredDownload(domainChapter, manga)
         val isDownloaded = downloadManager.isChapterDownloaded(domainChapter, manga, skipCache = true) ||
             hasRestoredDownload(domainChapter, manga, source, allowRestoredMatch)
-        if (source !is MergedSource) {
-            mangaTranslationRepository.installedTranslation(
-                buildMangaTranslationChapterKey(manga.source, manga.id, domainChapter.id),
-            )?.let { return TranslatedPageLoader(it) }
-        }
         return when {
             // SY -->
             source is MergedSource -> {
@@ -115,9 +107,6 @@ class ChapterLoader(
                 val source = sourceManager.get(mangaReference.mangaSourceId)
                     ?: error("Source ${mangaReference.mangaSourceId} was null")
                 val manga = mergedManga?.get(chapter.chapter.manga_id) ?: error("Manga for merged chapter was null")
-                mangaTranslationRepository.installedTranslation(
-                    buildMangaTranslationChapterKey(manga.source, manga.id, domainChapter.id),
-                )?.let { return TranslatedPageLoader(it) }
                 val allowMergedRestoredMatch = canUseRestoredDownload(domainChapter, manga)
                 val isMergedMangaDownloaded = downloadManager.isChapterDownloaded(
                     chapter = chapter.chapter.toDomainChapter()!!,

@@ -286,6 +286,9 @@ dependencies {
     }
     implementation(libs.image.decoder)
 
+    // On-device OCR and translation for the real-time reader Lens overlay.
+    implementation(libs.bundles.reader.lens)
+
     // UI libraries
     implementation(libs.material)
     implementation(libs.flexible.adapter.core)

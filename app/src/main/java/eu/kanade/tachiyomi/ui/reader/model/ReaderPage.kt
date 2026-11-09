@@ -17,14 +17,6 @@ open class ReaderPage(
 
 ) : Page(index, url, imageUrl, null), ReaderItem {
 
-    private var originalStream: (() -> InputStream)? = null
-
-    var streamVersion: Int = 0
-        private set
-
-    var isUsingTranslatedStream: Boolean = false
-        private set
-
     open lateinit var chapter: ReaderChapter
 
     /** Value to check if a page is too wide to be doubled up */
@@ -33,31 +25,4 @@ open class ReaderPage(
             field = value
             if (value) shiftedPage = false
         }
-
-    @Synchronized
-    fun rememberOriginalStream(): Boolean {
-        if (originalStream == null) originalStream = stream
-        return originalStream != null
-    }
-
-    @Synchronized
-    fun hasOriginalStream(): Boolean = originalStream != null
-
-    @Synchronized
-    fun useTranslatedStream(translatedStream: () -> InputStream): Boolean {
-        if (!rememberOriginalStream()) return false
-        stream = translatedStream
-        isUsingTranslatedStream = true
-        streamVersion++
-        return true
-    }
-
-    @Synchronized
-    fun useOriginalStream(): Boolean {
-        val original = originalStream ?: return false
-        stream = original
-        isUsingTranslatedStream = false
-        streamVersion++
-        return true
-    }
 }

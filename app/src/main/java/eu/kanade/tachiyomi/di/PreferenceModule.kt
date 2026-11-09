@@ -9,7 +9,7 @@ import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.tachiyomi.core.security.PrivacyPreferences
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
-import eu.kanade.tachiyomi.data.translation.MangaTranslationPreferences
+import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
 import eu.kanade.tachiyomi.network.NetworkPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.util.system.isDebugBuildType
@@ -63,7 +63,7 @@ class PreferenceModule(val app: Application) : InjektModule {
             ReaderPreferences(get())
         }
         addSingletonFactory {
-            MangaTranslationPreferences(get())
+            ReaderLensPreferences(get())
         }
         addSingletonFactory {
             TrackPreferences(get())
