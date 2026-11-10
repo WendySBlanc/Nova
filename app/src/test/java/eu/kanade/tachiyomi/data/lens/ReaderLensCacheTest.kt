@@ -24,9 +24,15 @@ class ReaderLensCacheTest {
             ),
         )
 
-        cache.put("source:manga:chapter", 7, regions)
+        cache.put("source:manga:chapter", 7, "image-a", regions)
 
-        cache.get("source:manga:chapter", 7) shouldBe regions
-        cache.get("source:manga:chapter", 8) shouldBe null
+        cache.get("source:manga:chapter", 7, "image-a") shouldBe regions
+        cache.get("source:manga:chapter", 7, "image-b") shouldBe null
+        cache.get("source:manga:chapter", 8, "image-a") shouldBe null
+
+        cache.put("source:manga:chapter", 7, "image-b", regions)
+
+        cache.get("source:manga:chapter", 7, "image-a") shouldBe null
+        cache.get("source:manga:chapter", 7, "image-b") shouldBe regions
     }
 }

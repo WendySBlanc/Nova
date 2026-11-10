@@ -25,7 +25,7 @@ serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core-android", v
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xml_serialization_version" }
 
 [bundles]
-coroutines = ["coroutines-core", "coroutines-android", "coroutines-guava", "coroutines-play-services"]
+coroutines = ["coroutines-core", "coroutines-android", "coroutines-guava"]
 serialization = ["serialization-json", "serialization-json-okio", "serialization-protobuf", "serialization-xml-core", "serialization-xml"]
 
 [plugins]

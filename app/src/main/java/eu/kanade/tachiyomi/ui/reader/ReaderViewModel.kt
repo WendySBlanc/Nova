@@ -28,6 +28,7 @@ import eu.kanade.tachiyomi.data.lens.ReaderLensPageQueue
 import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
 import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
 import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
+import eu.kanade.tachiyomi.data.lens.shouldRunReaderLens
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
@@ -171,7 +172,6 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadProvider: DownloadProvider = Injekt.get(),
     private val tempFileManager: UniFileTempFileManager = Injekt.get(),
     private val imageSaver: ImageSaver = Injekt.get(),
-    private val readerLensEngine: ReaderLensEngine = Injekt.get(),
     private val readerLensPreferences: ReaderLensPreferences = Injekt.get(),
     val readerPreferences: ReaderPreferences = Injekt.get(),
     private val basePreferences: BasePreferences = Injekt.get(),
@@ -196,6 +196,8 @@ class ReaderViewModel @JvmOverloads constructor(
     // SY <--
 ) : ViewModel() {
 
+    private val readerLensEngineDelegate = lazy { Injekt.get<ReaderLensEngine>() }
+    private val readerLensEngine by readerLensEngineDelegate
     private val mutableState = MutableStateFlow(State(readerLensEnabled = readerLensPreferences.enabled.get()))
     val state = mutableState.asStateFlow()
 
@@ -209,6 +211,7 @@ class ReaderViewModel @JvmOverloads constructor(
     private var readerLensWorkerJob: Job? = null
     private var readerLensWorkerGeneration = 0L
     private var readerLensVisiblePageIndex = 0
+    private var readerLensActivePageIndex: Int? = null
 
     private fun beginChapterLoad(isAdjacent: Boolean = false): Long = synchronized(chapterLoadStateLock) {
         chapterLoadRequestGate.next(isAdjacent).also {
@@ -473,6 +476,17 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     override fun onCleared() {
+        readerLensWorkerGeneration++
+        readerLensQueue.clear()
+        val lensWorker = readerLensWorkerJob
+        if (readerLensEngineDelegate.isInitialized()) {
+            if (lensWorker?.isActive == true) {
+                lensWorker.invokeOnCompletion { readerLensEngine.close() }
+            } else {
+                readerLensEngine.close()
+            }
+        }
+        lensWorker?.cancel()
         val currentChapters = state.value.viewerChapters
         if (currentChapters != null) {
             currentChapters.unref()
@@ -1288,6 +1302,7 @@ class ReaderViewModel @JvmOverloads constructor(
             readerLensWorkerGeneration++
             readerLensWorkerJob?.cancel()
             readerLensWorkerJob = null
+            readerLensActivePageIndex = null
             readerLensQueue.clear()
             eventChannel.trySend(Event.ClearReaderLensOverlays)
         }
@@ -1296,12 +1311,18 @@ class ReaderViewModel @JvmOverloads constructor(
     fun onReaderLensPageVisible(pageIndex: Int) {
         val snapshot = state.value
         val chapter = snapshot.currentChapter ?: return
-        if (pageIndex < 0 || !snapshot.readerLensAvailable || !snapshot.readerLensEnabled) return
+        if (!shouldRunReaderLens(pageIndex, snapshot.readerLensAvailable, snapshot.readerLensEnabled)) return
         val pages = readerLensPages(chapter)
         val pagePosition = pages.indexOfFirst { it.index == pageIndex }
         if (pagePosition < 0) return
+        val pageChanged = readerLensVisiblePageIndex != pageIndex
         readerLensVisiblePageIndex = pageIndex
         readerLensQueue.offerVisible(pageIndex, pages.getOrNull(pagePosition + 1)?.index)
+        if (pageChanged && readerLensWorkerJob?.isActive == true && readerLensActivePageIndex != pageIndex) {
+            readerLensWorkerGeneration++
+            readerLensWorkerJob?.cancel()
+            readerLensWorkerJob = null
+        }
         startReaderLensWorker(chapter)
     }
 
@@ -1312,6 +1333,7 @@ class ReaderViewModel @JvmOverloads constructor(
         readerLensQueue.clear()
         readerLensChapterKey = readerLensKey(readerChapter)
         readerLensVisiblePageIndex = 0
+        readerLensActivePageIndex = null
         mutableState.update {
             it.copy(
                 readerLensAvailable = false,
@@ -1324,15 +1346,6 @@ class ReaderViewModel @JvmOverloads constructor(
         val chapterKey = readerLensKey(readerChapter) ?: return
         if (chapterKey != readerLensChapterKey) return
         mutableState.update { it.copy(readerLensAvailable = available) }
-        if (!available || !state.value.readerLensEnabled) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            readerLensPages(readerChapter).forEach { page ->
-                readerLensEngine.cached(chapterKey, page.index)?.let { regions ->
-                    eventChannel.send(Event.ShowReaderLensOverlay(page.index, regions))
-                }
-            }
-        }
     }
 
     private fun startReaderLensWorker(readerChapter: ReaderChapter) {
@@ -1345,13 +1358,15 @@ class ReaderViewModel @JvmOverloads constructor(
                 while (state.value.readerLensEnabled && readerLensChapterKey == chapterKey) {
                     val pageIndex = readerLensQueue.poll() ?: break
                     val page = readerLensPages(readerChapter).firstOrNull { it.index == pageIndex } ?: continue
+                    readerLensActivePageIndex = pageIndex
                     try {
-                        val regions = readerLensEngine.cached(chapterKey, pageIndex)
-                            ?: readerLensEngine.analyze(
-                                chapterKey = chapterKey,
-                                pageIndex = pageIndex,
-                                streamProvider = prepareReaderLensStream(readerChapter, page),
-                            )
+                        val pageIdentity = page.readerLensIdentity()
+                        val regions = readerLensEngine.analyze(
+                            chapterKey = chapterKey,
+                            pageIndex = pageIndex,
+                            pageIdentity = pageIdentity,
+                            streamProvider = prepareReaderLensStream(readerChapter, page),
+                        )
                         if (readerLensChapterKey != chapterKey || !state.value.readerLensEnabled) return@launch
                         readerLensQueue.markCompleted(pageIndex)
                         eventChannel.send(Event.ShowReaderLensOverlay(pageIndex, regions))
@@ -1372,6 +1387,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 if (workerGeneration == readerLensWorkerGeneration && readerLensChapterKey == chapterKey) {
                     mutableState.update { it.copy(readerLensWorking = false) }
                     readerLensWorkerJob = null
+                    readerLensActivePageIndex = null
                     if (!readerLensQueue.isEmpty() && state.value.readerLensEnabled) {
                         startReaderLensWorker(readerChapter)
                     }
@@ -1408,6 +1424,8 @@ class ReaderViewModel @JvmOverloads constructor(
 
     private fun readerLensPages(readerChapter: ReaderChapter): List<ReaderPage> =
         readerChapter.pages.orEmpty().filterNot { it is InsertPage }
+
+    private fun ReaderPage.readerLensIdentity(): String = "$url|${imageUrl.orEmpty()}"
 
     /**
      * Bookmarks the currently active chapter.
@@ -1934,7 +1952,7 @@ class ReaderViewModel @JvmOverloads constructor(
         val isAutoScrollEnabled: Boolean = false,
         val ehAutoscrollFreq: String = "",
         val readerLensAvailable: Boolean = false,
-        val readerLensEnabled: Boolean = true,
+        val readerLensEnabled: Boolean = false,
         val readerLensWorking: Boolean = false,
         // SY <--
     ) {

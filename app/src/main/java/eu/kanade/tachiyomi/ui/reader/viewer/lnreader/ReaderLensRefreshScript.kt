@@ -14,6 +14,20 @@ internal fun buildReaderLensOverlayScript(
         .replace("&", "\\u0026")
     return """
         (function(regions) {
+          function fitLensText(block, layer) {
+            var size = parseFloat(window.getComputedStyle(block).fontSize) || 14;
+            while ((block.scrollHeight > block.clientHeight || block.scrollWidth > block.clientWidth) && size > 8) {
+              size -= 1;
+              block.style.fontSize = size + 'px';
+            }
+            if (block.scrollHeight > block.clientHeight) {
+              var minimumHeight = block.clientHeight;
+              var availableHeight = Math.max(minimumHeight, layer.clientHeight - block.offsetTop);
+              block.style.height = 'auto';
+              block.style.minHeight = minimumHeight + 'px';
+              block.style.maxHeight = availableHeight + 'px';
+            }
+          }
           var figure = document.querySelector('.nova-reader-page[data-page-index="$pageIndex"]');
           if (!figure) return;
           var previous = figure.querySelector('.nova-lens-text-layer');
@@ -32,7 +46,12 @@ internal fun buildReaderLensOverlayScript(
             layer.appendChild(block);
           });
           figure.appendChild(layer);
-          requestAnimationFrame(function() { layer.classList.add('nova-lens-visible'); });
+          requestAnimationFrame(function() {
+            layer.querySelectorAll('.nova-lens-text').forEach(function(block) {
+              fitLensText(block, layer);
+            });
+            layer.classList.add('nova-lens-visible');
+          });
         })($encodedRegions);
     """.trimIndent()
 }

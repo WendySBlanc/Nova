@@ -235,6 +235,7 @@ dependencies {
 
     implementation(platform(kotlinx.coroutines.bom))
     implementation(kotlinx.bundles.coroutines)
+    implementation(kotlinx.coroutines.play.services)
 
     // AndroidX libraries
     implementation(androidx.annotation)

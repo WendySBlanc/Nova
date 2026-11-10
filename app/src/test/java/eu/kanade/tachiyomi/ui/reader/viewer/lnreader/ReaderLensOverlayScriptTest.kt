@@ -18,6 +18,7 @@ class ReaderLensOverlayScriptTest {
 
         script shouldContain "data-page-index=\"4\""
         script shouldContain "nova-lens-text-layer"
+        script shouldContain "fitLensText"
         script shouldNotContain "</script><script>alert('x')</script>"
     }
 }

@@ -18,8 +18,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -30,6 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +66,7 @@ fun ReaderTopBar(
     val readerLensStateDescription = stringResource(
         if (readerLensEnabled) MR.strings.reader_lens_active else MR.strings.reader_lens_inactive,
     )
+    val readerLensLabel = stringResource(MR.strings.reader_lens_realtime)
 
     TopAppBar(
         modifier = modifier,
@@ -98,6 +102,35 @@ fun ReaderTopBar(
             }
         },
         actions = {
+            if (readerLensAvailable) {
+                IconToggleButton(
+                    checked = readerLensEnabled,
+                    onCheckedChange = { onReaderLensToggle() },
+                    modifier = Modifier.semantics {
+                        role = Role.Switch
+                        contentDescription = readerLensLabel
+                        stateDescription = readerLensStateDescription
+                    },
+                ) {
+                    if (readerLensWorking) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Translate,
+                            contentDescription = null,
+                            tint = if (readerLensEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
+
             IconButton(onClick = onToggleBookmarked) {
                 Icon(
                     imageVector = if (bookmarked) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
@@ -113,7 +146,6 @@ fun ReaderTopBar(
             }
 
             if (
-                readerLensAvailable ||
                 onOpenInWebView != null ||
                 onOpenInBrowser != null ||
                 onShare != null
@@ -129,31 +161,6 @@ fun ReaderTopBar(
                         expanded = moreExpanded,
                         onDismissRequest = { moreExpanded = false },
                     ) {
-                        if (readerLensAvailable) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(MR.strings.reader_lens_realtime)) },
-                                leadingIcon = {
-                                    if (readerLensWorking) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Icon(Icons.Outlined.Translate, contentDescription = null)
-                                    }
-                                },
-                                trailingIcon = {
-                                    Switch(
-                                        checked = readerLensEnabled,
-                                        onCheckedChange = null,
-                                    )
-                                },
-                                onClick = {
-                                    moreExpanded = false
-                                    onReaderLensToggle()
-                                },
-                                modifier = Modifier.semantics {
-                                    stateDescription = readerLensStateDescription
-                                },
-                            )
-                        }
                         onOpenInWebView?.let { openWebView ->
                             DropdownMenuItem(
                                 text = { Text("Ouvrir le site") },

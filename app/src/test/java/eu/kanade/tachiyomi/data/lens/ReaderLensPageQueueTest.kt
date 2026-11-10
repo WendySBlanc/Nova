@@ -17,7 +17,7 @@ class ReaderLensPageQueueTest {
     }
 
     @Test
-    fun `new visible page takes priority without duplicating queued work`() {
+    fun `new visible page discards obsolete queued work`() {
         val queue = ReaderLensPageQueue()
 
         queue.offerVisible(pageIndex = 2, nextPageIndex = 3)
@@ -25,7 +25,6 @@ class ReaderLensPageQueueTest {
 
         queue.poll() shouldBe 3
         queue.poll() shouldBe 4
-        queue.poll() shouldBe 2
         queue.poll() shouldBe null
     }
 

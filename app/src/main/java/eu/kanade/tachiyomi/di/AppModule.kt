@@ -58,6 +58,7 @@ import tachiyomi.source.local.image.LocalCoverManager
 import tachiyomi.source.local.io.LocalSourceFileSystem
 import uy.kohesive.injekt.api.InjektModule
 import uy.kohesive.injekt.api.InjektRegistrar
+import uy.kohesive.injekt.api.addFactory
 import uy.kohesive.injekt.api.addSingleton
 import uy.kohesive.injekt.api.addSingletonFactory
 import uy.kohesive.injekt.api.get
@@ -166,7 +167,7 @@ class AppModule(val app: Application) : InjektModule {
             File(app.cacheDir, "manga-translation").deleteRecursively()
             ReaderLensCache(File(app.filesDir, "reader-lens"), get())
         }
-        addSingletonFactory { ReaderLensEngine(get()) }
+        addFactory { ReaderLensEngine(get()) }
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }
