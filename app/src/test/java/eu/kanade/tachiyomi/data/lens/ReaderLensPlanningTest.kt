@@ -4,6 +4,10 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 
 class ReaderLensPlanningTest {
@@ -57,5 +61,61 @@ class ReaderLensPlanningTest {
         tiles.shouldHaveSize(1)
         tiles.single().top shouldBe 0
         tiles.single().bottom shouldBe 1400
+    }
+
+    @Test
+    fun `cancelling Lens waits for native inference before releasing its image`() = runTest {
+        val inferenceStarted = CompletableDeferred<Unit>()
+        val inferenceFinished = CompletableDeferred<Unit>()
+        val job = launch {
+            runReaderLensNativeInference {
+                inferenceStarted.complete(Unit)
+                inferenceFinished.await()
+            }
+        }
+
+        runCurrent()
+        inferenceStarted.await()
+        job.cancel()
+        runCurrent()
+
+        job.isCompleted shouldBe false
+        inferenceFinished.complete(Unit)
+        job.join()
+        job.isCancelled shouldBe true
+    }
+
+    @Test
+    fun `Lens analysis gate never runs two native analyses together`() = runTest {
+        val gate = ReaderLensAnalysisGate()
+        val firstStarted = CompletableDeferred<Unit>()
+        val releaseFirst = CompletableDeferred<Unit>()
+        var activeAnalyses = 0
+        var maximumActiveAnalyses = 0
+
+        val first = launch {
+            gate.run {
+                activeAnalyses++
+                maximumActiveAnalyses = maxOf(maximumActiveAnalyses, activeAnalyses)
+                firstStarted.complete(Unit)
+                releaseFirst.await()
+                activeAnalyses--
+            }
+        }
+        firstStarted.await()
+        val second = launch {
+            gate.run {
+                activeAnalyses++
+                maximumActiveAnalyses = maxOf(maximumActiveAnalyses, activeAnalyses)
+                activeAnalyses--
+            }
+        }
+
+        runCurrent()
+        maximumActiveAnalyses shouldBe 1
+        releaseFirst.complete(Unit)
+        first.join()
+        second.join()
+        maximumActiveAnalyses shouldBe 1
     }
 }

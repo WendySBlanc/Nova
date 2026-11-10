@@ -1,5 +1,11 @@
 package eu.kanade.tachiyomi.data.lens
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -78,6 +84,18 @@ internal fun selectReaderLensScript(candidates: List<ReaderLensScriptCandidate>)
 
 internal fun shouldRunReaderLens(pageIndex: Int, available: Boolean, enabled: Boolean): Boolean =
     pageIndex >= 0 && available && enabled
+
+internal suspend fun <T> runReaderLensNativeInference(block: suspend () -> T): T {
+    val result = withContext(NonCancellable) { block() }
+    currentCoroutineContext().ensureActive()
+    return result
+}
+
+internal class ReaderLensAnalysisGate {
+    private val mutex = Mutex()
+
+    suspend fun <T> run(block: suspend () -> T): T = mutex.withLock { block() }
+}
 
 class ReaderLensPageQueue {
     private val pending = ArrayDeque<Int>()

@@ -36,6 +36,7 @@ import kotlin.math.max
 class ReaderLensEngine(
     private val cache: ReaderLensCache,
 ) : AutoCloseable {
+    private val analysisGate = ReaderLensAnalysisGate()
     private val scriptsByChapter = ConcurrentHashMap<String, ReaderLensScript>()
     private val languageIdentifierDelegate = lazy { LanguageIdentification.getClient() }
     private val languageIdentifier by languageIdentifierDelegate
@@ -58,15 +59,17 @@ class ReaderLensEngine(
         pageIndex: Int,
         pageIdentity: String,
         streamProvider: () -> InputStream,
-    ): List<ReaderLensRegion> = withContext(Dispatchers.IO) {
-        val imageInfo = readImageInfo(streamProvider)
-            ?: throw ReaderLensException("Cette page ne peut pas etre analysee")
-        val cacheIdentity = "$pageIdentity:${imageInfo.fingerprint}"
-        cache.get(chapterKey, pageIndex, cacheIdentity)?.let { return@withContext it }
-        val recognized = recognizeTiles(chapterKey, imageInfo.size, streamProvider)
-        val regions = translate(recognized, imageInfo.size.width, imageInfo.size.height)
-        cache.put(chapterKey, pageIndex, cacheIdentity, regions)
-        regions
+    ): List<ReaderLensRegion> = analysisGate.run {
+        withContext(Dispatchers.IO) {
+            val imageInfo = readImageInfo(streamProvider)
+                ?: throw ReaderLensException("Cette page ne peut pas etre analysee")
+            val cacheIdentity = "$pageIdentity:${imageInfo.fingerprint}"
+            cache.get(chapterKey, pageIndex, cacheIdentity)?.let { return@withContext it }
+            val recognized = recognizeTiles(chapterKey, imageInfo.size, streamProvider)
+            val regions = translate(recognized, imageInfo.size.width, imageInfo.size.height)
+            cache.put(chapterKey, pageIndex, cacheIdentity, regions)
+            regions
+        }
     }
 
     private suspend fun recognizeTiles(
@@ -122,12 +125,16 @@ class ReaderLensEngine(
     ): RecognizedTile {
         val image = InputImage.fromBitmap(bitmap, 0)
         preferredScript?.let { script ->
-            val text = recognizers.getValue(script).process(image).await()
+            val text = runReaderLensNativeInference {
+                recognizers.getValue(script).process(image).await()
+            }
             if (text.score() >= MIN_RECOGNIZED_CHARACTERS) return RecognizedTile(script, text)
         }
 
         val results = ReaderLensScript.entries.map { script ->
-            script to recognizers.getValue(script).process(image).await()
+            script to runReaderLensNativeInference {
+                recognizers.getValue(script).process(image).await()
+            }
         }
         val selectedScript = selectReaderLensScript(
             results.map { (script, text) -> ReaderLensScriptCandidate(script, text.text) },
