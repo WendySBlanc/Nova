@@ -124,10 +124,6 @@ fun ReaderAppBars(
                         onOpenInWebView = onOpenInWebView,
                         onOpenInBrowser = onOpenInBrowser,
                         onShare = onShare,
-                        readerLensAvailable = readerLensAvailable,
-                        readerLensEnabled = readerLensEnabled,
-                        readerLensWorking = readerLensWorking,
-                        onReaderLensToggle = onReaderLensToggle,
                     )
                     HorizontalDivider(color = NovaVikiColors.Outline)
                     if (isExhToolsVisible) {
@@ -178,6 +174,10 @@ fun ReaderAppBars(
                         enabledPrevious = enabledPrevious,
                         onClickScrollToTop = onClickScrollToTop,
                         onClickChapterList = onClickChapterList,
+                        readerLensAvailable = readerLensAvailable,
+                        readerLensEnabled = readerLensEnabled,
+                        readerLensWorking = readerLensWorking,
+                        onReaderLensToggle = onReaderLensToggle,
                         onClickSettings = onClickSettings,
                         onNextChapter = onNextChapter,
                         enabledNext = enabledNext,

@@ -55,6 +55,13 @@ class ReaderLensPlanningTest {
     }
 
     @Test
+    fun `image chapter offers Lens before reader html is built`() {
+        shouldOfferReaderLens(pageCount = 1) shouldBe true
+        shouldOfferReaderLens(pageCount = 120) shouldBe true
+        shouldOfferReaderLens(pageCount = 0) shouldBe false
+    }
+
+    @Test
     fun `regular page uses one complete tile`() {
         val tiles = buildReaderLensImageTiles(width = 900, height = 1400)
 

@@ -85,6 +85,8 @@ internal fun selectReaderLensScript(candidates: List<ReaderLensScriptCandidate>)
 internal fun shouldRunReaderLens(pageIndex: Int, available: Boolean, enabled: Boolean): Boolean =
     pageIndex >= 0 && available && enabled
 
+internal fun shouldOfferReaderLens(pageCount: Int): Boolean = pageCount > 0
+
 internal suspend fun <T> runReaderLensNativeInference(block: suspend () -> T): T {
     val result = withContext(NonCancellable) { block() }
     currentCoroutineContext().ensureActive()

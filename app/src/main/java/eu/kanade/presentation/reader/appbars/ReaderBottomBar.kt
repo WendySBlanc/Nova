@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -35,6 +39,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,6 +62,10 @@ fun ReaderBottomBar(
     enabledPrevious: Boolean,
     onClickScrollToTop: () -> Unit,
     onClickChapterList: () -> Unit,
+    readerLensAvailable: Boolean,
+    readerLensEnabled: Boolean,
+    readerLensWorking: Boolean,
+    onReaderLensToggle: () -> Unit,
     onClickSettings: () -> Unit,
     onNextChapter: () -> Unit,
     enabledNext: Boolean,
@@ -66,6 +79,10 @@ fun ReaderBottomBar(
 ) {
     val iconColor = NovaVikiColors.TextPrimary
     val disabledIconColor = NovaVikiColors.TextSecondary.copy(alpha = 0.38f)
+    val readerLensLabel = stringResource(MR.strings.reader_lens_realtime)
+    val readerLensStateDescription = stringResource(
+        if (readerLensEnabled) MR.strings.reader_lens_active else MR.strings.reader_lens_inactive,
+    )
 
     Column(
         modifier = modifier
@@ -128,6 +145,38 @@ fun ReaderBottomBar(
                 )
             }
             Spacer(Modifier.weight(1f))
+            if (readerLensAvailable) {
+                IconToggleButton(
+                    checked = readerLensEnabled,
+                    onCheckedChange = { onReaderLensToggle() },
+                    modifier = Modifier
+                        .size(NovaVikiDimensions.MinimumTouchTarget)
+                        .semantics {
+                            role = Role.Switch
+                            contentDescription = readerLensLabel
+                            stateDescription = readerLensStateDescription
+                        },
+                ) {
+                    if (readerLensWorking) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Translate,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (readerLensEnabled) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                iconColor
+                            },
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+            }
             ReaderDockButton(
                 iconRes = R.drawable.ic_settings_24dp,
                 contentDescription = stringResource(MR.strings.action_settings),

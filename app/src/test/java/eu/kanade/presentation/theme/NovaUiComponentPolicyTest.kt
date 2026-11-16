@@ -38,6 +38,19 @@ class NovaUiComponentPolicyTest {
     }
 
     @Test
+    fun `reader Lens is available early and placed in the bottom reading dock`() {
+        val viewModel = source("app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt")
+        val topBar = source("app/src/main/java/eu/kanade/presentation/reader/appbars/ReaderTopBar.kt")
+        val bottomBar = source("app/src/main/java/eu/kanade/presentation/reader/appbars/ReaderBottomBar.kt")
+
+        viewModel.shouldContain("shouldOfferReaderLens(readerLensPages(readerChapter).size)")
+        topBar.shouldNotContain("readerLensAvailable")
+        topBar.shouldNotContain("Icons.Outlined.Translate")
+        bottomBar.shouldContain("readerLensAvailable")
+        bottomBar.shouldContain("Icons.Outlined.Translate")
+    }
+
+    @Test
     fun `me exposes settings directly instead of opening a settings hub`() {
         val moreScreen = source("app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt")
         val moreTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/more/MoreTab.kt")

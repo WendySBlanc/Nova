@@ -28,6 +28,7 @@ import eu.kanade.tachiyomi.data.lens.ReaderLensPageQueue
 import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
 import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
 import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
+import eu.kanade.tachiyomi.data.lens.shouldOfferReaderLens
 import eu.kanade.tachiyomi.data.lens.shouldRunReaderLens
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
@@ -1336,7 +1337,7 @@ class ReaderViewModel @JvmOverloads constructor(
         readerLensActivePageIndex = null
         mutableState.update {
             it.copy(
-                readerLensAvailable = false,
+                readerLensAvailable = shouldOfferReaderLens(readerLensPages(readerChapter).size),
                 readerLensWorking = false,
             )
         }
