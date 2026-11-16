@@ -73,6 +73,28 @@ class NovaUiComponentPolicyTest {
         moreTab.shouldNotContain("title = \"Moi\"")
     }
 
+    @Test
+    fun `library counts use the shared animated number primitive`() {
+        source("app/src/main/java/eu/kanade/presentation/library/components/NovaVikiLibraryScreen.kt")
+            .shouldContain("NovaCountBadge(")
+    }
+
+    @Test
+    fun `nova manga messages use the shared notification host`() {
+        val mangaScreen = source("app/src/main/java/eu/kanade/presentation/manga/NovaMangaScreen.kt")
+
+        mangaScreen.shouldContain("NovaSnackbarHost(")
+        mangaScreen.shouldContain("NovaCountBadge(")
+        mangaScreen.shouldContain("NovaMenuItem(")
+        mangaScreen.shouldContain("NovaChapterSummary(")
+    }
+
+    @Test
+    fun `source search is backed by the shared command field`() {
+        source("app/src/main/java/eu/kanade/presentation/components/SourceSearchBox.kt")
+            .shouldContain("NovaCommandField(")
+    }
+
     private fun source(relativePath: String): String = File(repositoryRoot(), relativePath).readText()
 
     private fun repositoryRoot(): File {

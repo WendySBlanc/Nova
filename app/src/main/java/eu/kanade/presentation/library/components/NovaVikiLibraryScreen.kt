@@ -82,6 +82,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.presentation.components.NovaCountBadge
 import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.library.filterNovaLibraryShelf
@@ -640,13 +641,23 @@ private fun NovaLibraryShelfSelector(
                 },
                 modifier = Modifier.height(NovaVikiDimensions.MinimumTouchTarget),
                 text = {
-                    Text(
-                        text = "${option.label}  ${option.count}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = option.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        NovaCountBadge(
+                            value = option.count,
+                            selected = selected,
+                            contentDescription = "${option.count} éléments",
+                        )
+                    }
                 },
             )
         }
@@ -678,13 +689,24 @@ private fun NovaLibraryModeSelector(
                 onClick = { onSelectTab(index) },
                 modifier = Modifier.height(NovaVikiDimensions.MinimumTouchTarget),
                 text = {
-                    Text(
-                        text = "$label  $count",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = label,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        NovaCountBadge(
+                            value = count,
+                            selected = selected,
+                            contentDescription = "$count œuvres",
+                        )
+                    }
                 },
             )
         }

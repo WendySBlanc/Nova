@@ -52,7 +52,6 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SwapCalls
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -64,7 +63,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -106,6 +104,10 @@ import coil3.compose.AsyncImage
 import eu.kanade.domain.manga.model.PagePreview
 import eu.kanade.presentation.components.DownloadDropdownMenu
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.components.NovaAnimatedNumber
+import eu.kanade.presentation.components.NovaCountBadge
+import eu.kanade.presentation.components.NovaMenuItem
+import eu.kanade.presentation.components.NovaSnackbarHost
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadIndicator
@@ -217,7 +219,7 @@ fun NovaMangaScreen(
         fabMenuExpanded = false
     }
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { NovaSnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             NovaMangaFabMenu(
                 expanded = fabMenuExpanded,
@@ -807,13 +809,23 @@ private fun NovaMangaInfoLine(
                 .weight(0.36f, fill = false),
         )
         DotSeparator()
-        Text(
-            text = "$episodeCount chapitres",
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NovaAnimatedNumber(
+                value = episodeCount,
+                color = NovaVikiColors.TextPrimary,
+                style = MaterialTheme.typography.bodySmall,
+                contentDescription = episodeCount.toString(),
+            )
+            Text(
+                text = "chapitres",
+                color = NovaVikiColors.TextPrimary,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+            )
+        }
         author?.takeIf { it.isNotBlank() }?.let {
             DotSeparator()
             Text(
@@ -861,24 +873,27 @@ private fun NovaMangaTabs(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Chapitres",
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-            )
-            Text(
-                text = novaChapterHeaderSummary(
-                    chapterCount = chapterCount,
-                    visibleChapterCount = visibleChapterCount,
-                    unreadCount = unreadCount,
-                    filterActive = filterActive,
-                ),
-                color = NovaVikiColors.TextSecondary,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Chapitres",
+                    color = NovaVikiColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+                NovaCountBadge(
+                    value = chapterCount,
+                    contentDescription = "$chapterCount chapitres",
+                )
+            }
+            NovaChapterSummary(
+                chapterCount = chapterCount,
+                visibleChapterCount = visibleChapterCount,
+                unreadCount = unreadCount,
+                filterActive = filterActive,
             )
         }
         if (onDownloadActionClicked != null) {
@@ -911,14 +926,9 @@ private fun NovaMangaTabs(
                     onDismissRequest = { readStatusExpanded = false },
                 ) {
                     if (onMarkAllReadClicked != null) {
-                        DropdownMenuItem(
-                            text = { Text("Tout marquer comme lu") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.DoneAll,
-                                    contentDescription = null,
-                                )
-                            },
+                        NovaMenuItem(
+                            label = "Tout marquer comme lu",
+                            icon = Icons.Outlined.DoneAll,
                             onClick = {
                                 readStatusExpanded = false
                                 onMarkAllReadClicked()
@@ -926,14 +936,9 @@ private fun NovaMangaTabs(
                         )
                     }
                     if (onMarkAllUnreadClicked != null) {
-                        DropdownMenuItem(
-                            text = { Text("Tout marquer comme non lu") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.RemoveDone,
-                                    contentDescription = null,
-                                )
-                            },
+                        NovaMenuItem(
+                            label = "Tout marquer comme non lu",
+                            icon = Icons.Outlined.RemoveDone,
                             onClick = {
                                 readStatusExpanded = false
                                 onMarkAllUnreadClicked()
@@ -972,6 +977,65 @@ private fun NovaMangaTabs(
             Icon(
                 imageVector = Icons.Outlined.FilterList,
                 contentDescription = "Filtrer les chapitres",
+            )
+        }
+    }
+}
+
+@Composable
+private fun NovaChapterSummary(
+    chapterCount: Int,
+    visibleChapterCount: Int,
+    unreadCount: Int,
+    filterActive: Boolean,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (filterActive) {
+            NovaAnimatedNumber(
+                value = visibleChapterCount,
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                contentDescription = visibleChapterCount.toString(),
+            )
+            Text(
+                text = "sur",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+            )
+            NovaAnimatedNumber(
+                value = chapterCount,
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                contentDescription = chapterCount.toString(),
+            )
+            Text(
+                text = "affichés",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
+        } else if (unreadCount > 0) {
+            NovaAnimatedNumber(
+                value = unreadCount,
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                contentDescription = unreadCount.toString(),
+            )
+            Text(
+                text = "à lire",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
+        } else {
+            Text(
+                text = "Tout est lu",
+                color = NovaVikiColors.TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
             )
         }
     }
@@ -1224,39 +1288,25 @@ private fun NovaEpisodeRow(
                         expanded = chapterMenuExpanded,
                         onDismissRequest = { chapterMenuExpanded = false },
                     ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    if (item.chapter.read) {
-                                        "Marquer comme non lu"
-                                    } else {
-                                        "Marquer comme lu"
-                                    },
-                                )
+                        NovaMenuItem(
+                            label = if (item.chapter.read) {
+                                "Marquer comme non lu"
+                            } else {
+                                "Marquer comme lu"
                             },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = if (item.chapter.read) {
-                                        Icons.Outlined.RemoveDone
-                                    } else {
-                                        Icons.Outlined.Done
-                                    },
-                                    contentDescription = null,
-                                )
+                            icon = if (item.chapter.read) {
+                                Icons.Outlined.RemoveDone
+                            } else {
+                                Icons.Outlined.Done
                             },
                             onClick = {
                                 chapterMenuExpanded = false
                                 onToggleRead(!item.chapter.read)
                             },
                         )
-                        DropdownMenuItem(
-                            text = { Text("Marquer les chapitres précédents comme lus") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.DoneAll,
-                                    contentDescription = null,
-                                )
-                            },
+                        NovaMenuItem(
+                            label = "Marquer les chapitres précédents comme lus",
+                            icon = Icons.Outlined.DoneAll,
                             onClick = {
                                 chapterMenuExpanded = false
                                 onMarkPreviousRead()
