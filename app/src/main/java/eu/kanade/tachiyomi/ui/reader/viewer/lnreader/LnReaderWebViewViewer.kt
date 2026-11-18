@@ -1087,15 +1087,14 @@ class LnReaderWebViewViewer(
                     justify-content: center;
                     box-sizing: border-box;
                     overflow: hidden;
-                    padding: 3px 5px;
-                    border-radius: 7px;
-                    background: rgba(250, 250, 250, 0.94);
-                    color: #161616;
-                    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.24);
-                    font: 650 clamp(9px, 2.8cqw, 21px)/1.08 system-ui, sans-serif;
+                    padding: 1px 2px;
+                    background: rgb(248, 248, 246);
+                    color: #111111;
+                    font: 550 clamp(9px, 2.7cqw, 22px)/1.18 system-ui, sans-serif;
                     text-align: center;
                     white-space: pre-line;
                     overflow-wrap: anywhere;
+                    text-wrap: balance;
                   }
                   @media (prefers-reduced-motion: reduce) {
                     .nova-image-chapter .nova-lens-text-layer {

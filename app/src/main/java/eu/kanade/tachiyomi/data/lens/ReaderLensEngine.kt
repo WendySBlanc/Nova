@@ -78,7 +78,7 @@ class ReaderLensEngine(
         streamProvider: () -> InputStream,
     ): RecognizedPage {
         val tiles = buildReaderLensImageTiles(imageSize.width, imageSize.height)
-        val blocks = mutableListOf<RecognizedBlock>()
+        val blocks = mutableListOf<ReaderLensTextBlock>()
         var selectedScript = scriptsByChapter[chapterKey]
 
         streamProvider().use { input ->
@@ -151,9 +151,10 @@ class ReaderLensEngine(
         imageWidth: Int,
         imageHeight: Int,
     ): List<ReaderLensRegion> {
-        if (page.blocks.isEmpty()) return emptyList()
+        val dialogueBubbles = groupReaderLensTextBlocks(page.blocks)
+        if (dialogueBubbles.isEmpty()) return emptyList()
         val sourceLanguage = languageIdentifier.identifyLanguage(
-            page.blocks.joinToString("\n") { it.text }.take(MAX_LANGUAGE_SAMPLE_CHARACTERS),
+            dialogueBubbles.joinToString("\n") { it.text }.take(MAX_LANGUAGE_SAMPLE_CHARACTERS),
         ).await()
             .takeUnless { it == "und" }
             ?: page.script.fallbackLanguage
@@ -187,7 +188,7 @@ class ReaderLensEngine(
         }
 
         return coroutineScope {
-            page.blocks.map { block ->
+            dialogueBubbles.map { block ->
                 async(translationDispatcher) {
                     val translated = translator.translate(block.text).await().trim()
                     block.toRegion(translated, imageWidth, imageHeight)
@@ -240,15 +241,7 @@ private data class RecognizedTile(val script: ReaderLensScript, val text: Text)
 
 private data class RecognizedPage(
     val script: ReaderLensScript,
-    val blocks: List<RecognizedBlock>,
-)
-
-private data class RecognizedBlock(
-    val left: Float,
-    val top: Float,
-    val right: Float,
-    val bottom: Float,
-    val text: String,
+    val blocks: List<ReaderLensTextBlock>,
 )
 
 private fun Text.TextBlock.toRecognizedBlock(
@@ -256,9 +249,9 @@ private fun Text.TextBlock.toRecognizedBlock(
     bitmap: Bitmap,
     tile: ReaderLensImageTile,
     imageSize: ReaderLensImageSize,
-): RecognizedBlock {
+): ReaderLensTextBlock {
     val tileHeight = tile.bottom - tile.top
-    return RecognizedBlock(
+    return ReaderLensTextBlock(
         left = bounds.left.toFloat() / bitmap.width * imageSize.width,
         top = tile.top + bounds.top.toFloat() / bitmap.height * tileHeight,
         right = bounds.right.toFloat() / bitmap.width * imageSize.width,
@@ -267,14 +260,14 @@ private fun Text.TextBlock.toRecognizedBlock(
     )
 }
 
-private fun RecognizedBlock.toRegion(
+private fun ReaderLensTextBlock.toRegion(
     translated: String,
     imageWidth: Int,
     imageHeight: Int,
 ): ReaderLensRegion? {
     if (translated.isBlank()) return null
-    val horizontalPadding = max(2f, (right - left) * 0.08f)
-    val verticalPadding = max(2f, (bottom - top) * 0.12f)
+    val horizontalPadding = max(3f, (right - left) * 0.12f)
+    val verticalPadding = max(3f, (bottom - top) * 0.18f)
     val paddedLeft = (left - horizontalPadding).coerceAtLeast(0f)
     val paddedTop = (top - verticalPadding).coerceAtLeast(0f)
     val paddedRight = (right + horizontalPadding).coerceAtMost(imageWidth.toFloat())

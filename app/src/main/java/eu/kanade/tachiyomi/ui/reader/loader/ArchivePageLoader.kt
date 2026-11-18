@@ -29,6 +29,9 @@ internal class ArchivePageLoader(private val reader: ArchiveReader) : PageLoader
     private val tmpDir = File(context.externalCacheDir, "reader_${reader.archiveHashCode}").also {
         it.deleteRecursively()
     }
+    private val streamStore = ArchivePageStreamStore(tmpDir) { entryName ->
+        reader.getInputStream(entryName) ?: error("Archive entry $entryName is unavailable")
+    }
 
     init {
         reader.wrongPassword?.let { wrongPassword ->
@@ -88,7 +91,7 @@ internal class ArchivePageLoader(private val reader: ArchiveReader) : PageLoader
                 // SY <--
                 ReaderPage(i).apply {
                     // SY -->
-                    stream = { imageBytes?.copyOf()?.inputStream() ?: reader.getInputStream(entry.name)!! }
+                    stream = { imageBytes?.copyOf()?.inputStream() ?: streamStore.open(i, entry.name) }
                     // SY <--
                     status = Page.State.Ready
                 }

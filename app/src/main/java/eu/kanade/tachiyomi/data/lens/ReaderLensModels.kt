@@ -69,6 +69,37 @@ internal data class ReaderLensScriptCandidate(
     val text: String,
 )
 
+internal data class ReaderLensTextBlock(
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float,
+    val text: String,
+)
+
+internal fun groupReaderLensTextBlocks(blocks: List<ReaderLensTextBlock>): List<ReaderLensTextBlock> {
+    val groups = mutableListOf<ReaderLensTextBlock>()
+    blocks
+        .filter { it.text.isNotBlank() }
+        .sortedWith(compareBy<ReaderLensTextBlock> { it.top }.thenBy { it.left })
+        .forEach { block ->
+            val groupIndex = groups.indexOfLast { group -> group.sharesDialogueBubbleWith(block) }
+            if (groupIndex < 0) {
+                groups += block.copy(text = block.text.normalizedLensText())
+            } else {
+                val group = groups[groupIndex]
+                groups[groupIndex] = ReaderLensTextBlock(
+                    left = minOf(group.left, block.left),
+                    top = minOf(group.top, block.top),
+                    right = maxOf(group.right, block.right),
+                    bottom = maxOf(group.bottom, block.bottom),
+                    text = "${group.text} ${block.text.normalizedLensText()}".normalizedLensText(),
+                )
+            }
+        }
+    return groups
+}
+
 internal fun selectReaderLensScript(candidates: List<ReaderLensScriptCandidate>): ReaderLensScript? {
     if (candidates.isEmpty()) return null
     val scored = candidates.map { candidate ->
@@ -141,6 +172,27 @@ private data class ScriptScore(
     val visibleCharacters: Int,
 )
 
+private fun ReaderLensTextBlock.sharesDialogueBubbleWith(other: ReaderLensTextBlock): Boolean {
+    val width = (right - left).coerceAtLeast(1f)
+    val height = (bottom - top).coerceAtLeast(1f)
+    val otherWidth = (other.right - other.left).coerceAtLeast(1f)
+    val otherHeight = (other.bottom - other.top).coerceAtLeast(1f)
+    val horizontalOverlap = minOf(right, other.right) - maxOf(left, other.left)
+    val verticalOverlap = minOf(bottom, other.bottom) - maxOf(top, other.top)
+    val verticalGap = maxOf(0f, maxOf(top, other.top) - minOf(bottom, other.bottom))
+    val horizontalGap = maxOf(0f, maxOf(left, other.left) - minOf(right, other.right))
+    val centerDistance = kotlin.math.abs((left + right) / 2f - (other.left + other.right) / 2f)
+
+    val stackedLines = horizontalOverlap >= minOf(width, otherWidth) * MIN_DIALOGUE_LINE_OVERLAP &&
+        centerDistance <= maxOf(width, otherWidth) * MAX_DIALOGUE_CENTER_DISTANCE &&
+        verticalGap <= minOf(height, otherHeight) * MAX_DIALOGUE_LINE_GAP
+    val splitLine = verticalOverlap >= minOf(height, otherHeight) * MIN_DIALOGUE_LINE_OVERLAP &&
+        horizontalGap <= minOf(height, otherHeight) * MAX_DIALOGUE_LINE_GAP
+    return stackedLines || splitLine
+}
+
+private fun String.normalizedLensText(): String = trim().replace(Regex("\\s+"), " ")
+
 private fun String.countMatching(script: ReaderLensScript): Int {
     var count = 0
     var offset = 0
@@ -176,3 +228,6 @@ private fun ceilDiv(value: Int, divisor: Int): Int = (value + divisor - 1) / div
 internal const val READER_LENS_MAX_TILE_PIXELS = 4_000_000
 private const val READER_LENS_MAX_OUTPUT_WIDTH = 2048
 private const val MIN_CJK_CHARACTERS = 3
+private const val MIN_DIALOGUE_LINE_OVERLAP = 0.3f
+private const val MAX_DIALOGUE_CENTER_DISTANCE = 0.45f
+private const val MAX_DIALOGUE_LINE_GAP = 1.15f

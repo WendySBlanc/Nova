@@ -51,6 +51,16 @@ class NovaUiComponentPolicyTest {
     }
 
     @Test
+    fun `reader Lens replaces dialogue without floating cards`() {
+        val reader = source(
+            "app/src/main/java/eu/kanade/tachiyomi/ui/reader/viewer/lnreader/LnReaderWebViewViewer.kt",
+        )
+
+        reader.shouldContain("background: rgb(248, 248, 246)")
+        reader.shouldNotContain("box-shadow: 0 1px 5px rgba(0, 0, 0, 0.24)")
+    }
+
+    @Test
     fun `me exposes settings directly instead of opening a settings hub`() {
         val moreScreen = source("app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt")
         val moreTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/more/MoreTab.kt")
@@ -106,6 +116,27 @@ class NovaUiComponentPolicyTest {
     fun `source search is backed by the shared command field`() {
         source("app/src/main/java/eu/kanade/presentation/components/SourceSearchBox.kt")
             .shouldContain("NovaCommandField(")
+    }
+
+    @Test
+    fun `global search shares bounded IO workers instead of leaking a thread pool`() {
+        val searchModel = source(
+            "app/src/main/java/eu/kanade/tachiyomi/ui/browse/source/globalsearch/SearchScreenModel.kt",
+        )
+
+        searchModel.shouldContain("Dispatchers.IO.limitedParallelism(SEARCH_PARALLELISM)")
+        searchModel.shouldNotContain("Executors.newFixedThreadPool")
+    }
+
+    @Test
+    fun `global search merges concurrent source results atomically`() {
+        val searchModel = source(
+            "app/src/main/java/eu/kanade/tachiyomi/ui/browse/source/globalsearch/SearchScreenModel.kt",
+        )
+
+        searchModel.shouldContain("mutableState.update { currentState ->")
+        searchModel.shouldContain("currentState.items.mutate")
+        searchModel.shouldNotContain("val newItems = state.value.items.mutate")
     }
 
     private fun source(relativePath: String): String = File(repositoryRoot(), relativePath).readText()

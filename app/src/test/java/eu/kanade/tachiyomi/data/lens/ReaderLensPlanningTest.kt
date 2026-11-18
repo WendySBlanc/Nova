@@ -48,6 +48,50 @@ class ReaderLensPlanningTest {
     }
 
     @Test
+    fun `nearby dialogue lines become one translated bubble`() {
+        val groups = groupReaderLensTextBlocks(
+            listOf(
+                ReaderLensTextBlock(100f, 100f, 300f, 145f, "Isn't this"),
+                ReaderLensTextBlock(108f, 150f, 292f, 195f, "a beautiful view?"),
+            ),
+        )
+
+        groups.shouldHaveSize(1)
+        groups.single() shouldBe ReaderLensTextBlock(
+            left = 100f,
+            top = 100f,
+            right = 300f,
+            bottom = 195f,
+            text = "Isn't this a beautiful view?",
+        )
+    }
+
+    @Test
+    fun `distant dialogue bubbles remain independent`() {
+        val groups = groupReaderLensTextBlocks(
+            listOf(
+                ReaderLensTextBlock(80f, 80f, 260f, 130f, "First bubble"),
+                ReaderLensTextBlock(520f, 420f, 760f, 480f, "Second bubble"),
+            ),
+        )
+
+        groups.shouldHaveSize(2)
+    }
+
+    @Test
+    fun `a grouped bubble does not absorb another aligned bubble below it`() {
+        val groups = groupReaderLensTextBlocks(
+            listOf(
+                ReaderLensTextBlock(100f, 100f, 300f, 145f, "First line"),
+                ReaderLensTextBlock(108f, 150f, 292f, 195f, "second line"),
+                ReaderLensTextBlock(110f, 285f, 290f, 330f, "Another bubble"),
+            ),
+        )
+
+        groups.shouldHaveSize(2)
+    }
+
+    @Test
     fun `disabled Lens never starts while a chapter opens`() {
         shouldRunReaderLens(pageIndex = 0, available = true, enabled = false) shouldBe false
         shouldRunReaderLens(pageIndex = 0, available = true, enabled = true) shouldBe true
