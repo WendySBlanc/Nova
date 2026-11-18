@@ -172,6 +172,8 @@
     <string name="reader_lens_realtime">Lens en temps réel</string>
     <string name="reader_lens_active">Activé</string>
     <string name="reader_lens_inactive">Désactivé</string>
+    <string name="reader_lens_downloading">Téléchargement du modèle Lens local : %1$d%%</string>
+    <string name="reader_lens_unavailable">Indisponible sur cet appareil</string>
     <string name="no_next_chapter">Chapitre suivant non trouvé</string>
     <string name="decode_image_error">L\'image n\'a pas pu être chargée</string>
     <string name="confirm_set_image_as_cover">Voulez-vous mettre cette image comme couverture ?</string>

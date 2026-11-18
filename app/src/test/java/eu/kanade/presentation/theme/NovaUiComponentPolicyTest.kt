@@ -2,6 +2,7 @@ package eu.kanade.presentation.theme
 
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -48,6 +49,21 @@ class NovaUiComponentPolicyTest {
         topBar.shouldNotContain("Icons.Outlined.Translate")
         bottomBar.shouldContain("readerLensAvailable")
         bottomBar.shouldContain("Icons.Outlined.Translate")
+        Regex("Icons\\.Outlined\\.Translate").findAll(bottomBar).count() shouldBe 1
+    }
+
+    @Test
+    fun `reader Lens exposes download progress and unsupported device semantics`() {
+        val viewModel = source("app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt")
+        val bottomBar = source("app/src/main/java/eu/kanade/presentation/reader/appbars/ReaderBottomBar.kt")
+
+        viewModel.shouldContain("ReaderLensModelState.Downloading")
+        viewModel.shouldContain("readerLensRuntimeSupported")
+        bottomBar.shouldContain("readerLensDownloadProgress")
+        bottomBar.shouldContain("progressBarRangeInfo")
+        bottomBar.shouldContain("reader_lens_unavailable")
+        bottomBar.shouldContain("LoadingIndicator(")
+        bottomBar.shouldNotContain("CircularProgressIndicator")
     }
 
     @Test

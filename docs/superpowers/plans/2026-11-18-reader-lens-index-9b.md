@@ -106,10 +106,10 @@
 - Consumes: `ReaderLensModelStore.state`.
 - Produces: visible download progress and accessible ready/downloading/failed/incompatible state on the existing Lens control.
 
-- [ ] Write or extend UI policy tests for one Lens control, progress semantics, and unsupported-device behavior.
-- [ ] Run the focused UI tests and confirm RED.
-- [ ] Collect model state in the reader and update the existing control without adding a duplicate translation option.
-- [ ] Run focused UI tests and confirm GREEN.
+- [x] Write or extend UI policy tests for one Lens control, progress semantics, and unsupported-device behavior.
+- [x] Run the focused UI tests and confirm RED.
+- [x] Collect model state in the reader and update the existing control without adding a duplicate translation option.
+- [x] Run focused UI tests and confirm GREEN.
 
 ### Task 6: Verification and Documentation
 

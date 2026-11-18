@@ -40,7 +40,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -65,6 +67,8 @@ fun ReaderBottomBar(
     readerLensAvailable: Boolean,
     readerLensEnabled: Boolean,
     readerLensWorking: Boolean,
+    readerLensRuntimeSupported: Boolean,
+    readerLensDownloadProgress: Int?,
     onReaderLensToggle: () -> Unit,
     onClickSettings: () -> Unit,
     onNextChapter: () -> Unit,
@@ -80,9 +84,15 @@ fun ReaderBottomBar(
     val iconColor = NovaVikiColors.TextPrimary
     val disabledIconColor = NovaVikiColors.TextSecondary.copy(alpha = 0.38f)
     val readerLensLabel = stringResource(MR.strings.reader_lens_realtime)
-    val readerLensStateDescription = stringResource(
-        if (readerLensEnabled) MR.strings.reader_lens_active else MR.strings.reader_lens_inactive,
-    )
+    val readerLensStateDescription = when {
+        !readerLensRuntimeSupported -> stringResource(MR.strings.reader_lens_unavailable)
+        readerLensDownloadProgress != null -> stringResource(
+            MR.strings.reader_lens_downloading,
+            readerLensDownloadProgress,
+        )
+        readerLensEnabled -> stringResource(MR.strings.reader_lens_active)
+        else -> stringResource(MR.strings.reader_lens_inactive)
+    }
 
     Column(
         modifier = modifier
@@ -149,15 +159,37 @@ fun ReaderBottomBar(
                 IconToggleButton(
                     checked = readerLensEnabled,
                     onCheckedChange = { onReaderLensToggle() },
+                    enabled = readerLensRuntimeSupported,
                     modifier = Modifier
                         .size(NovaVikiDimensions.MinimumTouchTarget)
                         .semantics {
                             role = Role.Switch
                             contentDescription = readerLensLabel
                             stateDescription = readerLensStateDescription
+                            readerLensDownloadProgress?.let { progress ->
+                                progressBarRangeInfo = ProgressBarRangeInfo(
+                                    current = progress / 100f,
+                                    range = 0f..1f,
+                                )
+                            }
                         },
                 ) {
-                    if (readerLensWorking) {
+                    if (readerLensDownloadProgress != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            LoadingIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = "$readerLensDownloadProgress%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                            )
+                        }
+                    } else if (readerLensWorking) {
                         LoadingIndicator(
                             modifier = Modifier.size(24.dp),
                             color = MaterialTheme.colorScheme.primary,

@@ -680,6 +680,8 @@ class ReaderActivity : BaseActivity() {
             readerLensAvailable = state.readerLensAvailable,
             readerLensEnabled = state.readerLensEnabled,
             readerLensWorking = state.readerLensWorking,
+            readerLensRuntimeSupported = state.readerLensRuntimeSupported,
+            readerLensDownloadProgress = state.readerLensDownloadProgress,
             onReaderLensToggle = {
                 val pageIndex = (state.viewer as? LnReaderWebViewViewer)?.currentImagePageIndex
                     ?: (state.currentPage - 1).coerceAtLeast(0)

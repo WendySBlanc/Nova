@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.reader
 
 import android.app.Application
 import android.net.Uri
+import android.os.Build
 import androidx.annotation.ColorInt
 import androidx.annotation.IntRange
 import androidx.compose.runtime.Immutable
@@ -24,10 +25,13 @@ import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.lens.ReaderLensException
+import eu.kanade.tachiyomi.data.lens.ReaderLensModelState
+import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
 import eu.kanade.tachiyomi.data.lens.ReaderLensPageQueue
 import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
 import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
 import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
+import eu.kanade.tachiyomi.data.lens.isReaderLensRuntimeSupported
 import eu.kanade.tachiyomi.data.lens.shouldOfferReaderLens
 import eu.kanade.tachiyomi.data.lens.shouldRunReaderLens
 import eu.kanade.tachiyomi.data.saver.Image
@@ -197,9 +201,16 @@ class ReaderViewModel @JvmOverloads constructor(
     // SY <--
 ) : ViewModel() {
 
+    private val readerLensModelStore: ReaderLensModelStore = Injekt.get()
+    private val readerLensRuntimeSupported = isReaderLensRuntimeSupported(Build.SUPPORTED_ABIS)
     private val readerLensEngineDelegate = lazy { Injekt.get<ReaderLensEngine>() }
     private val readerLensEngine by readerLensEngineDelegate
-    private val mutableState = MutableStateFlow(State(readerLensEnabled = readerLensPreferences.enabled.get()))
+    private val mutableState = MutableStateFlow(
+        State(
+            readerLensEnabled = readerLensPreferences.enabled.get() && readerLensRuntimeSupported,
+            readerLensRuntimeSupported = readerLensRuntimeSupported,
+        ),
+    )
     val state = mutableState.asStateFlow()
 
     private val eventChannel = Channel<Event>()
@@ -435,7 +446,17 @@ class ReaderViewModel @JvmOverloads constructor(
         readerLensPreferences.enabled.changes()
             .distinctUntilChanged()
             .onEach { enabled ->
-                mutableState.update { it.copy(readerLensEnabled = enabled) }
+                mutableState.update { it.copy(readerLensEnabled = enabled && readerLensRuntimeSupported) }
+            }
+            .launchIn(viewModelScope)
+
+        readerLensModelStore.state
+            .onEach { modelState ->
+                mutableState.update {
+                    it.copy(
+                        readerLensDownloadProgress = (modelState as? ReaderLensModelState.Downloading)?.percent,
+                    )
+                }
             }
             .launchIn(viewModelScope)
 
@@ -1294,12 +1315,17 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     fun onReaderLensToggle(pageIndex: Int) {
+        if (!readerLensRuntimeSupported) {
+            eventChannel.trySend(Event.ReaderLensError("Lens local nécessite un appareil Android 64 bits ARM"))
+            return
+        }
         val enabled = !state.value.readerLensEnabled
         readerLensPreferences.enabled.set(enabled)
         mutableState.update { it.copy(readerLensEnabled = enabled, readerLensWorking = false) }
         if (enabled) {
             onReaderLensPageVisible(pageIndex)
         } else {
+            readerLensModelStore.cancelDownload()
             readerLensWorkerGeneration++
             readerLensWorkerJob?.cancel()
             readerLensWorkerJob = null
@@ -1380,7 +1406,12 @@ class ReaderViewModel @JvmOverloads constructor(
                     } catch (error: Throwable) {
                         logcat(LogPriority.WARN, error) { "Reader Lens failed for page $pageIndex" }
                         if (pageIndex == readerLensVisiblePageIndex) {
-                            eventChannel.send(Event.ReaderLensError("Lens n'a pas pu analyser cette page"))
+                            eventChannel.send(
+                                Event.ReaderLensError(
+                                    error.message?.takeIf(String::isNotBlank)
+                                        ?: "Lens n'a pas pu analyser cette page",
+                                ),
+                            )
                         }
                     }
                 }
@@ -1955,6 +1986,8 @@ class ReaderViewModel @JvmOverloads constructor(
         val readerLensAvailable: Boolean = false,
         val readerLensEnabled: Boolean = false,
         val readerLensWorking: Boolean = false,
+        val readerLensRuntimeSupported: Boolean = false,
+        val readerLensDownloadProgress: Int? = null,
         // SY <--
     ) {
         val currentChapter: ReaderChapter?
