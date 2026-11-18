@@ -35,4 +35,31 @@ class ReaderLensCacheTest {
         cache.get("source:manga:chapter", 7, "image-a") shouldBe null
         cache.get("source:manga:chapter", 7, "image-b") shouldBe regions
     }
+
+    @Test
+    fun `model and prompt changes invalidate cached translations`() {
+        val regions = listOf(
+            ReaderLensRegion(0.1f, 0.2f, 0.3f, 0.1f, "Bonjour"),
+        )
+        val original = ReaderLensCache(
+            rootDirectory = temporaryDirectory.toFile(),
+            json = Json,
+            modelIdentity = "model-a",
+            promptSchemaVersion = 1,
+        )
+        original.put("chapter", 0, "image", regions)
+
+        ReaderLensCache(
+            rootDirectory = temporaryDirectory.toFile(),
+            json = Json,
+            modelIdentity = "model-b",
+            promptSchemaVersion = 1,
+        ).get("chapter", 0, "image") shouldBe null
+        ReaderLensCache(
+            rootDirectory = temporaryDirectory.toFile(),
+            json = Json,
+            modelIdentity = "model-a",
+            promptSchemaVersion = 2,
+        ).get("chapter", 0, "image") shouldBe null
+    }
 }

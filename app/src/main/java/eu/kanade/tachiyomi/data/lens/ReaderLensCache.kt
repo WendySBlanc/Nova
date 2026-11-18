@@ -9,6 +9,8 @@ import java.security.MessageDigest
 class ReaderLensCache(
     private val rootDirectory: File,
     private val json: Json,
+    private val modelIdentity: String = "${INDEX_READER_LENS_MODEL.id}:${INDEX_READER_LENS_MODEL.sha256}",
+    private val promptSchemaVersion: Int = READER_LENS_PROMPT_SCHEMA_VERSION,
 ) {
     init {
         rootDirectory.mkdirs()
@@ -41,7 +43,14 @@ class ReaderLensCache(
     }
 
     private fun pageFile(chapterKey: String, pageIndex: Int, pageIdentity: String): File {
-        val chapterDirectory = File(rootDirectory, "$READER_LENS_CACHE_VERSION:$READER_LENS_TARGET_LANGUAGE:$chapterKey".sha256())
+        val namespace = listOf(
+            READER_LENS_CACHE_VERSION,
+            READER_LENS_TARGET_LANGUAGE,
+            modelIdentity,
+            promptSchemaVersion,
+            chapterKey,
+        ).joinToString(":")
+        val chapterDirectory = File(rootDirectory, namespace.sha256())
         return File(chapterDirectory, "%06d-%s.json".format(pageIndex, pageIdentity.sha256().take(16)))
     }
 }
@@ -50,5 +59,5 @@ private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
     .digest(toByteArray())
     .joinToString("") { byte -> "%02x".format(byte) }
 
-private const val READER_LENS_CACHE_VERSION = 2
+private const val READER_LENS_CACHE_VERSION = 3
 private const val READER_LENS_TARGET_LANGUAGE = "fr"

@@ -87,10 +87,10 @@
 - Consumes: translator/runtime/store from Tasks 1-3.
 - Produces: one contextual translation call per page and model-aware cache identities.
 
-- [ ] Write failing tests proving one call per page, exact coordinate mapping, French-page bypass, malformed-output errors, and model/prompt cache invalidation.
-- [ ] Run focused Lens tests and confirm RED.
-- [ ] Remove ML Kit Translation dependencies and per-bubble translation, inject the Index translator, and version the cache with model digest plus prompt schema.
-- [ ] Run all Lens tests and confirm GREEN.
+- [x] Write failing tests proving one call per page, exact coordinate mapping, French-page bypass, malformed-output errors, and model/prompt cache invalidation.
+- [x] Run focused Lens tests and confirm RED.
+- [x] Remove ML Kit Translation dependencies and per-bubble translation, inject the Index translator, and version the cache with model digest plus prompt schema.
+- [x] Run all Lens tests and confirm GREEN.
 
 ### Task 5: Reader Model Status and Accessibility
 

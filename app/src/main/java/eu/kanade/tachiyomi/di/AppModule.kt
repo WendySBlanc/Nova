@@ -21,6 +21,9 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.lens.ReaderLensCache
 import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
+import eu.kanade.tachiyomi.data.lens.IndexReaderLensTranslator
+import eu.kanade.tachiyomi.data.lens.LlamaReaderLensInferenceRuntime
+import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -167,7 +170,20 @@ class AppModule(val app: Application) : InjektModule {
             File(app.cacheDir, "manga-translation").deleteRecursively()
             ReaderLensCache(File(app.filesDir, "reader-lens"), get())
         }
-        addFactory { ReaderLensEngine(get()) }
+        addSingletonFactory {
+            val modelDirectory = app.getExternalFilesDir("reader-lens-models")
+                ?: File(app.filesDir, "reader-lens-models")
+            ReaderLensModelStore(modelDirectory, get<NetworkHelper>().nonCloudflareClient)
+        }
+        addFactory {
+            ReaderLensEngine(
+                cache = get(),
+                translator = IndexReaderLensTranslator(
+                    modelStore = get(),
+                    runtime = LlamaReaderLensInferenceRuntime(),
+                ),
+            )
+        }
 
         addSingletonFactory<SourceManager> { AndroidSourceManager(app, get(), get()) }
         addSingletonFactory { ExtensionManager(app) }

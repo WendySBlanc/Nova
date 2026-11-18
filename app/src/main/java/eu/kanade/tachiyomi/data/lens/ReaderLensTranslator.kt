@@ -5,6 +5,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.File
 
 internal interface ReaderLensTranslator : AutoCloseable {
     suspend fun translatePage(
@@ -20,6 +21,34 @@ internal class ReaderLensTranslationException(
     message: String,
     cause: Throwable? = null,
 ) : Exception(message, cause)
+
+internal class IndexReaderLensTranslator(
+    private val modelProvider: suspend () -> File,
+    private val runtime: ReaderLensInferenceRuntime,
+) : ReaderLensTranslator {
+
+    constructor(
+        modelStore: ReaderLensModelStore,
+        runtime: ReaderLensInferenceRuntime,
+    ) : this(modelStore::ensureModel, runtime)
+
+    override suspend fun translatePage(
+        blocks: List<ReaderLensTextBlock>,
+        sourceLanguage: String,
+        previousContext: String?,
+    ): Map<String, String> {
+        if (blocks.isEmpty()) return emptyMap()
+        val expectedIds = blocks.indices.map { index -> "b$index" }
+        val prompt = buildIndexTranslationPrompt(blocks, sourceLanguage, previousContext)
+        val model = modelProvider()
+        val response = runtime.complete(model, prompt)
+        return parseIndexTranslation(response, expectedIds)
+    }
+
+    override fun close() {
+        runtime.close()
+    }
+}
 
 @Serializable
 private data class IndexTranslationItem(

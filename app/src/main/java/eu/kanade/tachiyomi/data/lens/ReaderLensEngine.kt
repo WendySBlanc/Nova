@@ -4,12 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Rect
-import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.languageid.LanguageIdentification
-import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.Translation
-import com.google.mlkit.nl.translate.Translator
-import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -18,13 +13,7 @@ import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -33,8 +22,9 @@ import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
-class ReaderLensEngine(
+class ReaderLensEngine internal constructor(
     private val cache: ReaderLensCache,
+    private val translator: ReaderLensTranslator,
 ) : AutoCloseable {
     private val analysisGate = ReaderLensAnalysisGate()
     private val scriptsByChapter = ConcurrentHashMap<String, ReaderLensScript>()
@@ -49,10 +39,6 @@ class ReaderLensEngine(
         )
     }
     private val recognizers by recognizersDelegate
-    private val translators = ConcurrentHashMap<String, Translator>()
-    private val downloadedModels = ConcurrentHashMap.newKeySet<String>()
-    private val modelDownloadMutex = Mutex()
-    private val translationDispatcher = Dispatchers.IO.limitedParallelism(MAX_PARALLEL_TRANSLATIONS)
 
     suspend fun analyze(
         chapterKey: String,
@@ -158,43 +144,13 @@ class ReaderLensEngine(
         ).await()
             .takeUnless { it == "und" }
             ?: page.script.fallbackLanguage
-        val source = TranslateLanguage.fromLanguageTag(sourceLanguage)
-            ?: TranslateLanguage.fromLanguageTag(page.script.fallbackLanguage)
-            ?: return emptyList()
-        if (source == TranslateLanguage.FRENCH) return emptyList()
-
-        val translator = translators[source] ?: synchronized(translators) {
-            translators[source] ?: Translation.getClient(
-                TranslatorOptions.Builder()
-                    .setSourceLanguage(source)
-                    .setTargetLanguage(TranslateLanguage.FRENCH)
-                    .build(),
-            ).also { translators[source] = it }
-        }
-        modelDownloadMutex.withLock {
-            if (source !in downloadedModels) {
-                try {
-                    translator.downloadModelIfNeeded(DownloadConditions.Builder().build()).await()
-                    downloadedModels.add(source)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    throw ReaderLensException(
-                        "Le modele Lens doit etre telecharge. Verifiez la connexion internet.",
-                        error,
-                    )
-                }
-            }
-        }
-
-        return coroutineScope {
-            dialogueBubbles.map { block ->
-                async(translationDispatcher) {
-                    val translated = translator.translate(block.text).await().trim()
-                    block.toRegion(translated, imageWidth, imageHeight)
-                }
-            }.awaitAll().filterNotNull()
-        }
+        return translateReaderLensPage(
+            blocks = dialogueBubbles,
+            sourceLanguage = sourceLanguage,
+            imageWidth = imageWidth,
+            imageHeight = imageHeight,
+            translator = translator,
+        )
     }
 
     override fun close() {
@@ -204,9 +160,7 @@ class ReaderLensEngine(
         if (languageIdentifierDelegate.isInitialized()) {
             languageIdentifier.close()
         }
-        translators.values.forEach(Translator::close)
-        translators.clear()
-        downloadedModels.clear()
+        translator.close()
         scriptsByChapter.clear()
     }
 
@@ -281,8 +235,23 @@ private fun ReaderLensTextBlock.toRegion(
     )
 }
 
+internal suspend fun translateReaderLensPage(
+    blocks: List<ReaderLensTextBlock>,
+    sourceLanguage: String,
+    imageWidth: Int,
+    imageHeight: Int,
+    translator: ReaderLensTranslator,
+): List<ReaderLensRegion> {
+    if (blocks.isEmpty() || sourceLanguage.equals("fr", ignoreCase = true)) return emptyList()
+    val translations = translator.translatePage(blocks, sourceLanguage)
+    return blocks.mapIndexedNotNull { index, block ->
+        val translated = translations["b$index"]
+            ?: throw ReaderLensTranslationException("La traduction de la bulle b$index est absente")
+        block.toRegion(translated, imageWidth, imageHeight)
+    }
+}
+
 private fun Text.score(): Int = text.count { !it.isWhitespace() }
 
 private const val MIN_RECOGNIZED_CHARACTERS = 3
 private const val MAX_LANGUAGE_SAMPLE_CHARACTERS = 4000
-private const val MAX_PARALLEL_TRANSLATIONS = 3
