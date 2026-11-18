@@ -12,7 +12,8 @@ Replace Reader Lens' final per-bubble ML Kit translation with a local, contextua
 
 1. **TranslatePsy-EuroNano Base (42 MB):** fastest and smallest, but its published English-to-European COMET score is below Firefox/Bergamot and NLLB. Rejected because quality is the main requirement.
 2. **TranslateGemma 4B:** strong contextual translation, but its multi-gigabyte footprint and slower mobile inference make continuous reader prefetch less reliable.
-3. **Index-Translate-2B Q4_K_M (selected):** 1.31 GB GGUF, Apache-2.0, designed for contextual, stylistic, structured and community-language translation. Its official quantization validation reports nearly identical generation to the reference model, and its published results outperform Hy-MT2-1.8B across the shared main metrics.
+3. **Index-Translate-2B Q4_K_M:** compact, but local tests exposed grammatical errors in French dialogue, including incorrect object-pronoun placement. Rejected because natural French is the primary requirement.
+4. **Index-Translate-9B Q3_K_M (selected):** 4.41 GiB GGUF, Apache-2.0, designed for contextual, stylistic, structured and community-language translation. Local deterministic tests preserved every bubble identifier and produced the most natural French of the tested models. The measured desktop peak working set was 5.42 GiB.
 
 ## Design
 
@@ -20,7 +21,7 @@ Replace Reader Lens' final per-bubble ML Kit translation with a local, contextua
 
 Introduce a `ReaderLensTranslator` interface so OCR, model management and translation can be tested independently. `ReaderLensEngine` will continue producing ordered `ReaderLensTextBlock` instances with image coordinates. It will submit all bubbles from a page as one structured request, with stable identifiers such as `b0`, `b1` and `b2`.
 
-The Index prompt will use the model's constrained-translation format with deterministic decoding (`temperature = 0`, thinking disabled). It will request natural French dialogue while preserving names, punctuation intent, bubble identifiers and output order. The response parser must reject missing, duplicated or unknown identifiers instead of placing text in the wrong bubble. A failed structured response leaves the original page visible and exposes a retryable Lens error; it never invokes another translation engine.
+The Index prompt will use the model's constrained-translation format with deterministic decoding (`temperature = 0`, thinking disabled). It will request natural French dialogue while preserving names, punctuation intent, bubble identifiers and output order. Short style examples will teach idiomatic restructuring of passive English narration without a second inference pass. The response parser must reject missing, duplicated or unknown identifiers instead of placing text in the wrong bubble. A failed structured response leaves the original page visible and exposes a retryable Lens error; it never invokes another translation engine.
 
 Previous-page source text may be supplied as read-only background context when it is already cached. Its absence must never delay the visible page.
 
@@ -32,7 +33,7 @@ The local Index engine is enabled on supported `arm64-v8a` devices with Android 
 
 ### Model lifecycle
 
-The 1.31 GB `Index-Translate-2B.Q4_K_M.gguf` file is not bundled in the APK. The first Lens activation starts an explicit, cancellable download into app-managed external model storage. Downloading is resumable, uses a temporary file, verifies the expected size and SHA-256 digest, and promotes the file atomically only after validation.
+The 4.41 GiB `Index-Translate-9B.Q3_K_M.gguf` file is not bundled in the APK. The first Lens activation starts an explicit, cancellable download into app-managed external model storage. Downloading is resumable, uses a temporary file, verifies the exact 4,737,609,152-byte size and SHA-256 digest `7144b4aeb76febd2d6295bbade0f8fa5eb047bb20c11f94bc03ad5fa9a5071c0`, and promotes the file atomically only after validation.
 
 Reader Lens exposes model states (`not installed`, `downloading`, `ready`, `failed`) through its existing control instead of adding a second translation feature. A failed or interrupted download never prevents the reader from opening.
 
@@ -53,7 +54,7 @@ This migration keeps the existing ML Kit OCR and coordinates. Replacing OCR with
 - Cache tests covering model and prompt version invalidation.
 - Reader queue tests proving visible-page priority, next-page prefetch and cancellation.
 - Existing Lens overlay and reader tests remain mandatory.
-- An optional device smoke test uses a separately supplied GGUF file; the 1.31 GB model is never stored in Git or CI artifacts.
+- An optional device smoke test uses a separately supplied GGUF file; the 4.41 GiB model is never stored in Git or CI artifacts.
 
 ## Success criteria
 
