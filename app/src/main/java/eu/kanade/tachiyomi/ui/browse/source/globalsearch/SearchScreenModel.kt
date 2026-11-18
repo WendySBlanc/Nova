@@ -290,7 +290,7 @@ abstract class SearchScreenModel(
     }
 }
 
-private const val SEARCH_PARALLELISM = 5
+private const val SEARCH_PARALLELISM = 16
 
 enum class SourceFilter {
     All,

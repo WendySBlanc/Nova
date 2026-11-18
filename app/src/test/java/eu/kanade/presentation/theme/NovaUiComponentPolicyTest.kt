@@ -125,6 +125,7 @@ class NovaUiComponentPolicyTest {
         )
 
         searchModel.shouldContain("Dispatchers.IO.limitedParallelism(SEARCH_PARALLELISM)")
+        searchModel.shouldContain("SEARCH_PARALLELISM = 16")
         searchModel.shouldNotContain("Executors.newFixedThreadPool")
     }
 
