@@ -318,7 +318,7 @@ class MainActivity : BaseActivity() {
                             restoring = restoring,
                             syncing = syncing,
                             updating = updating,
-                            progress = updatingProgress.takeIf { updating }
+                            progress = updatingProgress.takeIf { updating && it > 0f }
                                 ?: syncingProgress.takeIf { syncing }
                                 ?: restoringProgress.takeIf { restoring },
                             // KMK <--

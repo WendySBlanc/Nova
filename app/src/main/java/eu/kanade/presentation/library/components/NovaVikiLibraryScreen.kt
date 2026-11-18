@@ -60,7 +60,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -100,8 +99,6 @@ import eu.kanade.presentation.theme.novaSpatialLibraryLayout
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import eu.kanade.presentation.util.novaMangaSharedArtwork
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.i18n.stringResource
@@ -119,6 +116,7 @@ fun NovaVikiLibraryScreen(
     lightNovelItems: List<NovaVikiManga>,
     categories: List<NovaLibraryCategory>,
     isLibraryReady: Boolean,
+    isRefreshing: Boolean,
     onPlay: (Long?) -> Unit,
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
@@ -129,11 +127,9 @@ fun NovaVikiLibraryScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedShelfIndex by rememberSaveable { mutableIntStateOf(NovaLibraryShelf.Current.ordinal) }
     val selectedShelf = NovaLibraryShelf.entries[selectedShelfIndex]
-    var isRefreshing by remember { mutableStateOf(false) }
     var sortOption by rememberSaveable { mutableStateOf(NovaLibrarySortOption.LastRead) }
     var sortDescending by rememberSaveable { mutableStateOf(true) }
     var selectedCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
-    val scope = rememberCoroutineScope()
     val sharedTransitionState = LocalNovaSharedTransitionState.current
     val transitionItemsById = remember(libraryItems, lightNovelItems) {
         (libraryItems + lightNovelItems).associateBy { it.id }
@@ -221,15 +217,7 @@ fun NovaVikiLibraryScreen(
     PullRefresh(
         refreshing = isRefreshing,
         enabled = true,
-        onRefresh = {
-            val started = onRefresh()
-            if (!started) return@PullRefresh
-            scope.launch {
-                isRefreshing = true
-                delay(1000)
-                isRefreshing = false
-            }
-        },
+        onRefresh = { onRefresh() },
         modifier = Modifier
             .fillMaxSize()
             .novaSpatialBackdrop(

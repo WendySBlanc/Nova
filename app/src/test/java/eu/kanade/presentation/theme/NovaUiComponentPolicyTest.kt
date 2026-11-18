@@ -103,6 +103,20 @@ class NovaUiComponentPolicyTest {
     }
 
     @Test
+    fun `library refresh follows the worker state instead of a fixed delay`() {
+        val libraryTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/home/NovaLibraryTab.kt")
+        val libraryScreen = source(
+            "app/src/main/java/eu/kanade/presentation/library/components/NovaVikiLibraryScreen.kt",
+        )
+        val mainActivity = source("app/src/main/java/eu/kanade/tachiyomi/ui/main/MainActivity.kt")
+
+        libraryTab.shouldContain("libraryUpdateStatus.isRunning.collectAsStateWithLifecycle()")
+        libraryScreen.shouldContain("isRefreshing: Boolean")
+        libraryScreen.shouldNotContain("delay(1000)")
+        mainActivity.shouldContain("updatingProgress.takeIf { updating && it > 0f }")
+    }
+
+    @Test
     fun `nova manga messages use the shared notification host`() {
         val mangaScreen = source("app/src/main/java/eu/kanade/presentation/manga/NovaMangaScreen.kt")
 

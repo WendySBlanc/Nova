@@ -26,6 +26,7 @@ import eu.kanade.presentation.library.components.NovaLibraryCategory
 import eu.kanade.presentation.util.Tab
 import eu.kanade.presentation.util.isLikelyLightNovel
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.LibraryUpdateStatus
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.library.LibraryItem
@@ -37,6 +38,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 data object NovaLibraryTab : Tab {
     private val reselectEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -65,6 +68,8 @@ data object NovaLibraryTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
+        val libraryUpdateStatus = remember { Injekt.get<LibraryUpdateStatus>() }
+        val isRefreshing by libraryUpdateStatus.isRunning.collectAsStateWithLifecycle()
         var resetToTopKey by remember { mutableIntStateOf(0) }
         val libraryState by libraryScreenModel.state.collectAsStateWithLifecycle()
         val libraryData = libraryState.libraryData
@@ -120,6 +125,7 @@ data object NovaLibraryTab : Tab {
             lightNovelItems = lightNovelItems,
             categories = libraryCategories,
             isLibraryReady = libraryData.isInitialized,
+            isRefreshing = isRefreshing,
             onPlay = { mangaId ->
                 if (mangaId != null) {
                     navigator.push(MangaScreen(mangaId))

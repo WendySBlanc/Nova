@@ -161,52 +161,47 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             }
         }
 
-        // KMK -->
-        libraryUpdateStatus.start()
-
-        deleteLibraryUpdateErrors.cleanUnrelevantMangaErrors()
-        // KMK <--
-
-        setForegroundSafely()
-
-        val target = inputData.getString(KEY_TARGET)?.let { Target.valueOf(it) } ?: Target.CHAPTERS
-
-        // If this is a chapter update, set the last update time to now
-        if (target == Target.CHAPTERS) {
-            libraryPreferences.lastUpdatedTimestamp().set(Instant.now().toEpochMilli())
-        }
-
-        val categoryId = inputData.getLong(KEY_CATEGORY, -1L)
-        // SY -->
-        val group = inputData.getInt(KEY_GROUP, LibraryGroup.BY_DEFAULT)
-        val groupExtra = inputData.getString(KEY_GROUP_EXTRA)
-        // SY <--
-        val forceUpdate = inputData.getBoolean(KEY_FORCE_UPDATE, false)
-        addMangaToQueue(categoryId, group, groupExtra, forceUpdate)
-
-        return withIOContext {
-            try {
-                when (target) {
-                    Target.CHAPTERS -> updateChapterList()
-                    // SY -->
-                    Target.SYNC_FOLLOWS -> syncFollows()
-                    Target.PUSH_FAVORITES -> pushFavorites()
-                    // SY <--
-                }
-                Result.success()
-            } catch (e: Exception) {
-                if (e is CancellationException) {
-                    // Assume success although cancelled
-                    Result.success()
-                } else {
-                    logcat(LogPriority.ERROR, e)
-                    Result.failure()
-                }
-            } finally {
+        return runLibraryUpdateLifecycle(
+            onStart = { libraryUpdateStatus.start() },
+            onFinish = {
                 notifier.cancelProgressNotification()
-                // KMK -->
                 libraryUpdateStatus.stop()
-                // KMK <--
+            },
+        ) {
+            withIOContext {
+                try {
+                    deleteLibraryUpdateErrors.cleanUnrelevantMangaErrors()
+                    setForegroundSafely()
+
+                    val target = inputData.getString(KEY_TARGET)?.let { Target.valueOf(it) } ?: Target.CHAPTERS
+
+                    if (target == Target.CHAPTERS) {
+                        libraryPreferences.lastUpdatedTimestamp().set(Instant.now().toEpochMilli())
+                    }
+
+                    val categoryId = inputData.getLong(KEY_CATEGORY, -1L)
+                    val group = inputData.getInt(KEY_GROUP, LibraryGroup.BY_DEFAULT)
+                    val groupExtra = inputData.getString(KEY_GROUP_EXTRA)
+                    val forceUpdate = inputData.getBoolean(KEY_FORCE_UPDATE, false)
+                    addMangaToQueue(categoryId, group, groupExtra, forceUpdate)
+
+                    when (target) {
+                        Target.CHAPTERS -> updateChapterList()
+                        // SY -->
+                        Target.SYNC_FOLLOWS -> syncFollows()
+                        Target.PUSH_FAVORITES -> pushFavorites()
+                        // SY <--
+                    }
+                    Result.success()
+                } catch (e: Exception) {
+                    if (e is CancellationException) {
+                        // Assume success although cancelled
+                        Result.success()
+                    } else {
+                        logcat(LogPriority.ERROR, e)
+                        Result.failure()
+                    }
+                }
             }
         }
     }
@@ -245,7 +240,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                     it.manga.id in targetMangaIds &&
                         when {
                             // Apply update restrictions even for targeted updates
-                            it.manga.updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && it.totalChapters > 0L -> false
+                            shouldSkipLibraryUpdate(
+                                updateStrategy = it.manga.updateStrategy,
+                                totalChapters = it.totalChapters,
+                                forceUpdate = forceUpdate,
+                            ) -> false
                             // Skip other restrictions for targeted updates to allow forced refresh
                             else -> true
                         }
@@ -327,7 +326,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             // SY <--
             .filter {
                 when {
-                    it.manga.updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && it.totalChapters > 0L -> {
+                    shouldSkipLibraryUpdate(
+                        updateStrategy = it.manga.updateStrategy,
+                        totalChapters = it.totalChapters,
+                        forceUpdate = forceUpdate,
+                    ) -> {
                         skippedUpdates.add(
                             it.manga to
                                 context.stringResource(MR.strings.skipped_reason_not_always_update),
@@ -934,5 +937,26 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             return WorkerUtil.isPeriodicJobScheduled(context, WORK_NAME_AUTO)
         }
         // KMK <--
+    }
+}
+
+internal fun shouldSkipLibraryUpdate(
+    updateStrategy: UpdateStrategy,
+    totalChapters: Long,
+    forceUpdate: Boolean,
+): Boolean {
+    return !forceUpdate && updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && totalChapters > 0L
+}
+
+internal suspend fun <T> runLibraryUpdateLifecycle(
+    onStart: suspend () -> Unit,
+    onFinish: suspend () -> Unit,
+    block: suspend () -> T,
+): T {
+    onStart()
+    return try {
+        block()
+    } finally {
+        onFinish()
     }
 }
