@@ -113,6 +113,8 @@ stringSimilarity = { module = "com.aallam.similarity:string-similarity-kotlin", 
 
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 
+llama-android = "dev.ffmpegkit-maintained:llama-android:0.1.1"
+
 mlkit-language-id = "com.google.mlkit:language-id:17.0.6"
 mlkit-translate = "com.google.mlkit:translate:17.0.3"
 mlkit-text-recognition = "com.google.mlkit:text-recognition:16.0.1"

@@ -69,10 +69,10 @@
 - Consumes: model file from Task 2.
 - Produces: `ReaderLensInferenceRuntime.complete(prompt)`, deterministic `LlamaReaderLensInferenceRuntime`, and `isReaderLensRuntimeSupported(abis)`.
 
-- [ ] Write failing tests proving arm64-only gating, deterministic configuration, lazy single load, serialized inference, and release.
-- [ ] Run the focused runtime test and confirm RED.
-- [ ] Add `dev.ffmpegkit-maintained:llama-android:0.1.1` and implement the isolated adapter with context 2048, temperature 0, CPU-only inference, and bounded threads.
-- [ ] Run the focused test and confirm GREEN.
+- [x] Write failing tests proving arm64-only gating, deterministic configuration, lazy single load, serialized inference, and release.
+- [x] Run the focused runtime test and confirm RED.
+- [x] Add `dev.ffmpegkit-maintained:llama-android:0.1.1` and implement the isolated adapter with context 2048, temperature 0, CPU-only inference, and bounded threads.
+- [x] Run the focused test and confirm GREEN.
 
 ### Task 4: Lens Engine and Cache Integration
 

@@ -233,6 +233,8 @@ dependencies {
     implementation(kotlinx.reflect)
     implementation(kotlinx.immutables)
 
+    implementation(libs.llama.android)
+
     implementation(platform(kotlinx.coroutines.bom))
     implementation(kotlinx.bundles.coroutines)
     implementation(kotlinx.coroutines.play.services)
