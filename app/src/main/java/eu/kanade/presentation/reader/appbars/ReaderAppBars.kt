@@ -56,6 +56,7 @@ fun ReaderAppBars(
     readerLensWorking: Boolean,
     readerLensRuntimeSupported: Boolean,
     readerLensDownloadProgress: Int?,
+    readerLensFailed: Boolean,
     onReaderLensToggle: () -> Unit,
 
     viewer: Viewer?,
@@ -181,6 +182,7 @@ fun ReaderAppBars(
                         readerLensWorking = readerLensWorking,
                         readerLensRuntimeSupported = readerLensRuntimeSupported,
                         readerLensDownloadProgress = readerLensDownloadProgress,
+                        readerLensFailed = readerLensFailed,
                         onReaderLensToggle = onReaderLensToggle,
                         onClickSettings = onClickSettings,
                         onNextChapter = onNextChapter,

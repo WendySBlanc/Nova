@@ -37,7 +37,7 @@ internal sealed interface ReaderLensModelState {
         val percent: Int = ((downloadedBytes * 100L) / totalBytes.coerceAtLeast(1L)).toInt().coerceIn(0, 100)
     }
     data class Ready(val file: File) : ReaderLensModelState
-    data class Failed(val message: String) : ReaderLensModelState
+    data class Failed(val message: String, val attempt: Long) : ReaderLensModelState
 }
 
 internal class ReaderLensModelException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -57,6 +57,7 @@ internal class ReaderLensModelStore(
     private val requestMutex = Mutex()
     private val activeLock = Any()
     private var activeDownload: Deferred<File>? = null
+    private var failedAttempt = 0L
     private val mutableState = MutableStateFlow<ReaderLensModelState>(ReaderLensModelState.NotInstalled)
     val state: StateFlow<ReaderLensModelState> = mutableState.asStateFlow()
 
@@ -74,7 +75,7 @@ internal class ReaderLensModelStore(
     suspend fun ensureModel(): File {
         val deferred = synchronized(activeLock) {
             activeDownload
-                ?.takeUnless { it.isCancelled }
+                ?.takeUnless { it.isCancelled || it.isCompleted }
                 ?: scope.async { downloadOrReuseModel() }.also { created ->
                     activeDownload = created
                     created.invokeOnCompletion { error ->
@@ -103,8 +104,11 @@ internal class ReaderLensModelStore(
     private suspend fun downloadOrReuseModel(): File = requestMutex.withLock {
         try {
             validateExistingModel()?.let { return@withLock it }
+            mutableState.value = ReaderLensModelState.Downloading(partialFile.length(), spec.sizeBytes)
             preparePartialFile()
-            downloadPartialFile()
+            if (partialFile.length() < spec.sizeBytes) {
+                downloadPartialFile()
+            }
             validatePartialFile()
             promotePartialFile()
             mutableState.value = ReaderLensModelState.Ready(modelFile)
@@ -113,14 +117,17 @@ internal class ReaderLensModelStore(
             mutableState.value = ReaderLensModelState.NotInstalled
             throw error
         } catch (error: ReaderLensModelException) {
-            mutableState.value = ReaderLensModelState.Failed(error.message ?: "Le modèle Lens n'a pas pu être préparé")
+            mutableState.value = failedState(error.message ?: "Le modèle Lens n'a pas pu être préparé")
             throw error
         } catch (error: Throwable) {
             val wrapped = ReaderLensModelException("Le modèle Lens n'a pas pu être préparé", error)
-            mutableState.value = ReaderLensModelState.Failed(wrapped.message.orEmpty())
+            mutableState.value = failedState(wrapped.message.orEmpty())
             throw wrapped
         }
     }
+
+    private fun failedState(message: String): ReaderLensModelState.Failed =
+        ReaderLensModelState.Failed(message, attempt = ++failedAttempt)
 
     private suspend fun validateExistingModel(): File? {
         if (hasVerifiedModel()) {

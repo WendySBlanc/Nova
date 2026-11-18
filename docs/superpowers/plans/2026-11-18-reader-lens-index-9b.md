@@ -71,7 +71,7 @@
 
 - [x] Write failing tests proving arm64-only gating, deterministic configuration, lazy single load, serialized inference, and release.
 - [x] Run the focused runtime test and confirm RED.
-- [x] Add `dev.ffmpegkit-maintained:llama-android:0.1.1` and implement the isolated adapter with context 2048, temperature 0, CPU-only inference, and bounded threads.
+- [x] Add `dev.ffmpegkit-maintained:llama-android:0.1.1` and implement the isolated adapter with context 4096, a concise JSON-only system prompt, temperature 0, CPU-only inference, bounded threads, Android 9+/arm64/8 GiB gating, and memory-pressure release.
 - [x] Run the focused test and confirm GREEN.
 
 ### Task 4: Lens Engine and Cache Integration
@@ -85,7 +85,7 @@
 
 **Interfaces:**
 - Consumes: translator/runtime/store from Tasks 1-3.
-- Produces: one contextual translation call per page and model-aware cache identities.
+- Produces: one contextual translation call for normal pages, bounded contextual batches for oversized pages, and model-aware cache identities.
 
 - [x] Write failing tests proving one call per page, exact coordinate mapping, French-page bypass, malformed-output errors, and model/prompt cache invalidation.
 - [x] Run focused Lens tests and confirm RED.
@@ -116,8 +116,8 @@
 **Files:**
 - Modify: `docs/superpowers/specs/2026-11-18-reader-lens-index-translate-design.md`
 
-- [ ] Run all Lens and reader unit tests.
-- [ ] Run `./gradlew :app:testDebugUnitTest` and report any pre-existing failures by name.
-- [ ] Run formatting/static checks available for touched Kotlin files.
-- [ ] Review the final diff for model binaries, secrets, duplicate UI options, and remaining ML Kit Translation calls.
+- [x] Run all Lens and reader unit tests.
+- [x] Run `./gradlew :app:testDebugUnitTest` and report any pre-existing failures by name.
+- [x] Run formatting/static checks available for touched Kotlin files.
+- [x] Review the final diff for model binaries, secrets, duplicate UI options, and remaining ML Kit Translation calls.
 - [ ] Ask the user before any APK build.

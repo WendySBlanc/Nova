@@ -49,6 +49,19 @@ class ReaderLensTranslatorTest {
     }
 
     @Test
+    fun `parser accepts one leading model thinking envelope`() {
+        val result = parseIndexTranslation(
+            raw = """
+                <think>Je vérifie le registre et les identifiants.</think>
+                [{"id":"b0","text":"Bonjour."}]
+            """.trimIndent(),
+            expectedIds = listOf("b0"),
+        )
+
+        result shouldContainExactly mapOf("b0" to "Bonjour.")
+    }
+
+    @Test
     fun `parser rejects missing duplicate unknown reordered and blank bubbles`() {
         val invalidResponses = listOf(
             """[{"id":"b0","text":"Bonjour"}]""",

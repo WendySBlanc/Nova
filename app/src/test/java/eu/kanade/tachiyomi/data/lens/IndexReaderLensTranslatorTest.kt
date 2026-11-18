@@ -3,6 +3,8 @@ package eu.kanade.tachiyomi.data.lens
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.floats.plusOrMinus
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.ints.shouldBeLessThanOrEqual
 import io.kotest.matchers.maps.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
@@ -38,6 +40,67 @@ class IndexReaderLensTranslatorTest {
         runtime.calls shouldBe 1
         runtime.lastPrompt?.contains("Hello") shouldBe true
         runtime.lastPrompt?.contains("How are you?") shouldBe true
+    }
+
+    @Test
+    fun `translator splits oversized pages while preserving global bubble ids`() = runTest {
+        val runtime = FakeReaderLensRuntime(
+            responseFactory = { prompt ->
+                promptIds(prompt).joinToString(prefix = "[", postfix = "]") { id ->
+                    val translation = mapOf("b0" to "Premier", "b1" to "Deuxième", "b2" to "Troisième").getValue(id)
+                    """{"id":"$id","text":"$translation"}"""
+                }
+            },
+        )
+        val translator = IndexReaderLensTranslator(
+            modelProvider = { modelFile() },
+            runtime = runtime,
+        )
+        val blocks = listOf(
+            ReaderLensTextBlock(0f, 0f, 100f, 100f, "A".repeat(800)),
+            ReaderLensTextBlock(0f, 100f, 100f, 200f, "B".repeat(800)),
+            ReaderLensTextBlock(0f, 200f, 100f, 300f, "C".repeat(800)),
+        )
+
+        translator.translatePage(blocks, sourceLanguage = "en") shouldContainExactly linkedMapOf(
+            "b0" to "Premier",
+            "b1" to "Deuxième",
+            "b2" to "Troisième",
+        )
+
+        runtime.calls.shouldBeGreaterThan(1)
+        val combinedPrompts = runtime.prompts.joinToString()
+        combinedPrompts.contains("\"id\":\"b0\"") shouldBe true
+        combinedPrompts.contains("\"id\":\"b1\"") shouldBe true
+        combinedPrompts.contains("\"id\":\"b2\"") shouldBe true
+    }
+
+    @Test
+    fun `translator splits one oversized OCR bubble within the prompt budget`() = runTest {
+        val runtime = FakeReaderLensRuntime(
+            responseFactory = { prompt ->
+                promptIds(prompt).joinToString(prefix = "[", postfix = "]") { id ->
+                    """{"id":"$id","text":"traduit"}"""
+                }
+            },
+        )
+        val translator = IndexReaderLensTranslator(
+            modelProvider = { modelFile() },
+            runtime = runtime,
+        )
+        val blocks = listOf(
+            ReaderLensTextBlock(0f, 0f, 100f, 100f, "漢".repeat(5_000)),
+        )
+
+        val result = translator.translatePage(blocks, sourceLanguage = "zh")
+
+        runtime.calls.shouldBeGreaterThan(1)
+        runtime.prompts.forEach { prompt ->
+            prompt.encodeToByteArray().size.shouldBeLessThanOrEqual(READER_LENS_MAX_PROMPT_BYTES)
+        }
+        result.keys shouldBe setOf("b0")
+        result.getValue("b0").split(' ').all { it == "traduit" } shouldBe true
+        result.getValue("b0").split(' ').size.shouldBeGreaterThan(1)
     }
 
     @Test
@@ -102,16 +165,26 @@ class IndexReaderLensTranslatorTest {
     }
 }
 
+private fun promptIds(prompt: String): List<String> = Regex(""""id":"([^"]+)"""")
+    .findAll(prompt)
+    .map { it.groupValues[1] }
+    .toList()
+
 private class FakeReaderLensRuntime(
-    private val response: String,
+    response: String? = null,
+    responses: List<String> = response?.let(::listOf).orEmpty(),
+    private val responseFactory: ((String) -> String)? = null,
 ) : ReaderLensInferenceRuntime {
+    private val responses = ArrayDeque(responses)
     var calls = 0
     var lastPrompt: String? = null
+    val prompts = mutableListOf<String>()
 
     override suspend fun complete(modelFile: File, prompt: String): String {
         calls++
         lastPrompt = prompt
-        return response
+        prompts += prompt
+        return responseFactory?.invoke(prompt) ?: responses.removeFirst()
     }
 
     override fun close() = Unit

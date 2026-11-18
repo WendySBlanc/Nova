@@ -861,6 +861,7 @@
     <string name="reader_lens_inactive">Inactive</string>
     <string name="reader_lens_downloading">Downloading local Lens model: %1$d%%</string>
     <string name="reader_lens_unavailable">Unavailable on this device</string>
+    <string name="reader_lens_failed">Lens failed. Tap to retry</string>
     <string name="no_next_chapter">Next chapter not found</string>
     <string name="decode_image_error">The image couldn\'t be loaded</string>
     <string name="confirm_set_image_as_cover">Use this image as cover art?</string>

@@ -78,6 +78,18 @@ class ReaderLensModelStoreTest {
     }
 
     @Test
+    fun `complete partial model is verified without an invalid range request`() = runTest {
+        val content = "already-complete-model".encodeToByteArray()
+        temporaryDirectory.resolve("test.gguf.part").toFile().writeBytes(content)
+        val store = modelStore(content)
+        server.enqueue(MockResponse().setResponseCode(416))
+
+        store.ensureModel().readBytes() shouldBe content
+
+        server.requestCount shouldBe 0
+    }
+
+    @Test
     fun `checksum failure never promotes the model`() = runTest {
         val content = "corrupted-model".encodeToByteArray()
         val store = modelStore(content, expectedSha256 = "0".repeat(64))
@@ -98,6 +110,20 @@ class ReaderLensModelStoreTest {
         shouldThrow<ReaderLensModelException> { store.ensureModel() }
 
         server.requestCount shouldBe 0
+    }
+
+    @Test
+    fun `retrying the same preparation failure emits a fresh failed state`() = runTest {
+        val content = "large-model".encodeToByteArray()
+        val store = modelStore(content, usableSpace = { 0L })
+
+        shouldThrow<ReaderLensModelException> { store.ensureModel() }
+        val firstFailure = store.state.value as ReaderLensModelState.Failed
+        shouldThrow<ReaderLensModelException> { store.ensureModel() }
+        val secondFailure = store.state.value as ReaderLensModelState.Failed
+
+        listOf(firstFailure.attempt, secondFailure.attempt) shouldBe listOf(1L, 2L)
+        (firstFailure == secondFailure) shouldBe false
     }
 
     @Test

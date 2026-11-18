@@ -58,10 +58,14 @@ class NovaUiComponentPolicyTest {
         val bottomBar = source("app/src/main/java/eu/kanade/presentation/reader/appbars/ReaderBottomBar.kt")
 
         viewModel.shouldContain("ReaderLensModelState.Downloading")
+        viewModel.shouldContain("ReaderLensModelState.Failed")
         viewModel.shouldContain("readerLensRuntimeSupported")
+        viewModel.shouldContain("readerLensFailed")
+        viewModel.shouldContain("readerLensEngine.releaseWarmModel()")
         bottomBar.shouldContain("readerLensDownloadProgress")
         bottomBar.shouldContain("progressBarRangeInfo")
         bottomBar.shouldContain("reader_lens_unavailable")
+        bottomBar.shouldContain("reader_lens_failed")
         bottomBar.shouldContain("LoadingIndicator(")
         bottomBar.shouldNotContain("CircularProgressIndicator")
     }

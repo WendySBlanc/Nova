@@ -25,6 +25,8 @@ The Index prompt will use the model's constrained-translation format with determ
 
 Previous-page source text may be supplied as read-only background context when it is already cached. Its absence must never delay the visible page.
 
+The Android runtime supplies a dedicated system prompt that keeps reasoning enabled but asks for a very brief trace and JSON-only output. A real Index-Translate 9B Q3_K_M smoke test on the supplied training-room bubble returned a complete JSON translation in about eight seconds on the development PC. Prompts are capped at 2,500 UTF-8 bytes, include at most 300 bytes of rolling context, and split abnormal OCR blocks into Unicode-safe 1,000-byte segments before reassembling them under the original bubble identifier.
+
 ### Runtime and compatibility
 
 Add a small Android JNI module based on a pinned `llama.cpp` revision and the official Android binding patterns. Only one model instance and one inference operation may be active at a time. Native initialization and generation run outside the main thread and preserve the existing cancellation gate.
@@ -58,7 +60,7 @@ This migration keeps the existing ML Kit OCR and coordinates. Replacing OCR with
 
 ## Success criteria
 
-- One contextual translation request per page instead of one request per bubble.
+- One contextual translation request for a normal page instead of one request per bubble. Oversized pages are split into bounded batches with global bubble identifiers and a short rolling context.
 - Every returned translation is mapped to the correct original bubble.
 - Cached pages display without network access or repeated inference.
 - Reader opening, scrolling and chapter navigation remain available while the model downloads or fails.

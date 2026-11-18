@@ -34,6 +34,7 @@ import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
 import eu.kanade.tachiyomi.data.lens.isReaderLensRuntimeSupported
 import eu.kanade.tachiyomi.data.lens.shouldOfferReaderLens
 import eu.kanade.tachiyomi.data.lens.shouldRunReaderLens
+import eu.kanade.tachiyomi.data.lens.totalDeviceMemoryBytes
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
@@ -202,7 +203,11 @@ class ReaderViewModel @JvmOverloads constructor(
 ) : ViewModel() {
 
     private val readerLensModelStore: ReaderLensModelStore = Injekt.get()
-    private val readerLensRuntimeSupported = isReaderLensRuntimeSupported(Build.SUPPORTED_ABIS)
+    private val readerLensRuntimeSupported = isReaderLensRuntimeSupported(
+        abis = Build.SUPPORTED_ABIS,
+        totalMemoryBytes = totalDeviceMemoryBytes(Injekt.get<Application>()),
+        sdkInt = Build.VERSION.SDK_INT,
+    )
     private val readerLensEngineDelegate = lazy { Injekt.get<ReaderLensEngine>() }
     private val readerLensEngine by readerLensEngineDelegate
     private val mutableState = MutableStateFlow(
@@ -452,9 +457,13 @@ class ReaderViewModel @JvmOverloads constructor(
 
         readerLensModelStore.state
             .onEach { modelState ->
+                val failed = modelState is ReaderLensModelState.Failed
+                if (failed) readerLensPreferences.enabled.set(false)
                 mutableState.update {
                     it.copy(
+                        readerLensEnabled = if (failed) false else it.readerLensEnabled,
                         readerLensDownloadProgress = (modelState as? ReaderLensModelState.Downloading)?.percent,
+                        readerLensFailed = failed,
                     )
                 }
             }
@@ -1316,7 +1325,7 @@ class ReaderViewModel @JvmOverloads constructor(
 
     fun onReaderLensToggle(pageIndex: Int) {
         if (!readerLensRuntimeSupported) {
-            eventChannel.trySend(Event.ReaderLensError("Lens local nécessite un appareil Android 64 bits ARM"))
+            eventChannel.trySend(Event.ReaderLensError("Lens local nécessite Android 9, ARM 64 bits et au moins 8 Gio de RAM"))
             return
         }
         val enabled = !state.value.readerLensEnabled
@@ -1326,6 +1335,7 @@ class ReaderViewModel @JvmOverloads constructor(
             onReaderLensPageVisible(pageIndex)
         } else {
             readerLensModelStore.cancelDownload()
+            if (readerLensEngineDelegate.isInitialized()) readerLensEngine.releaseWarmModel()
             readerLensWorkerGeneration++
             readerLensWorkerJob?.cancel()
             readerLensWorkerJob = null
@@ -1988,6 +1998,7 @@ class ReaderViewModel @JvmOverloads constructor(
         val readerLensWorking: Boolean = false,
         val readerLensRuntimeSupported: Boolean = false,
         val readerLensDownloadProgress: Int? = null,
+        val readerLensFailed: Boolean = false,
         // SY <--
     ) {
         val currentChapter: ReaderChapter?

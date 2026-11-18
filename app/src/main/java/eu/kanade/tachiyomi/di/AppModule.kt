@@ -24,6 +24,8 @@ import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.lens.IndexReaderLensTranslator
 import eu.kanade.tachiyomi.data.lens.LlamaReaderLensInferenceRuntime
 import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
+import eu.kanade.tachiyomi.data.lens.ReaderLensMemoryPressureMonitor
+import eu.kanade.tachiyomi.data.lens.totalDeviceMemoryBytes
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
 import eu.kanade.tachiyomi.data.track.TrackerManager
@@ -175,12 +177,16 @@ class AppModule(val app: Application) : InjektModule {
                 ?: File(app.filesDir, "reader-lens-models")
             ReaderLensModelStore(modelDirectory, get<NetworkHelper>().nonCloudflareClient)
         }
+        addSingletonFactory { ReaderLensMemoryPressureMonitor(app) }
         addFactory {
             ReaderLensEngine(
                 cache = get(),
                 translator = IndexReaderLensTranslator(
                     modelStore = get(),
-                    runtime = LlamaReaderLensInferenceRuntime(),
+                    runtime = LlamaReaderLensInferenceRuntime(
+                        totalMemoryBytes = totalDeviceMemoryBytes(app),
+                        memoryPressureMonitor = get(),
+                    ),
                 ),
             )
         }

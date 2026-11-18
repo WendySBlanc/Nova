@@ -69,6 +69,7 @@ fun ReaderBottomBar(
     readerLensWorking: Boolean,
     readerLensRuntimeSupported: Boolean,
     readerLensDownloadProgress: Int?,
+    readerLensFailed: Boolean,
     onReaderLensToggle: () -> Unit,
     onClickSettings: () -> Unit,
     onNextChapter: () -> Unit,
@@ -86,6 +87,7 @@ fun ReaderBottomBar(
     val readerLensLabel = stringResource(MR.strings.reader_lens_realtime)
     val readerLensStateDescription = when {
         !readerLensRuntimeSupported -> stringResource(MR.strings.reader_lens_unavailable)
+        readerLensFailed -> stringResource(MR.strings.reader_lens_failed)
         readerLensDownloadProgress != null -> stringResource(
             MR.strings.reader_lens_downloading,
             readerLensDownloadProgress,
@@ -201,6 +203,8 @@ fun ReaderBottomBar(
                             modifier = Modifier.size(24.dp),
                             tint = if (readerLensEnabled) {
                                 MaterialTheme.colorScheme.primary
+                            } else if (readerLensFailed) {
+                                MaterialTheme.colorScheme.error
                             } else {
                                 iconColor
                             },

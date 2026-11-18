@@ -164,6 +164,10 @@ class ReaderLensEngine internal constructor(
         scriptsByChapter.clear()
     }
 
+    fun releaseWarmModel() {
+        translator.releaseWarmModel()
+    }
+
     private fun readImageInfo(streamProvider: () -> InputStream): ReaderLensImageInfo? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         val digest = MessageDigest.getInstance("SHA-256")

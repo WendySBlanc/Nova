@@ -1,13 +1,27 @@
 package eu.kanade.tachiyomi.data.lens
 
+import android.app.ActivityManager
+import android.app.Application
+import android.content.ComponentCallbacks2
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import dev.ffmpegkit.llama.Llama
 import dev.ffmpegkit.llama.LlamaConfig
 import dev.ffmpegkit.llama.LlamaModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.CopyOnWriteArraySet
 
 internal data class ReaderLensLlamaConfig(
     val contextSize: Int,
@@ -21,12 +35,13 @@ internal data class ReaderLensLlamaConfig(
 
 internal interface ReaderLensLlamaBackend {
     suspend fun load(modelPath: String, config: ReaderLensLlamaConfig): Any
-    suspend fun complete(handle: Any, prompt: String, maxTokens: Int): String
+    suspend fun complete(handle: Any, prompt: String, systemPrompt: String, maxTokens: Int): String
     fun release(handle: Any)
 }
 
 internal interface ReaderLensInferenceRuntime : AutoCloseable {
     suspend fun complete(modelFile: File, prompt: String): String
+    fun releaseWarmModel() = Unit
 }
 
 internal class ReaderLensRuntimeException(
@@ -34,13 +49,72 @@ internal class ReaderLensRuntimeException(
     cause: Throwable? = null,
 ) : Exception(message, cause)
 
-internal fun isReaderLensRuntimeSupported(abis: Array<String>): Boolean =
-    abis.any { it.equals(READER_LENS_SUPPORTED_ABI, ignoreCase = true) }
+internal fun isReaderLensRuntimeSupported(
+    abis: Array<String>,
+    totalMemoryBytes: Long,
+    sdkInt: Int,
+): Boolean =
+    sdkInt >= READER_LENS_MIN_SDK &&
+        totalMemoryBytes >= READER_LENS_MIN_TOTAL_MEMORY_BYTES &&
+        abis.any { it.equals(READER_LENS_SUPPORTED_ABI, ignoreCase = true) }
+
+internal fun totalDeviceMemoryBytes(context: Context): Long {
+    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    return ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo).totalMem
+}
+
+internal class ReaderLensMemoryPressureMonitor(
+    private val application: Application,
+    private val sdkInt: Int = Build.VERSION.SDK_INT,
+) : ComponentCallbacks2, AutoCloseable {
+
+    private val listeners = CopyOnWriteArraySet<() -> Unit>()
+
+    init {
+        application.registerComponentCallbacks(this)
+    }
+
+    fun register(listener: () -> Unit): AutoCloseable {
+        listeners += listener
+        return AutoCloseable { listeners -= listener }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        if (shouldReleaseReaderLensModel(level, sdkInt)) {
+            listeners.forEach { it() }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onLowMemory() {
+        listeners.forEach { it() }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+    override fun close() {
+        listeners.clear()
+        application.unregisterComponentCallbacks(this)
+    }
+}
+
+@Suppress("DEPRECATION")
+internal fun shouldReleaseReaderLensModel(trimLevel: Int, sdkInt: Int): Boolean =
+    trimLevel >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
+        (
+            sdkInt < Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                trimLevel >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
+            )
 
 internal class LlamaReaderLensInferenceRuntime(
     private val backend: ReaderLensLlamaBackend = AndroidReaderLensLlamaBackend(),
     private val supportedAbis: Array<String> = Build.SUPPORTED_ABIS,
+    private val totalMemoryBytes: Long,
+    private val sdkInt: Int = Build.VERSION.SDK_INT,
     availableProcessors: Int = Runtime.getRuntime().availableProcessors(),
+    private val releaseScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    memoryPressureMonitor: ReaderLensMemoryPressureMonitor? = null,
 ) : ReaderLensInferenceRuntime {
 
     private val inferenceMutex = Mutex()
@@ -57,49 +131,54 @@ internal class LlamaReaderLensInferenceRuntime(
 
     private var loadedModelPath: String? = null
     private var modelHandle: Any? = null
-    private var inferenceActive = false
+    private var releaseRequested = false
     private var closed = false
+    private val memoryPressureRegistration = memoryPressureMonitor?.register(::releaseWarmModel)
 
     override suspend fun complete(modelFile: File, prompt: String): String = inferenceMutex.withLock {
         ensureSupported()
-        beginInference()
+        ensureOpen()
         try {
+            releaseRequestedModelIfNeeded(dispatchToBackground = true)
             val handle = loadModelIfNeeded(modelFile)
-            backend.complete(handle, prompt, READER_LENS_MAX_OUTPUT_TOKENS)
+            backend.complete(handle, prompt, READER_LENS_SYSTEM_PROMPT, READER_LENS_MAX_OUTPUT_TOKENS)
         } catch (error: CancellationException) {
             throw error
         } catch (error: ReaderLensRuntimeException) {
             throw error
         } catch (error: Throwable) {
             throw ReaderLensRuntimeException("Le moteur local Lens n'a pas pu traduire cette page", error)
-        } finally {
-            endInference()
         }
     }
 
     override fun close() {
-        val handleToRelease = synchronized(stateLock) {
+        val shouldRelease = synchronized(stateLock) {
+            if (closed) return
             closed = true
-            if (inferenceActive) {
-                null
-            } else {
-                detachModel()
-            }
+            releaseRequested = true
+            memoryPressureRegistration?.close()
+            true
         }
-        handleToRelease?.let(backend::release)
+        if (shouldRelease) scheduleModelRelease()
+    }
+
+    override fun releaseWarmModel() {
+        synchronized(stateLock) {
+            releaseRequested = true
+        }
+        scheduleModelRelease()
     }
 
     private fun ensureSupported() {
-        if (!isReaderLensRuntimeSupported(supportedAbis)) {
-            throw ReaderLensRuntimeException("Lens local nécessite un appareil Android 64 bits ARM")
+        if (!isReaderLensRuntimeSupported(supportedAbis, totalMemoryBytes, sdkInt)) {
+            throw ReaderLensRuntimeException("Lens local nécessite Android 9, ARM 64 bits et au moins 8 Gio de RAM")
         }
     }
 
-    private fun beginInference() = synchronized(stateLock) {
+    private fun ensureOpen() = synchronized(stateLock) {
         if (closed) {
             throw ReaderLensRuntimeException("Le moteur local Lens est déjà fermé")
         }
-        inferenceActive = true
     }
 
     private suspend fun loadModelIfNeeded(modelFile: File): Any {
@@ -111,25 +190,55 @@ internal class LlamaReaderLensInferenceRuntime(
         }
 
         val previousHandle = synchronized(stateLock) { detachModel() }
-        previousHandle?.let(backend::release)
-        val loadedHandle = backend.load(canonicalPath, config)
-        synchronized(stateLock) {
-            if (closed) {
-                backend.release(loadedHandle)
-                throw ReaderLensRuntimeException("Le moteur local Lens a été fermé pendant son chargement")
-            }
-            loadedModelPath = canonicalPath
-            modelHandle = loadedHandle
+        releaseHandle(previousHandle)
+        val loadedHandle = withContext(NonCancellable) {
+            backend.load(canonicalPath, config)
         }
+        val closedDuringLoad = synchronized(stateLock) {
+            if (closed) {
+                true
+            } else {
+                loadedModelPath = canonicalPath
+                modelHandle = loadedHandle
+                false
+            }
+        }
+        if (closedDuringLoad) {
+            releaseHandle(loadedHandle)
+            throw ReaderLensRuntimeException("Le moteur local Lens a été fermé pendant son chargement")
+        }
+        currentCoroutineContext().ensureActive()
         return loadedHandle
     }
 
-    private fun endInference() {
-        val handleToRelease = synchronized(stateLock) {
-            inferenceActive = false
-            if (closed) detachModel() else null
+    private fun scheduleModelRelease() {
+        releaseScope.launch {
+            inferenceMutex.withLock {
+                releaseRequestedModelIfNeeded(dispatchToBackground = false)
+            }
         }
-        handleToRelease?.let(backend::release)
+    }
+
+    private suspend fun releaseRequestedModelIfNeeded(dispatchToBackground: Boolean) {
+        val handleToRelease = synchronized(stateLock) {
+            if (!releaseRequested) return
+            releaseRequested = false
+            detachModel()
+        }
+        if (dispatchToBackground) {
+            releaseHandle(handleToRelease)
+        } else if (handleToRelease != null) {
+            withContext(NonCancellable) {
+                backend.release(handleToRelease)
+            }
+        }
+    }
+
+    private suspend fun releaseHandle(handle: Any?) {
+        if (handle == null) return
+        withContext(NonCancellable + Dispatchers.Default) {
+            backend.release(handle)
+        }
     }
 
     private fun detachModel(): Any? {
@@ -155,10 +264,11 @@ private class AndroidReaderLensLlamaBackend : ReaderLensLlamaBackend {
             ),
         )
 
-    override suspend fun complete(handle: Any, prompt: String, maxTokens: Int): String =
+    override suspend fun complete(handle: Any, prompt: String, systemPrompt: String, maxTokens: Int): String =
         Llama.complete(
             model = handle as LlamaModel,
             prompt = prompt,
+            systemPrompt = systemPrompt,
             maxTokens = maxTokens,
         ).text
 
@@ -168,7 +278,12 @@ private class AndroidReaderLensLlamaBackend : ReaderLensLlamaBackend {
 }
 
 private const val READER_LENS_SUPPORTED_ABI = "arm64-v8a"
-private const val READER_LENS_CONTEXT_SIZE = 2048
-private const val READER_LENS_MAX_OUTPUT_TOKENS = 768
+internal const val READER_LENS_SYSTEM_PROMPT =
+    "Tu es un traducteur professionnel de manhwa anglais-français. " +
+        "Raisonne très brièvement, puis réponds uniquement avec le JSON demandé, sans commentaire."
+private const val READER_LENS_MIN_SDK = 28
+private const val READER_LENS_MIN_TOTAL_MEMORY_BYTES = 8L * 1024L * 1024L * 1024L
+private const val READER_LENS_CONTEXT_SIZE = 4096
+private const val READER_LENS_MAX_OUTPUT_TOKENS = 1024
 private const val MIN_READER_LENS_THREADS = 2
 private const val MAX_READER_LENS_THREADS = 6
