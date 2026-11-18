@@ -52,10 +52,10 @@
 **Interfaces:**
 - Produces: `ReaderLensModelState`, `ReaderLensModelStore.state`, `ensureModel(): File`, and pinned model metadata constants.
 
-- [ ] Write failing MockWebServer tests for fresh download, resume, server range refusal, cancellation-preserved partial file, disk-space failure, checksum rejection, and atomic promotion.
-- [ ] Run the focused model-store test and confirm RED.
-- [ ] Implement an unlimited-call-time OkHttp download, progress StateFlow, size/hash validation, and same-directory promotion.
-- [ ] Run the focused test and confirm GREEN.
+- [x] Write failing MockWebServer tests for fresh download, resume, server range refusal, cancellation-preserved partial file, disk-space failure, checksum rejection, and atomic promotion.
+- [x] Run the focused model-store test and confirm RED.
+- [x] Implement an unlimited-call-time OkHttp download, progress StateFlow, size/hash validation, and same-directory promotion.
+- [x] Run the focused test and confirm GREEN.
 
 ### Task 3: llama.cpp Runtime Adapter
 
