@@ -307,3 +307,4 @@
 -dontwarn org.ietf.jgss.GSSManager
 -dontwarn org.ietf.jgss.GSSName
 -dontwarn org.ietf.jgss.Oid
+-keep class ai.onnxruntime.** { *; }

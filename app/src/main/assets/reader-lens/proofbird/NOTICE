@@ -1,0 +1,13 @@
+Proofbird GECToR grammar model (French)
+Copyright 2026 Patrick Andrew Hartnett
+
+This product includes software developed by Patrick Andrew Hartnett for Proofbird
+(https://proofbird.app). Source: https://huggingface.co/proofbird/gector-bert-fr
+
+Based on Geotrend/bert-base-fr-cased by Geotrend (Apache License 2.0)
+and the GECToR tagging scheme
+(Omelianchuk et al., 2020; Apache License 2.0).
+
+Fine-tuned on text that includes the proceedings of the European Parliament
+(© European Union, 1996-2011; Europarl, https://www.statmt.org/europarl/),
+reused under the European Parliament's legal notice with the source acknowledged.

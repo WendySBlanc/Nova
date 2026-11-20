@@ -9,7 +9,8 @@ import java.security.MessageDigest
 class ReaderLensCache(
     private val rootDirectory: File,
     private val json: Json,
-    private val modelIdentity: String = "${INDEX_READER_LENS_MODEL.id}:${INDEX_READER_LENS_MODEL.sha256}",
+    private val modelIdentity: String = listOf(INDEX_READER_LENS_MODEL, PROOFBIRD_READER_LENS_MODEL)
+        .joinToString(":") { model -> "${model.id}:${model.sha256}" },
     private val promptSchemaVersion: Int = READER_LENS_PROMPT_SCHEMA_VERSION,
 ) {
     init {

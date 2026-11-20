@@ -23,6 +23,7 @@ import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.download.model.Download
+import eu.kanade.tachiyomi.data.lens.ProofbirdReaderLensModelStore
 import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.lens.ReaderLensException
 import eu.kanade.tachiyomi.data.lens.ReaderLensModelState
@@ -30,6 +31,7 @@ import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
 import eu.kanade.tachiyomi.data.lens.ReaderLensPageQueue
 import eu.kanade.tachiyomi.data.lens.ReaderLensPreferences
 import eu.kanade.tachiyomi.data.lens.ReaderLensRegion
+import eu.kanade.tachiyomi.data.lens.activeReaderLensModelState
 import eu.kanade.tachiyomi.data.lens.buildReaderLensChapterKey
 import eu.kanade.tachiyomi.data.lens.isReaderLensRuntimeSupported
 import eu.kanade.tachiyomi.data.lens.shouldOfferReaderLens
@@ -203,6 +205,7 @@ class ReaderViewModel @JvmOverloads constructor(
 ) : ViewModel() {
 
     private val readerLensModelStore: ReaderLensModelStore = Injekt.get()
+    private val proofbirdReaderLensModelStore: ProofbirdReaderLensModelStore = Injekt.get()
     private val readerLensRuntimeSupported = isReaderLensRuntimeSupported(
         abis = Build.SUPPORTED_ABIS,
         totalMemoryBytes = totalDeviceMemoryBytes(Injekt.get<Application>()),
@@ -455,7 +458,7 @@ class ReaderViewModel @JvmOverloads constructor(
             }
             .launchIn(viewModelScope)
 
-        readerLensModelStore.state
+        combine(readerLensModelStore.state, proofbirdReaderLensModelStore.state, ::activeReaderLensModelState)
             .onEach { modelState ->
                 val failed = modelState is ReaderLensModelState.Failed
                 if (failed) readerLensPreferences.enabled.set(false)
@@ -1335,6 +1338,7 @@ class ReaderViewModel @JvmOverloads constructor(
             onReaderLensPageVisible(pageIndex)
         } else {
             readerLensModelStore.cancelDownload()
+            proofbirdReaderLensModelStore.cancelDownload()
             if (readerLensEngineDelegate.isInitialized()) readerLensEngine.releaseWarmModel()
             readerLensWorkerGeneration++
             readerLensWorkerJob?.cancel()

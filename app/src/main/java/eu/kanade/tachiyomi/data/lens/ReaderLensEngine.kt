@@ -52,9 +52,11 @@ class ReaderLensEngine internal constructor(
             val cacheIdentity = "$pageIdentity:${imageInfo.fingerprint}"
             cache.get(chapterKey, pageIndex, cacheIdentity)?.let { return@withContext it }
             val recognized = recognizeTiles(chapterKey, imageInfo.size, streamProvider)
-            val regions = translate(recognized, imageInfo.size.width, imageInfo.size.height)
-            cache.put(chapterKey, pageIndex, cacheIdentity, regions)
-            regions
+            val translation = translate(recognized, imageInfo.size.width, imageInfo.size.height)
+            if (translation.cacheable) {
+                cache.put(chapterKey, pageIndex, cacheIdentity, translation.regions)
+            }
+            translation.regions
         }
     }
 
@@ -136,9 +138,9 @@ class ReaderLensEngine internal constructor(
         page: RecognizedPage,
         imageWidth: Int,
         imageHeight: Int,
-    ): List<ReaderLensRegion> {
+    ): ReaderLensPageTranslation {
         val dialogueBubbles = groupReaderLensTextBlocks(page.blocks)
-        if (dialogueBubbles.isEmpty()) return emptyList()
+        if (dialogueBubbles.isEmpty()) return ReaderLensPageTranslation(emptyList(), cacheable = true)
         val sourceLanguage = languageIdentifier.identifyLanguage(
             dialogueBubbles.joinToString("\n") { it.text }.take(MAX_LANGUAGE_SAMPLE_CHARACTERS),
         ).await()
@@ -245,15 +247,23 @@ internal suspend fun translateReaderLensPage(
     imageWidth: Int,
     imageHeight: Int,
     translator: ReaderLensTranslator,
-): List<ReaderLensRegion> {
-    if (blocks.isEmpty() || sourceLanguage.equals("fr", ignoreCase = true)) return emptyList()
-    val translations = translator.translatePage(blocks, sourceLanguage)
-    return blocks.mapIndexedNotNull { index, block ->
-        val translated = translations["b$index"]
+): ReaderLensPageTranslation {
+    if (blocks.isEmpty() || sourceLanguage.equals("fr", ignoreCase = true)) {
+        return ReaderLensPageTranslation(emptyList(), cacheable = true)
+    }
+    val translation = translator.translatePage(blocks, sourceLanguage)
+    val regions = blocks.mapIndexedNotNull { index, block ->
+        val translated = translation.translations["b$index"]
             ?: throw ReaderLensTranslationException("La traduction de la bulle b$index est absente")
         block.toRegion(translated, imageWidth, imageHeight)
     }
+    return ReaderLensPageTranslation(regions, translation.cacheable)
 }
+
+internal data class ReaderLensPageTranslation(
+    val regions: List<ReaderLensRegion>,
+    val cacheable: Boolean,
+)
 
 private fun Text.score(): Int = text.count { !it.isWhitespace() }
 

@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.lens
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
@@ -12,34 +13,53 @@ internal interface ReaderLensTranslator : AutoCloseable {
         blocks: List<ReaderLensTextBlock>,
         sourceLanguage: String,
         previousContext: String? = null,
-    ): Map<String, String>
+    ): ReaderLensTranslationResult
 
     fun releaseWarmModel() = Unit
 
     override fun close() = Unit
 }
 
+internal data class ReaderLensTranslationResult(
+    val translations: Map<String, String>,
+    val cacheable: Boolean,
+) : Map<String, String> by translations
+
 internal class ReaderLensTranslationException(
     message: String,
     cause: Throwable? = null,
 ) : Exception(message, cause)
 
+internal interface ReaderLensFrenchCorrector : AutoCloseable {
+    suspend fun correctPage(translations: Map<String, String>): Map<String, String>
+
+    fun releaseWarmModel() = Unit
+
+    override fun close() = Unit
+}
+
+private object NoOpReaderLensFrenchCorrector : ReaderLensFrenchCorrector {
+    override suspend fun correctPage(translations: Map<String, String>): Map<String, String> = translations
+}
+
 internal class IndexReaderLensTranslator(
     private val modelProvider: suspend () -> File,
     private val runtime: ReaderLensInferenceRuntime,
+    private val corrector: ReaderLensFrenchCorrector = NoOpReaderLensFrenchCorrector,
 ) : ReaderLensTranslator {
 
     constructor(
         modelStore: ReaderLensModelStore,
         runtime: ReaderLensInferenceRuntime,
-    ) : this(modelStore::ensureModel, runtime)
+        corrector: ReaderLensFrenchCorrector = NoOpReaderLensFrenchCorrector,
+    ) : this(modelStore::ensureModel, runtime, corrector)
 
     override suspend fun translatePage(
         blocks: List<ReaderLensTextBlock>,
         sourceLanguage: String,
         previousContext: String?,
-    ): Map<String, String> {
-        if (blocks.isEmpty()) return emptyMap()
+    ): ReaderLensTranslationResult {
+        if (blocks.isEmpty()) return ReaderLensTranslationResult(emptyMap(), cacheable = true)
         val model = modelProvider()
         val requests = buildReaderLensTranslationRequests(blocks)
         val translatedSegments = blocks.indices.associate { index -> "b$index" to mutableListOf<String>() }
@@ -73,14 +93,28 @@ internal class IndexReaderLensTranslator(
             }.takeLastUtf8(READER_LENS_CONTEXT_BYTES)
             requestOffset += batch.size
         }
-        return translatedSegments.mapValuesTo(linkedMapOf()) { (_, segments) -> segments.joinToString(" ") }
+        val translations = translatedSegments.mapValuesTo(linkedMapOf()) { (_, segments) -> segments.joinToString(" ") }
+        return try {
+            val corrected = corrector.correctPage(translations)
+            if (corrected.keys == translations.keys) {
+                ReaderLensTranslationResult(corrected, cacheable = true)
+            } else {
+                ReaderLensTranslationResult(translations, cacheable = false)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            ReaderLensTranslationResult(translations, cacheable = false)
+        }
     }
 
     override fun close() {
+        corrector.close()
         runtime.close()
     }
 
     override fun releaseWarmModel() {
+        corrector.releaseWarmModel()
         runtime.releaseWarmModel()
     }
 }
@@ -224,7 +258,11 @@ internal fun parseIndexTranslation(
 ): Map<String, String> {
     val structuredResponse = raw.trim().withoutLeadingThinkingEnvelope()
     val items = try {
-        STRICT_TRANSLATION_JSON.decodeFromString<List<IndexTranslationItem>>(structuredResponse)
+        if (expectedIds.size == 1 && structuredResponse.startsWith('{')) {
+            listOf(STRICT_TRANSLATION_JSON.decodeFromString<IndexTranslationItem>(structuredResponse))
+        } else {
+            STRICT_TRANSLATION_JSON.decodeFromString<List<IndexTranslationItem>>(structuredResponse)
+        }
     } catch (error: SerializationException) {
         throw ReaderLensTranslationException("La réponse du modèle Lens n'est pas un JSON valide", error)
     } catch (error: IllegalArgumentException) {
@@ -250,7 +288,7 @@ private fun String.withoutLeadingThinkingEnvelope(): String {
     return substring(closingTagIndex + THINKING_END_TAG.length).trim()
 }
 
-internal const val READER_LENS_PROMPT_SCHEMA_VERSION = 2
+internal const val READER_LENS_PROMPT_SCHEMA_VERSION = 3
 
 private val STRICT_TRANSLATION_JSON = Json {
     ignoreUnknownKeys = false

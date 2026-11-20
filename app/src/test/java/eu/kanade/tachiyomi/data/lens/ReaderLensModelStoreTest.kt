@@ -15,11 +15,27 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class ReaderLensModelStoreTest {
+
+    @Test
+    fun `combined model state exposes the corrector download`() {
+        val index = ReaderLensModelState.Ready(File("index.gguf"))
+        val corrector = ReaderLensModelState.Downloading(downloadedBytes = 42, totalBytes = 100)
+
+        activeReaderLensModelState(index, corrector) shouldBe corrector
+    }
+
+    @Test
+    fun `combined model state exposes either model failure`() {
+        val failure = ReaderLensModelState.Failed("corrector unavailable", attempt = 1)
+
+        activeReaderLensModelState(ReaderLensModelState.NotInstalled, failure) shouldBe failure
+    }
 
     @TempDir
     lateinit var temporaryDirectory: Path

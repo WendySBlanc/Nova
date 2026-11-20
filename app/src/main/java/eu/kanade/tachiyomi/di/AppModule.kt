@@ -19,12 +19,16 @@ import eu.kanade.tachiyomi.data.connections.ConnectionsManager
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
-import eu.kanade.tachiyomi.data.lens.ReaderLensCache
-import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.lens.IndexReaderLensTranslator
 import eu.kanade.tachiyomi.data.lens.LlamaReaderLensInferenceRuntime
-import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
+import eu.kanade.tachiyomi.data.lens.OnnxProofbirdGectorRuntime
+import eu.kanade.tachiyomi.data.lens.ProofbirdFrenchCorrector
+import eu.kanade.tachiyomi.data.lens.ProofbirdReaderLensModelStore
+import eu.kanade.tachiyomi.data.lens.ReaderLensCache
+import eu.kanade.tachiyomi.data.lens.ReaderLensEngine
 import eu.kanade.tachiyomi.data.lens.ReaderLensMemoryPressureMonitor
+import eu.kanade.tachiyomi.data.lens.ReaderLensModelStore
+import eu.kanade.tachiyomi.data.lens.loadProofbirdGectorAssets
 import eu.kanade.tachiyomi.data.lens.totalDeviceMemoryBytes
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.sync.service.GoogleDriveService
@@ -177,6 +181,11 @@ class AppModule(val app: Application) : InjektModule {
                 ?: File(app.filesDir, "reader-lens-models")
             ReaderLensModelStore(modelDirectory, get<NetworkHelper>().nonCloudflareClient)
         }
+        addSingletonFactory {
+            val modelDirectory = app.getExternalFilesDir("reader-lens-models")
+                ?: File(app.filesDir, "reader-lens-models")
+            ProofbirdReaderLensModelStore(modelDirectory, get<NetworkHelper>().nonCloudflareClient)
+        }
         addSingletonFactory { ReaderLensMemoryPressureMonitor(app) }
         addFactory {
             ReaderLensEngine(
@@ -187,6 +196,14 @@ class AppModule(val app: Application) : InjektModule {
                         totalMemoryBytes = totalDeviceMemoryBytes(app),
                         memoryPressureMonitor = get(),
                     ),
+                    corrector = loadProofbirdGectorAssets(app.assets).let { assets ->
+                        ProofbirdFrenchCorrector(
+                            modelProvider = get<ProofbirdReaderLensModelStore>()::ensureModel,
+                            runtime = OnnxProofbirdGectorRuntime(),
+                            tokenizer = assets.tokenizer,
+                            labels = assets.labels,
+                        )
+                    },
                 ),
             )
         }

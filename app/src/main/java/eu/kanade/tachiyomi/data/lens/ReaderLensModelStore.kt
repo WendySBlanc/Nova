@@ -40,6 +40,19 @@ internal sealed interface ReaderLensModelState {
     data class Failed(val message: String, val attempt: Long) : ReaderLensModelState
 }
 
+internal fun activeReaderLensModelState(
+    translationModel: ReaderLensModelState,
+    correctionModel: ReaderLensModelState,
+): ReaderLensModelState = when {
+    translationModel is ReaderLensModelState.Failed -> translationModel
+    correctionModel is ReaderLensModelState.Failed -> correctionModel
+    correctionModel is ReaderLensModelState.Downloading -> correctionModel
+    translationModel is ReaderLensModelState.Downloading -> translationModel
+    correctionModel is ReaderLensModelState.Ready -> correctionModel
+    translationModel is ReaderLensModelState.Ready -> translationModel
+    else -> ReaderLensModelState.NotInstalled
+}
+
 internal class ReaderLensModelException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 internal class ReaderLensModelStore(
@@ -257,6 +270,15 @@ internal val INDEX_READER_LENS_MODEL = ReaderLensModelSpec(
         "645939fbab839a656f1bc39975a872bc8ad749f8/Index-Translate-9B.Q3_K_M.gguf?download=true",
     sizeBytes = 4_737_609_152L,
     sha256 = "7144b4aeb76febd2d6295bbade0f8fa5eb047bb20c11f94bc03ad5fa9a5071c0",
+)
+
+internal val PROOFBIRD_READER_LENS_MODEL = ReaderLensModelSpec(
+    id = "proofbird-gector-bert-fr@1.3.0-int8-argmax",
+    fileName = "proofbird-gector-bert-fr-v1.3.0-int8.onnx",
+    url = "https://github.com/WendySBlanc/Nova/releases/download/lens-models-v1/" +
+        "proofbird-gector-bert-fr-v1.3.0-int8.onnx",
+    sizeBytes = 109_418_123L,
+    sha256 = "3a4b3a5b84ef17dc07fc6eaffcf4da6bc1f5dcd0f48e101c39924607621ceb4b",
 )
 
 private const val DOWNLOAD_BUFFER_SIZE = 128 * 1024

@@ -8,6 +8,14 @@ import org.junit.jupiter.api.Test
 
 class ReaderLensTranslatorTest {
 
+    @Test
+    fun `single bubble object response is accepted`() {
+        parseIndexTranslation(
+            raw = """{"id":"b0","text":"La salle d'entraînement est prête."}""",
+            expectedIds = listOf("b0"),
+        ) shouldContainExactly linkedMapOf("b0" to "La salle d'entraînement est prête.")
+    }
+
     private val blocks = listOf(
         ReaderLensTextBlock(0f, 0f, 100f, 50f, "Keep your voice down. They'll hear us."),
         ReaderLensTextBlock(0f, 60f, 100f, 110f, "Let them. I'm done hiding."),
@@ -85,7 +93,8 @@ class ReaderLensTranslatorTest {
             """[{"id":"b0","text":"Bonjour","note":"extra"}]""",
             """```json
                 [{"id":"b0","text":"Bonjour"}]
-                ```""".trimIndent(),
+                ```
+            """.trimIndent(),
         )
 
         invalidResponses.forEach { response ->

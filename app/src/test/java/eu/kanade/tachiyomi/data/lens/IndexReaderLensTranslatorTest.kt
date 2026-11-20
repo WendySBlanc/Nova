@@ -43,6 +43,54 @@ class IndexReaderLensTranslatorTest {
     }
 
     @Test
+    fun `translator corrects the reassembled page exactly once`() = runTest {
+        val corrector = FakeReaderLensFrenchCorrector(
+            corrected = linkedMapOf(
+                "b0" to "Ma soeur est très contente.",
+                "b1" to "Ils sont déjà partis.",
+            ),
+        )
+        val translator = IndexReaderLensTranslator(
+            modelProvider = { modelFile() },
+            runtime = FakeReaderLensRuntime(
+                response = """[{"id":"b0","text":"Ma soeur sont très content."},{"id":"b1","text":"Ils est déjà parti."}]""",
+            ),
+            corrector = corrector,
+        )
+        val blocks = listOf(
+            ReaderLensTextBlock(0f, 0f, 100f, 100f, "My sister is very happy."),
+            ReaderLensTextBlock(0f, 100f, 100f, 200f, "They already left."),
+        )
+
+        translator.translatePage(blocks, sourceLanguage = "en") shouldContainExactly corrector.corrected
+
+        corrector.calls shouldBe 1
+        corrector.lastPage shouldContainExactly linkedMapOf(
+            "b0" to "Ma soeur sont très content.",
+            "b1" to "Ils est déjà parti.",
+        )
+    }
+
+    @Test
+    fun `translator keeps Index output when French correction fails`() = runTest {
+        val translator = IndexReaderLensTranslator(
+            modelProvider = { modelFile() },
+            runtime = FakeReaderLensRuntime(
+                response = """[{"id":"b0","text":"La traduction reste visible."}]""",
+            ),
+            corrector = FakeReaderLensFrenchCorrector(error = IllegalStateException("ONNX unavailable")),
+        )
+
+        val result = translator.translatePage(
+            blocks = listOf(ReaderLensTextBlock(0f, 0f, 100f, 100f, "Translation remains visible.")),
+            sourceLanguage = "en",
+        )
+
+        result.translations shouldContainExactly linkedMapOf("b0" to "La traduction reste visible.")
+        result.cacheable shouldBe false
+    }
+
+    @Test
     fun `translator splits oversized pages while preserving global bubble ids`() = runTest {
         val runtime = FakeReaderLensRuntime(
             responseFactory = { prompt ->
@@ -113,7 +161,7 @@ class IndexReaderLensTranslatorTest {
             ReaderLensTextBlock(200f, 300f, 400f, 380f, "Goodbye"),
         )
 
-        val regions = translateReaderLensPage(
+        val result = translateReaderLensPage(
             blocks = blocks,
             sourceLanguage = "en",
             imageWidth = 1_000,
@@ -122,12 +170,13 @@ class IndexReaderLensTranslatorTest {
         )
 
         translator.calls shouldBe 1
-        regions shouldHaveSize 2
-        regions[0].left shouldBe (0f plusOrMinus 0.0001f)
-        regions[0].top shouldBe (0f plusOrMinus 0.0001f)
-        regions[0].width shouldBe (0.112f plusOrMinus 0.0001f)
-        regions[0].height shouldBe (0.118f plusOrMinus 0.0001f)
-        regions[0].text shouldBe "Bonjour"
+        result.regions shouldHaveSize 2
+        result.regions[0].left shouldBe (0f plusOrMinus 0.0001f)
+        result.regions[0].top shouldBe (0f plusOrMinus 0.0001f)
+        result.regions[0].width shouldBe (0.112f plusOrMinus 0.0001f)
+        result.regions[0].height shouldBe (0.118f plusOrMinus 0.0001f)
+        result.regions[0].text shouldBe "Bonjour"
+        result.cacheable shouldBe true
     }
 
     @Test
@@ -140,7 +189,7 @@ class IndexReaderLensTranslatorTest {
             imageWidth = 1_000,
             imageHeight = 1_000,
             translator = translator,
-        ) shouldBe emptyList()
+        ).regions shouldBe emptyList()
 
         translator.calls shouldBe 0
     }
@@ -199,8 +248,23 @@ private class FakeReaderLensTranslator(
         blocks: List<ReaderLensTextBlock>,
         sourceLanguage: String,
         previousContext: String?,
-    ): Map<String, String> {
+    ): ReaderLensTranslationResult {
         calls++
-        return translations
+        return ReaderLensTranslationResult(translations, cacheable = true)
+    }
+}
+
+private class FakeReaderLensFrenchCorrector(
+    val corrected: Map<String, String> = emptyMap(),
+    private val error: Throwable? = null,
+) : ReaderLensFrenchCorrector {
+    var calls = 0
+    var lastPage: Map<String, String> = emptyMap()
+
+    override suspend fun correctPage(translations: Map<String, String>): Map<String, String> {
+        calls++
+        lastPage = translations
+        error?.let { throw it }
+        return corrected
     }
 }
