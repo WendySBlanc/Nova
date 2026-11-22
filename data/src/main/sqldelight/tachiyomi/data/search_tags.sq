@@ -18,6 +18,11 @@ selectByMangaId:
 SELECT * FROM search_tags
 WHERE manga_id = ?;
 
+selectByFavoriteManga:
+SELECT search_tags.* FROM search_tags
+INNER JOIN mangas ON mangas._id = search_tags.manga_id
+WHERE mangas.favorite = 1;
+
 deleteByManga:
 DELETE FROM search_tags WHERE manga_id = ?;
 

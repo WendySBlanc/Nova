@@ -77,6 +77,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.update
@@ -207,18 +208,30 @@ class LibraryScreenModel(
                 // KMK <--
                 getLibraryItemPreferencesFlow(),
             ) { (searchQuery, categories, favorites), (tracksMap, trackingFilters), (includedCategories, excludedCategories), itemPreferences ->
-                val filteredFavorites = favorites
+                LibrarySearchInput(
+                    searchQuery = searchQuery,
+                    categories = categories,
+                    favorites = favorites,
+                    tracksMap = tracksMap,
+                    trackingFilters = trackingFilters,
+                    includedCategories = includedCategories,
+                    excludedCategories = excludedCategories,
+                    itemPreferences = itemPreferences,
+                )
+            }
+                .mapLatest { input ->
+                    val filteredFavorites = input.favorites
                     .applyFilters(
-                        tracksMap,
-                        trackingFilters,
-                        itemPreferences,
+                        input.tracksMap,
+                        input.trackingFilters,
+                        input.itemPreferences,
                         // KMK -->
-                        includedCategories,
-                        excludedCategories,
+                        input.includedCategories,
+                        input.excludedCategories,
                         // KMK <--
                     )
                     .let {
-                        if (searchQuery == null) {
+                        if (input.searchQuery == null) {
                             // Don't do anything
                             it
                         } else {
@@ -226,19 +239,19 @@ class LibraryScreenModel(
                             // SY -->
                             // it.filter { m -> m.matches(searchQuery) }
                             // Filter query
-                            filterLibrary(it, searchQuery, trackingFilters)
+                            filterLibrary(it, input.searchQuery, input.trackingFilters)
                             // SY <--
                         }
                     }
 
-                LibraryData(
-                    isInitialized = true,
-                    categories = categories,
-                    favorites = filteredFavorites,
-                    tracksMap = tracksMap,
-                    loggedInTrackerIds = trackingFilters.keys,
-                )
-            }
+                    LibraryData(
+                        isInitialized = true,
+                        categories = input.categories,
+                        favorites = filteredFavorites,
+                        tracksMap = input.tracksMap,
+                        loggedInTrackerIds = input.trackingFilters.keys,
+                    )
+                }
                 .distinctUntilChanged()
                 .collectLatest { libraryData ->
                     mutableState.update { state ->
@@ -1276,6 +1289,11 @@ class LibraryScreenModel(
             // Prepare filter object
             val parsedQuery = searchEngine.parseQuery(query)
             val mangaWithMetaIds = getIdsOfFavoriteMangaWithMetadata.await()
+            val metadataIndex = buildLibrarySearchMetadataIndex(
+                metadataIds = mangaWithMetaIds,
+                tags = if (mangaWithMetaIds.isEmpty()) emptyList() else getSearchTags.awaitForFavoriteManga(),
+                titles = if (mangaWithMetaIds.isEmpty()) emptyList() else getSearchTitles.awaitForFavoriteManga(),
+            )
             val tracks = if (loggedInTrackServices.isNotEmpty()) {
                 getTracks.await().groupBy { it.mangaId }
             } else {
@@ -1299,17 +1317,15 @@ class LibraryScreenModel(
                         sourceId == querySource.toLongOrNull()
                     }
                 }
-                if (isMetadataSource(sourceId) && mangaWithMetaIds.binarySearch(mangaId) >= 0) {
-                    val tags = getSearchTags.await(mangaId)
-                    val titles = getSearchTitles.await(mangaId)
+                if (isMetadataSource(sourceId) && metadataIndex.contains(mangaId)) {
                     filterManga(
                         queries = parsedQuery,
                         libraryManga = item.libraryManga,
                         tracks = tracks[mangaId],
                         source = sources[sourceId],
                         checkGenre = false,
-                        searchTags = tags,
-                        searchTitles = titles,
+                        searchTags = metadataIndex.tagsFor(mangaId),
+                        searchTitles = metadataIndex.titlesFor(mangaId),
                         loggedInTrackServices = loggedInTrackServices,
                     )
                 } else {
@@ -1339,7 +1355,6 @@ class LibraryScreenModel(
         loggedInTrackServices: Map<Long, TriState>,
     ): Boolean {
         val manga = libraryManga.manga
-        val sourceIdString = manga.source.takeUnless { it == LocalSource.ID }?.toString()
         val genre = if (checkGenre) manga.genre.orEmpty() else emptyList()
         val context = Injekt.get<Application>()
         return queries.all { queryComponent ->
@@ -1352,7 +1367,7 @@ class LibraryScreenModel(
                             (manga.artist?.contains(query, true) == true) ||
                             (manga.description?.contains(query, true) == true) ||
                             (source?.name?.contains(query, true) == true) ||
-                            (sourceIdString != null && sourceIdString == query) ||
+                            librarySourceMatchesQuery(manga.source, query) ||
                             (
                                 loggedInTrackServices.isNotEmpty() &&
                                     tracks != null &&
@@ -1385,7 +1400,7 @@ class LibraryScreenModel(
                                     (manga.artist?.contains(query, true) != true) &&
                                     (manga.description?.contains(query, true) != true) &&
                                     (source?.name?.contains(query, true) != true) &&
-                                    (sourceIdString != null && sourceIdString != query) &&
+                                    !librarySourceMatchesQuery(manga.source, query) &&
                                     (
                                         loggedInTrackServices.isEmpty() ||
                                             tracks == null ||
@@ -1730,6 +1745,18 @@ class LibraryScreenModel(
         return mergingMangaId
     }
     // KMK <--
+
+    @Immutable
+    private data class LibrarySearchInput(
+        val searchQuery: String?,
+        val categories: List<Category>,
+        val favorites: List<LibraryItem>,
+        val tracksMap: Map<Long, List<Track>>,
+        val trackingFilters: Map<Long, TriState>,
+        val includedCategories: ImmutableSet<Long>,
+        val excludedCategories: ImmutableSet<Long>,
+        val itemPreferences: ItemPreferences,
+    )
 
     @Immutable
     private data class ItemPreferences(

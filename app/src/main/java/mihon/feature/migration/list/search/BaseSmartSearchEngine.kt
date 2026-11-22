@@ -2,7 +2,9 @@ package mihon.feature.migration.list.search
 
 import com.aallam.similarity.NormalizedLevenshtein
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import tachiyomi.core.common.util.QuerySanitizer.sanitize
 import java.util.Locale
@@ -41,32 +43,39 @@ abstract class BaseSmartSearchEngine<T>(
     ): T? {
         val eligibleManga = supervisorScope {
             queries.map { query ->
-                async(Dispatchers.Default) {
-                    val builtQuery = if (!extraSearchParams.isNullOrBlank()) {
-                        "$query ${extraSearchParams.trim()}"
-                    } else {
-                        query
-                    }
-
-                    val candidates = searchAction(
-                        builtQuery
-                            // KMK -->
-                            .sanitize(),
-                        // KMK <--
-                    )
-                    candidates
-                        .map {
-                            val distance = if (queries.size > 1 || candidates.size > 1) {
-                                calculateDistance(it)
-                            } else {
-                                1.0
-                            }
-                            SearchEntry(it, distance)
+                async(Dispatchers.IO) {
+                    try {
+                        val builtQuery = if (!extraSearchParams.isNullOrBlank()) {
+                            "$query ${extraSearchParams.trim()}"
+                        } else {
+                            query
                         }
-                        .filter { it.distance >= eligibleThreshold }
+
+                        val candidates = searchAction(
+                            builtQuery
+                                // KMK -->
+                                .sanitize(),
+                            // KMK <--
+                        )
+                        candidates
+                            .map {
+                                val distance = if (queries.size > 1 || candidates.size > 1) {
+                                    calculateDistance(it)
+                                } else {
+                                    1.0
+                                }
+                                SearchEntry(it, distance)
+                            }
+                            .filter { it.distance >= eligibleThreshold }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
                 }
             }
-                .flatMap { it.await() }
+                .awaitAll()
+                .flatten()
         }
 
         return eligibleManga.maxByOrNull { it.distance }?.entry

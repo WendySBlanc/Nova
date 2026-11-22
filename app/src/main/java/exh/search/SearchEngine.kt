@@ -159,6 +159,8 @@ class SearchEngine {
                 component.excluded = nextIsExcluded
                 component.exact = nextIsExact
                 res += component
+                nextIsExcluded = false
+                nextIsExact = false
             }
         }
 

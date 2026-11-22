@@ -15,8 +15,8 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.collectLatest
@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import mihon.domain.manga.model.toDomainManga
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.QuerySanitizer.sanitize
@@ -46,15 +45,15 @@ abstract class SearchScreenModel(
     private val preferences: SourcePreferences = Injekt.get(),
 ) : StateScreenModel<SearchScreenModel.State>(initialState) {
 
-    private val coroutineDispatcher = Dispatchers.IO.limitedParallelism(SEARCH_PARALLELISM)
+    private val requestGate = SearchRequestGate(SEARCH_PARALLELISM, SEARCH_TIMEOUT_MILLIS)
     private var searchJob: Job? = null
+    private var searchGeneration = 0L
 
     private val enabledLanguages = sourcePreferences.enabledLanguages().get()
     private val disabledSources = sourcePreferences.disabledSources().get()
     protected val pinnedSources = sourcePreferences.pinnedSources().get()
 
     private var lastQuery: String? = null
-    private var lastSourceFilter: SourceFilter? = null
 
     protected var extensionFilter: String? = null
 
@@ -133,6 +132,14 @@ abstract class SearchScreenModel(
     }
 
     fun updateSearchQuery(query: String?) {
+        if (state.value.searchQuery != query) {
+            searchJob?.cancel()
+            searchGeneration++
+            updateItems(persistentMapOf())
+            if (query.isNullOrBlank()) {
+                lastQuery = null
+            }
+        }
         mutableState.update { it.copy(searchQuery = query) }
     }
 
@@ -149,18 +156,15 @@ abstract class SearchScreenModel(
     }
 
     fun search() {
-        val query = state.value.searchQuery
-        val sourceFilter = state.value.sourceFilter
-
+        val query = state.value.searchQuery?.trim()
         if (query.isNullOrBlank()) return
 
         val sameQuery = this.lastQuery == query
-        if (sameQuery && this.lastSourceFilter == sourceFilter) return
 
         this.lastQuery = query
-        this.lastSourceFilter = sourceFilter
 
         searchJob?.cancel()
+        val generation = ++searchGeneration
 
         val sources = getSelectedSources()
         val searchQueries = getSearchQueries(query)
@@ -170,21 +174,12 @@ abstract class SearchScreenModel(
             return
         }
 
-        // Reuse previous results if possible
-        if (sameQuery) {
-            val existingResults = state.value.items
-            updateItems(
-                sources
-                    .associateWith { existingResults[it] ?: SearchItemResult.Loading }
-                    .toPersistentMap(),
-            )
-        } else {
-            updateItems(
-                sources
-                    .associateWith { SearchItemResult.Loading }
-                    .toPersistentMap(),
-            )
-        }
+        val existingResults = state.value.items
+        updateItems(
+            sources
+                .associateWith { source -> searchResultForRetry(existingResults[source], sameQuery) }
+                .toPersistentMap(),
+        )
 
         searchJob = ioCoroutineScope.launch {
             sources.map { source ->
@@ -194,7 +189,7 @@ abstract class SearchScreenModel(
                     }
 
                     try {
-                        val page = withContext(coroutineDispatcher) {
+                        val page = requestGate.execute {
                             searchSource(source, searchQueries)
                         }
 
@@ -203,11 +198,17 @@ abstract class SearchScreenModel(
                             .distinctBy { it.url }
                             .let { networkToLocalManga(it) }
 
-                        if (isActive) {
+                        if (isActive && generation == searchGeneration) {
                             updateItem(source, SearchItemResult.Success(titles))
                         }
+                    } catch (e: TimeoutCancellationException) {
+                        if (isActive && generation == searchGeneration) {
+                            updateItem(source, SearchItemResult.Error(e))
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
-                        if (isActive) {
+                        if (isActive && generation == searchGeneration) {
                             updateItem(source, SearchItemResult.Error(e))
                         }
                     }
@@ -290,7 +291,16 @@ abstract class SearchScreenModel(
     }
 }
 
-private const val SEARCH_PARALLELISM = 16
+private const val SEARCH_PARALLELISM = 8
+private const val SEARCH_TIMEOUT_MILLIS = 15_000L
+
+internal fun searchResultForRetry(previous: SearchItemResult?, sameQuery: Boolean): SearchItemResult {
+    return if (sameQuery && previous is SearchItemResult.Success && !previous.isEmpty) {
+        previous
+    } else {
+        SearchItemResult.Loading
+    }
+}
 
 enum class SourceFilter {
     All,

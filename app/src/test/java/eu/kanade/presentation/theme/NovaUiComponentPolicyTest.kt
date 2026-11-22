@@ -153,13 +153,14 @@ class NovaUiComponentPolicyTest {
     }
 
     @Test
-    fun `global search shares bounded IO workers instead of leaking a thread pool`() {
+    fun `global search uses a suspension-safe request gate`() {
         val searchModel = source(
             "app/src/main/java/eu/kanade/tachiyomi/ui/browse/source/globalsearch/SearchScreenModel.kt",
         )
 
-        searchModel.shouldContain("Dispatchers.IO.limitedParallelism(SEARCH_PARALLELISM)")
-        searchModel.shouldContain("SEARCH_PARALLELISM = 16")
+        searchModel.shouldContain("SearchRequestGate(SEARCH_PARALLELISM, SEARCH_TIMEOUT_MILLIS)")
+        searchModel.shouldContain("SEARCH_PARALLELISM = 8")
+        searchModel.shouldNotContain("limitedParallelism")
         searchModel.shouldNotContain("Executors.newFixedThreadPool")
     }
 

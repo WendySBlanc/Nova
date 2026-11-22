@@ -15,9 +15,13 @@ interface MangaMetadataRepository {
 
     suspend fun getTagsById(id: Long): List<SearchTag>
 
+    suspend fun getTagsForFavoriteManga(): List<SearchTag>
+
     fun subscribeTagsById(id: Long): Flow<List<SearchTag>>
 
     suspend fun getTitlesById(id: Long): List<SearchTitle>
+
+    suspend fun getTitlesForFavoriteManga(): List<SearchTitle>
 
     fun subscribeTitlesById(id: Long): Flow<List<SearchTitle>>
 
