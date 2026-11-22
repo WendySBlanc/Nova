@@ -33,6 +33,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import logcat.LogPriority
@@ -76,6 +77,7 @@ class LnReaderWebViewViewer(
     private var hasShownImageReaderChrome = false
     private val preloadedChapterHtml = linkedMapOf<String, String>()
     private val preloadingChapterKeys = mutableSetOf<String>()
+    private val pendingImageReloadJobs = mutableMapOf<Int, Job>()
     private lateinit var tts: TextToSpeech
 
     private val imageReaderGestureDetector = GestureDetector(
@@ -305,10 +307,7 @@ class LnReaderWebViewViewer(
             ?.firstOrNull { page -> page.index == pageIndex }
             ?: return emptyReaderImageResponse(404)
         val streamProvider = page.stream ?: run {
-            if (page.status is Page.State.Error) {
-                page.chapter.pageLoader?.retryPage(page)
-            }
-            (page.chapter.pageLoader as? HttpPageLoader)?.boostPage(page)
+            scheduleImageReloadWhenReady(page)
             return emptyReaderImageResponse(503)
         }
 
@@ -506,6 +505,8 @@ class LnReaderWebViewViewer(
         }
 
         currentChapter = chapter
+        pendingImageReloadJobs.values.forEach(Job::cancel)
+        pendingImageReloadJobs.clear()
         currentImagePageIndex = 0
         lastSettingsPayload = null
         resetTtsQueue()
@@ -688,6 +689,36 @@ class LnReaderWebViewViewer(
             ?.firstOrNull { it.index == pageIndex }
             ?: return
         page.chapter.pageLoader?.retryPage(page)
+    }
+
+    private fun scheduleImageReloadWhenReady(page: ReaderPage) {
+        val expectedChapter = currentChapter ?: return
+        scope.launch {
+            if (currentChapter !== expectedChapter || pendingImageReloadJobs[page.index]?.isActive == true) {
+                return@launch
+            }
+
+            val reloadJob = currentCoroutineContext()[Job] ?: return@launch
+            pendingImageReloadJobs[page.index] = reloadJob
+            try {
+                val result = awaitReaderImageLoad(page, READER_IMAGE_READY_TIMEOUT_MS) {
+                    val loader = page.chapter.pageLoader as? HttpPageLoader
+                    when (page.status) {
+                        is Page.State.Error -> loader?.retryPage(page)
+                        Page.State.Queue -> loader?.boostPage(page)
+                        else -> Unit
+                    }
+                }
+                if (result == ReaderImageLoadResult.Ready && currentChapter === expectedChapter) {
+                    webView.evaluateJavascript(
+                        "if (window.novaReaderReloadImage) { window.novaReaderReloadImage(${page.index}); }",
+                        null,
+                    )
+                }
+            } finally {
+                pendingImageReloadJobs.remove(page.index, reloadJob)
+            }
+        }
     }
 
     private fun injectTtsScript(script: String) {
@@ -1309,6 +1340,23 @@ class LnReaderWebViewViewer(
                         image.src = image.dataset.originalSrc + '?novaRetry=' + Date.now();
                       }, automatic ? 500 * (attempts + 1) : 100);
                     };
+                    window.novaReaderReloadImage = function(pageIndex) {
+                      var figure = chapter.querySelector('.nova-reader-page[data-page-index="' + pageIndex + '"]');
+                      if (!figure) return;
+                      var image = figure.querySelector('img');
+                      if (!image) return;
+                      if (image.complete && image.naturalWidth > 0) {
+                        figure.classList.remove('nova-image-pending', 'nova-image-error');
+                        figure.dataset.retryAttempts = '0';
+                        return;
+                      }
+                      figure.dataset.retryAttempts = '0';
+                      figure.classList.remove('nova-image-error');
+                      figure.classList.add('nova-image-pending');
+                      var source = image.dataset.originalSrc || image.currentSrc || image.src;
+                      image.dataset.originalSrc = source.split('?novaRetry=')[0].split('?novaReady=')[0];
+                      image.src = image.dataset.originalSrc + '?novaReady=' + Date.now();
+                    };
                     var reportActiveImagePage = function(figure) {
                       if (!figure) return;
                       var pageIndex = parseInt(figure.dataset.pageIndex || '-1', 10);
@@ -1545,5 +1593,6 @@ class LnReaderWebViewViewer(
         const val IMAGE_TRANSCODE_QUALITY = 94
         const val MAX_PRELOADED_CHAPTERS = 4
         const val READER_IMAGE_CACHE_SECONDS = 3600
+        const val READER_IMAGE_READY_TIMEOUT_MS = 60_000L
     }
 }
