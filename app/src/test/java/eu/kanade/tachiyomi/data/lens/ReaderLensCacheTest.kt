@@ -62,4 +62,22 @@ class ReaderLensCacheTest {
             promptSchemaVersion = 2,
         ).get("chapter", 0, "image") shouldBe null
     }
+
+    @Test
+    fun `OCR engine changes invalidate cached translations`() {
+        val regions = listOf(
+            ReaderLensRegion(0.1f, 0.2f, 0.3f, 0.1f, "Ancienne traduction"),
+        )
+        ReaderLensCache(
+            rootDirectory = temporaryDirectory.toFile(),
+            json = Json,
+            ocrSchemaVersion = 1,
+        ).put("chapter", 0, "image", regions)
+
+        ReaderLensCache(
+            rootDirectory = temporaryDirectory.toFile(),
+            json = Json,
+            ocrSchemaVersion = 2,
+        ).get("chapter", 0, "image") shouldBe null
+    }
 }

@@ -9,9 +9,10 @@ import java.security.MessageDigest
 class ReaderLensCache(
     private val rootDirectory: File,
     private val json: Json,
-    private val modelIdentity: String = listOf(INDEX_READER_LENS_MODEL, PROOFBIRD_READER_LENS_MODEL)
+    private val modelIdentity: String = listOf(HY_MT_READER_LENS_MODEL, PROOFBIRD_READER_LENS_MODEL)
         .joinToString(":") { model -> "${model.id}:${model.sha256}" },
     private val promptSchemaVersion: Int = READER_LENS_PROMPT_SCHEMA_VERSION,
+    private val ocrSchemaVersion: Int = READER_LENS_OCR_SCHEMA_VERSION,
 ) {
     init {
         rootDirectory.mkdirs()
@@ -49,6 +50,7 @@ class ReaderLensCache(
             READER_LENS_TARGET_LANGUAGE,
             modelIdentity,
             promptSchemaVersion,
+            ocrSchemaVersion,
             chapterKey,
         ).joinToString(":")
         val chapterDirectory = File(rootDirectory, namespace.sha256())
@@ -62,3 +64,4 @@ private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
 
 private const val READER_LENS_CACHE_VERSION = 3
 private const val READER_LENS_TARGET_LANGUAGE = "fr"
+private const val READER_LENS_OCR_SCHEMA_VERSION = 2

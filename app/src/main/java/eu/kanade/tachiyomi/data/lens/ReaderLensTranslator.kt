@@ -1,11 +1,6 @@
 package eu.kanade.tachiyomi.data.lens
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.io.File
 
 internal interface ReaderLensTranslator : AutoCloseable {
@@ -42,7 +37,7 @@ private object NoOpReaderLensFrenchCorrector : ReaderLensFrenchCorrector {
     override suspend fun correctPage(translations: Map<String, String>): Map<String, String> = translations
 }
 
-internal class IndexReaderLensTranslator(
+internal class HyMtReaderLensTranslator(
     private val modelProvider: suspend () -> File,
     private val runtime: ReaderLensInferenceRuntime,
     private val corrector: ReaderLensFrenchCorrector = NoOpReaderLensFrenchCorrector,
@@ -63,35 +58,13 @@ internal class IndexReaderLensTranslator(
         val model = modelProvider()
         val requests = buildReaderLensTranslationRequests(blocks)
         val translatedSegments = blocks.indices.associate { index -> "b$index" to mutableListOf<String>() }
-        var requestOffset = 0
-        var rollingContext = previousContext.orEmpty()
 
-        while (requestOffset < requests.size) {
-            val boundedContext = rollingContext.takeLastUtf8(READER_LENS_CONTEXT_BYTES)
-            val batch = buildReaderLensTranslationBatch(
-                requests = requests,
-                startIndex = requestOffset,
-                sourceLanguage = sourceLanguage,
-                previousContext = boundedContext,
-            )
-            val prompt = buildIndexTranslationPromptForItems(
-                items = batch.map(ReaderLensTranslationRequest::item),
-                sourceLanguage = sourceLanguage,
-                previousContext = boundedContext,
-            )
+        requests.forEach { request ->
+            val prompt = buildHyMtTranslationPrompt(request.text)
             check(prompt.encodeToByteArray().size <= READER_LENS_MAX_PROMPT_BYTES)
-            val expectedIds = batch.map { it.item.id }
-            val response = runtime.complete(model, prompt)
-            val parsed = parseIndexTranslation(response, expectedIds)
-            batch.forEach { request ->
-                translatedSegments.getValue(request.outputId) += parsed.getValue(request.item.id)
-            }
-            rollingContext = buildString {
-                append(rollingContext)
-                if (isNotEmpty()) appendLine()
-                append(batch.joinToString("\n") { it.item.text })
-            }.takeLastUtf8(READER_LENS_CONTEXT_BYTES)
-            requestOffset += batch.size
+            val maxOutputTokens = readerLensOutputTokenBudget(listOf(request.text))
+            val response = runtime.complete(model, prompt, maxOutputTokens)
+            translatedSegments.getValue(request.outputId) += parseHyMtTranslation(response)
         }
         val translations = translatedSegments.mapValuesTo(linkedMapOf()) { (_, segments) -> segments.joinToString(" ") }
         return try {
@@ -119,52 +92,14 @@ internal class IndexReaderLensTranslator(
     }
 }
 
-@Serializable
-private data class IndexTranslationItem(
-    val id: String,
-    val text: String,
-)
-
-internal fun buildIndexTranslationPrompt(
-    blocks: List<ReaderLensTextBlock>,
-    sourceLanguage: String,
-    previousContext: String? = null,
-    idOffset: Int = 0,
-): String {
-    val payload = blocks.mapIndexed { index, block ->
-        IndexTranslationItem(id = "b${idOffset + index}", text = block.text)
-    }
-    return buildIndexTranslationPromptForItems(payload, sourceLanguage, previousContext)
-}
-
-private fun buildIndexTranslationPromptForItems(
-    items: List<IndexTranslationItem>,
-    sourceLanguage: String,
-    previousContext: String?,
-): String {
-    val context = previousContext
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let { "Contexte précédent en lecture seule : $it\n" }
-        .orEmpty()
-
-    return buildString {
-        appendLine("Traduis cette page de manhwa de la langue '$sourceLanguage' vers un français naturel et concis.")
-        appendLine("Traduis le sens plutôt que la structure anglaise, conserve les noms propres et adapte le registre aux personnages.")
-        appendLine("Évite les calques et les formulations administratives. Préfère une formulation française directe.")
-        appendLine("Si tu utilises un raisonnement interne, garde-le très bref avant de produire la réponse.")
-        appendLine(
-            "Exemple de style : \"The library is a facility provided to students by the academy\" devient " +
-                "\"L'académie met la bibliothèque à la disposition des élèves\".",
-        )
-        appendLine("Réponds uniquement avec un tableau JSON. Garde exactement chaque id, dans le même ordre, sans champ supplémentaire.")
-        append(context)
-        append(Json.encodeToString(items))
-    }
+internal fun buildHyMtTranslationPrompt(segment: String): String = buildString {
+    appendLine("Translate the following segment into French, without additional explanation.")
+    appendLine()
+    append(segment.trim())
 }
 
 private data class ReaderLensTranslationRequest(
-    val item: IndexTranslationItem,
+    val text: String,
     val outputId: String,
 )
 
@@ -174,39 +109,15 @@ private fun buildReaderLensTranslationRequests(
     blocks.forEachIndexed { blockIndex, block ->
         val outputId = "b$blockIndex"
         val segments = block.text.splitForReaderLensTranslation()
-        segments.forEachIndexed { segmentIndex, segment ->
-            val requestId = if (segments.size == 1) outputId else "${outputId}s$segmentIndex"
+        segments.forEach { segment ->
             add(
                 ReaderLensTranslationRequest(
-                    item = IndexTranslationItem(requestId, segment),
+                    text = segment,
                     outputId = outputId,
                 ),
             )
         }
     }
-}
-
-private fun buildReaderLensTranslationBatch(
-    requests: List<ReaderLensTranslationRequest>,
-    startIndex: Int,
-    sourceLanguage: String,
-    previousContext: String,
-): List<ReaderLensTranslationRequest> {
-    val batch = mutableListOf<ReaderLensTranslationRequest>()
-    for (index in startIndex until requests.size) {
-        val candidate = batch + requests[index]
-        val candidatePrompt = buildIndexTranslationPromptForItems(
-            items = candidate.map(ReaderLensTranslationRequest::item),
-            sourceLanguage = sourceLanguage,
-            previousContext = previousContext,
-        )
-        if (batch.isNotEmpty() && candidatePrompt.encodeToByteArray().size > READER_LENS_MAX_PROMPT_BYTES) break
-        if (candidatePrompt.encodeToByteArray().size > READER_LENS_MAX_PROMPT_BYTES) {
-            throw ReaderLensTranslationException("Une bulle OCR dépasse la capacité du modèle Lens")
-        }
-        batch += requests[index]
-    }
-    return batch
 }
 
 private fun String.splitForReaderLensTranslation(): List<String> {
@@ -239,67 +150,22 @@ private fun String.splitForReaderLensTranslation(): List<String> {
     return segments.filter(String::isNotEmpty)
 }
 
-private fun String.takeLastUtf8(maxBytes: Int): String {
-    var start = length
-    var bytes = 0
-    while (start > 0) {
-        val codePoint = codePointBefore(start)
-        val encodedBytes = String(Character.toChars(codePoint)).encodeToByteArray().size
-        if (bytes + encodedBytes > maxBytes) break
-        bytes += encodedBytes
-        start -= Character.charCount(codePoint)
-    }
-    return substring(start)
+internal fun readerLensOutputTokenBudget(texts: List<String>): Int {
+    val sourceCodePoints = texts.sumOf { it.codePointCount(0, it.length) }
+    val estimatedOutputCharacters = sourceCodePoints * 2
+    val estimatedTokens = (estimatedOutputCharacters + 1) / 2
+    return estimatedTokens.coerceIn(READER_LENS_MIN_OUTPUT_TOKENS, READER_LENS_MAX_OUTPUT_TOKENS)
 }
 
-internal fun parseIndexTranslation(
-    raw: String,
-    expectedIds: List<String>,
-): Map<String, String> {
-    val structuredResponse = raw.trim().withoutLeadingThinkingEnvelope()
-    val items = try {
-        if (expectedIds.size == 1 && structuredResponse.startsWith('{')) {
-            listOf(STRICT_TRANSLATION_JSON.decodeFromString<IndexTranslationItem>(structuredResponse))
-        } else {
-            STRICT_TRANSLATION_JSON.decodeFromString<List<IndexTranslationItem>>(structuredResponse)
-        }
-    } catch (error: SerializationException) {
-        throw ReaderLensTranslationException("La réponse du modèle Lens n'est pas un JSON valide", error)
-    } catch (error: IllegalArgumentException) {
-        throw ReaderLensTranslationException("La réponse du modèle Lens est invalide", error)
-    }
-
-    val actualIds = items.map(IndexTranslationItem::id)
-    if (actualIds != expectedIds || actualIds.toSet().size != actualIds.size) {
-        throw ReaderLensTranslationException("Le modèle Lens n'a pas conservé l'ordre des bulles")
-    }
-    if (items.any { it.text.isBlank() }) {
+internal fun parseHyMtTranslation(raw: String): String =
+    raw.trim().takeIf(String::isNotEmpty) ?: run {
         throw ReaderLensTranslationException("Le modèle Lens a renvoyé une bulle vide")
     }
-    return items.associateTo(linkedMapOf()) { item -> item.id to item.text.trim() }
-}
 
-private fun String.withoutLeadingThinkingEnvelope(): String {
-    if (!startsWith(THINKING_START_TAG)) return this
-    val closingTagIndex = indexOf(THINKING_END_TAG, startIndex = THINKING_START_TAG.length)
-    if (closingTagIndex < 0) {
-        throw ReaderLensTranslationException("Le raisonnement du modèle Lens est incomplet")
-    }
-    return substring(closingTagIndex + THINKING_END_TAG.length).trim()
-}
+internal const val READER_LENS_PROMPT_SCHEMA_VERSION = 9
 
-internal const val READER_LENS_PROMPT_SCHEMA_VERSION = 3
-
-private val STRICT_TRANSLATION_JSON = Json {
-    ignoreUnknownKeys = false
-    isLenient = false
-    explicitNulls = false
-    coerceInputValues = false
-}
-
-private const val THINKING_START_TAG = "<think>"
-private const val THINKING_END_TAG = "</think>"
 internal const val READER_LENS_MAX_PROMPT_BYTES = 2_500
-private const val READER_LENS_CONTEXT_BYTES = 300
 private const val READER_LENS_SEGMENT_BYTES = 1_000
 private const val READER_LENS_SEGMENT_CODE_POINTS = 1_000
+private const val READER_LENS_MIN_OUTPUT_TOKENS = 64
+private const val READER_LENS_MAX_OUTPUT_TOKENS = 1_024

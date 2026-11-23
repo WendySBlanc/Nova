@@ -25,6 +25,7 @@ import kotlin.math.max
 class ReaderLensEngine internal constructor(
     private val cache: ReaderLensCache,
     private val translator: ReaderLensTranslator,
+    private val latinRecognizer: PaddleReaderLensRecognizer,
 ) : AutoCloseable {
     private val analysisGate = ReaderLensAnalysisGate()
     private val scriptsByChapter = ConcurrentHashMap<String, ReaderLensScript>()
@@ -83,16 +84,32 @@ class ReaderLensEngine internal constructor(
                         options,
                     ) ?: continue
                     try {
+                        if (selectedScript == ReaderLensScript.Latin) {
+                            val paddleBlocks = latinRecognizer.recognize(bitmap, tile, imageSize.width)
+                            if (paddleBlocks.isNotEmpty()) {
+                                blocks += paddleBlocks
+                                continue
+                            }
+                        }
                         val recognizedTile = recognizeTile(chapterKey, selectedScript, bitmap)
                         selectedScript = recognizedTile.script
-                        recognizedTile.text.textBlocks
-                            .asSequence()
-                            .filter { it.boundingBox != null && it.text.isNotBlank() }
-                            .mapNotNull { block ->
-                                val bounds = block.boundingBox ?: return@mapNotNull null
-                                block.toRecognizedBlock(bounds, bitmap, tile, imageSize)
-                            }
-                            .forEach(blocks::add)
+                        val paddleBlocks = if (recognizedTile.script == ReaderLensScript.Latin) {
+                            latinRecognizer.recognize(bitmap, tile, imageSize.width)
+                        } else {
+                            emptyList()
+                        }
+                        if (paddleBlocks.isNotEmpty()) {
+                            blocks += paddleBlocks
+                        } else {
+                            recognizedTile.text.textBlocks
+                                .asSequence()
+                                .filter { it.boundingBox != null && it.text.isNotBlank() }
+                                .mapNotNull { block ->
+                                    val bounds = block.boundingBox ?: return@mapNotNull null
+                                    block.toRecognizedBlock(bounds, bitmap, tile, imageSize)
+                                }
+                                .forEach(blocks::add)
+                        }
                     } finally {
                         bitmap.recycle()
                     }
@@ -139,8 +156,7 @@ class ReaderLensEngine internal constructor(
         imageWidth: Int,
         imageHeight: Int,
     ): ReaderLensPageTranslation {
-        val dialogueBubbles = groupReaderLensTextBlocks(page.blocks)
-        if (dialogueBubbles.isEmpty()) return ReaderLensPageTranslation(emptyList(), cacheable = true)
+        val dialogueBubbles = requireReaderLensDialogueBlocks(groupReaderLensTextBlocks(page.blocks))
         val sourceLanguage = languageIdentifier.identifyLanguage(
             dialogueBubbles.joinToString("\n") { it.text }.take(MAX_LANGUAGE_SAMPLE_CHARACTERS),
         ).await()
@@ -163,11 +179,13 @@ class ReaderLensEngine internal constructor(
             languageIdentifier.close()
         }
         translator.close()
+        latinRecognizer.close()
         scriptsByChapter.clear()
     }
 
     fun releaseWarmModel() {
         translator.releaseWarmModel()
+        latinRecognizer.close()
     }
 
     private fun readImageInfo(streamProvider: () -> InputStream): ReaderLensImageInfo? {
@@ -258,6 +276,13 @@ internal suspend fun translateReaderLensPage(
         block.toRegion(translated, imageWidth, imageHeight)
     }
     return ReaderLensPageTranslation(regions, translation.cacheable)
+}
+
+internal fun requireReaderLensDialogueBlocks(
+    blocks: List<ReaderLensTextBlock>,
+): List<ReaderLensTextBlock> {
+    if (blocks.isEmpty()) throw ReaderLensException("Aucun texte détecté sur cette page")
+    return blocks
 }
 
 internal data class ReaderLensPageTranslation(

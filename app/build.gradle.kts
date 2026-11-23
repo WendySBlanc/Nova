@@ -121,6 +121,7 @@ android {
 
     packaging {
         jniLibs {
+            pickFirsts += "**/libc++_shared.so"
             keepDebugSymbols += listOf(
                 "libandroidx.graphics.path",
                 "libarchive-jni",
@@ -291,6 +292,7 @@ dependencies {
 
     // On-device OCR and translation for the real-time reader Lens overlay.
     implementation(libs.bundles.reader.lens)
+    implementation(projects.ppocrSdk)
 
     // UI libraries
     implementation(libs.material)

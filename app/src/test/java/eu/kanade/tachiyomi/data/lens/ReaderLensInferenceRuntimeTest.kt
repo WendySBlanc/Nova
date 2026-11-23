@@ -21,6 +21,11 @@ import java.util.concurrent.TimeUnit
 
 class ReaderLensInferenceRuntimeTest {
 
+    @Test
+    fun `HY MT runtime does not inject a system prompt`() {
+        READER_LENS_SYSTEM_PROMPT shouldBe ""
+    }
+
     @TempDir
     lateinit var temporaryDirectory: Path
 
@@ -53,8 +58,8 @@ class ReaderLensInferenceRuntimeTest {
         )
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
 
-        runtime.complete(model, "first") shouldBe "translated:first"
-        runtime.complete(model, "second") shouldBe "translated:second"
+        runtime.complete(model, "first", maxOutputTokens = 64) shouldBe "translated:first"
+        runtime.complete(model, "second", maxOutputTokens = 128) shouldBe "translated:second"
         runtime.close()
         advanceUntilIdle()
 
@@ -64,12 +69,12 @@ class ReaderLensInferenceRuntimeTest {
             contextSize = 4096,
             threads = 6,
             gpuLayers = 0,
-            temperature = 0f,
-            topP = 1f,
-            topK = 1,
+            temperature = 0.7f,
+            topP = 0.6f,
+            topK = 20,
             seed = 0,
         )
-        backend.maxTokens shouldBe 1024
+        backend.maxTokens shouldBe 128
         backend.systemPrompt shouldBe READER_LENS_SYSTEM_PROMPT
     }
 
@@ -86,8 +91,8 @@ class ReaderLensInferenceRuntimeTest {
         )
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
 
-        val first = async { runtime.complete(model, "one") }
-        val second = async { runtime.complete(model, "two") }
+        val first = async { runtime.complete(model, "one", maxOutputTokens = 64) }
+        val second = async { runtime.complete(model, "two", maxOutputTokens = 64) }
         advanceUntilIdle()
 
         first.await() shouldBe "translated:one"
@@ -109,7 +114,7 @@ class ReaderLensInferenceRuntimeTest {
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
 
         shouldThrow<ReaderLensRuntimeException> {
-            runtime.complete(model, "translate")
+            runtime.complete(model, "translate", maxOutputTokens = 64)
         }
 
         backend.loadCalls shouldBe 0
@@ -123,13 +128,13 @@ class ReaderLensInferenceRuntimeTest {
         val runtime = supportedRuntime(backend)
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
 
-        val first = launch { runtime.complete(model, "cancelled") }
+        val first = launch { runtime.complete(model, "cancelled", maxOutputTokens = 64) }
         loadStarted.await()
         first.cancel()
         allowLoadToFinish.complete(Unit)
         first.join()
 
-        runtime.complete(model, "retry") shouldBe "translated:retry"
+        runtime.complete(model, "retry", maxOutputTokens = 64) shouldBe "translated:retry"
         backend.loadCalls shouldBe 1
     }
 
@@ -138,11 +143,11 @@ class ReaderLensInferenceRuntimeTest {
         val backend = FakeLlamaBackend()
         val runtime = supportedRuntime(backend)
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
-        runtime.complete(model, "first")
+        runtime.complete(model, "first", maxOutputTokens = 64)
 
         runtime.releaseWarmModel()
         advanceUntilIdle()
-        runtime.complete(model, "second")
+        runtime.complete(model, "second", maxOutputTokens = 64)
 
         backend.releaseCalls shouldBe 1
         backend.loadCalls shouldBe 2
@@ -167,15 +172,15 @@ class ReaderLensInferenceRuntimeTest {
             releaseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         )
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
-        runtime.complete(model, "first")
+        runtime.complete(model, "first", maxOutputTokens = 64)
 
         val closeJob = async(Dispatchers.Default) { runtime.close() }
         releaseStarted.await(2, TimeUnit.SECONDS) shouldBe true
-        closeJob.isCompleted shouldBe true
+        withTimeout(2_000) { closeJob.await() }
+        releaseFinished.count shouldBe 1L
         allowReleaseToFinish.countDown()
 
         withTimeout(2_000) {
-            closeJob.await()
             while (!releaseFinished.await(10, TimeUnit.MILLISECONDS)) delay(10)
         }
     }

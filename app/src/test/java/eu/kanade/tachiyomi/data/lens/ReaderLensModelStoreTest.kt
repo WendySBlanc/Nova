@@ -67,6 +67,59 @@ class ReaderLensModelStoreTest {
     }
 
     @Test
+    fun `obsolete model files are deleted only after the replacement is ready`() = runTest {
+        val content = "hy-mt-model".encodeToByteArray()
+        val obsoleteFiles = listOf(
+            "Index-Translate-9B.Q3_K_M.gguf",
+            "Index-Translate-9B.Q3_K_M.gguf.part",
+            "Index-Translate-9B.Q3_K_M.gguf.verified",
+        )
+        obsoleteFiles.forEach { temporaryDirectory.resolve(it).toFile().writeText("legacy") }
+        val store = modelStore(content, obsoleteFileNames = setOf("Index-Translate-9B.Q3_K_M.gguf"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(content)))
+
+        store.ensureModel()
+
+        obsoleteFiles.forEach { temporaryDirectory.resolve(it).toFile().exists() shouldBe false }
+    }
+
+    @Test
+    fun `obsolete model remains available when replacement validation fails`() = runTest {
+        val content = "corrupted-hy-mt-model".encodeToByteArray()
+        val obsolete = temporaryDirectory.resolve("Index-Translate-9B.Q3_K_M.gguf").toFile().apply {
+            writeText("legacy")
+        }
+        val store = modelStore(
+            content = content,
+            expectedSha256 = "0".repeat(64),
+            obsoleteFileNames = setOf(obsolete.name),
+        )
+        server.enqueue(MockResponse().setResponseCode(200).setBody(Buffer().write(content)))
+
+        shouldThrow<ReaderLensModelException> { store.ensureModel() }
+
+        obsolete.readText() shouldBe "legacy"
+    }
+
+    @Test
+    fun `obsolete model remains when a marked replacement is corrupted`() = runTest {
+        val validContent = "hy-mt-model".encodeToByteArray()
+        val corruptedContent = "HY-mt-model".encodeToByteArray()
+        temporaryDirectory.resolve("test.gguf").toFile().writeBytes(corruptedContent)
+        temporaryDirectory.resolve("test.gguf.verified").toFile().writeText(validContent.sha256())
+        val obsolete = temporaryDirectory.resolve("Index-Translate-9B.Q3_K_M.gguf").toFile().apply {
+            writeText("legacy")
+        }
+        val store = modelStore(validContent, obsoleteFileNames = setOf(obsolete.name))
+        server.enqueue(MockResponse().setResponseCode(500))
+
+        shouldThrow<ReaderLensModelException> { store.ensureModel() }
+
+        obsolete.readText() shouldBe "legacy"
+        temporaryDirectory.resolve("test.gguf").toFile().exists() shouldBe false
+    }
+
+    @Test
     fun `partial model resumes with a validated byte range`() = runTest {
         val content = "complete-model".encodeToByteArray()
         val partial = content.copyOfRange(0, 5)
@@ -169,6 +222,7 @@ class ReaderLensModelStoreTest {
         content: ByteArray,
         expectedSha256: String = content.sha256(),
         usableSpace: () -> Long = { Long.MAX_VALUE },
+        obsoleteFileNames: Set<String> = emptySet(),
     ) = ReaderLensModelStore(
         rootDirectory = temporaryDirectory.toFile(),
         client = OkHttpClient(),
@@ -178,6 +232,7 @@ class ReaderLensModelStoreTest {
             url = server.url("/test.gguf").toString(),
             sizeBytes = content.size.toLong(),
             sha256 = expectedSha256,
+            obsoleteFileNames = obsoleteFileNames,
         ),
         usableSpace = usableSpace,
         safetyReserveBytes = 0,

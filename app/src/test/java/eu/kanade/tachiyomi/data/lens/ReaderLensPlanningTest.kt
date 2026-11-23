@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.lens
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.ints.shouldBeLessThanOrEqual
@@ -11,6 +12,13 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 
 class ReaderLensPlanningTest {
+
+    @Test
+    fun `empty OCR result is reported instead of cached as translated`() {
+        shouldThrow<ReaderLensException> {
+            requireReaderLensDialogueBlocks(emptyList())
+        }
+    }
 
     @Test
     fun `long webtoon keeps enough horizontal pixels for OCR`() {
@@ -64,6 +72,92 @@ class ReaderLensPlanningTest {
             bottom = 195f,
             text = "Isn't this a beautiful view?",
         )
+    }
+
+    @Test
+    fun `wrapped OCR word is rejoined before translation`() {
+        val groups = groupReaderLensTextBlocks(
+            listOf(
+                ReaderLensTextBlock(100f, 100f, 300f, 145f, "THEIR REINFORCEMENTS AR-"),
+                ReaderLensTextBlock(108f, 150f, 292f, 195f, "RIVED QUICKLY."),
+            ),
+        )
+
+        groups.single().text shouldBe "THEIR REINFORCEMENTS ARRIVED QUICKLY."
+    }
+
+    @Test
+    fun `scan credits are excluded from translated dialogue`() {
+        val groups = groupReaderLensTextBlocks(
+            listOf(
+                ReaderLensTextBlock(100f, 100f, 400f, 180f, "WAKE UP ALREADY! WE'RE LEAVING!"),
+                ReaderLensTextBlock(700f, 900f, 980f, 940f, "IMPERFECTCOMIC.COM"),
+            ),
+        )
+
+        groups.map { it.text } shouldBe listOf("WAKE UP ALREADY! WE'RE LEAVING!")
+    }
+
+    @Test
+    fun `PP OCR coordinates are mapped from tile to full page`() {
+        val block = mapPaddleOcrBlock(
+            left = 10f,
+            top = 20f,
+            right = 110f,
+            bottom = 60f,
+            text = "WAKE UP ALREADY!",
+            confidence = 0.92f,
+            bitmapWidth = 200,
+            bitmapHeight = 100,
+            tile = ReaderLensImageTile(
+                top = 100,
+                bottom = 300,
+                sampleSize = 1,
+                outputWidth = 200,
+                outputHeight = 100,
+            ),
+            imageWidth = 400,
+        )
+
+        block shouldBe ReaderLensTextBlock(
+            left = 20f,
+            top = 140f,
+            right = 220f,
+            bottom = 220f,
+            text = "WAKE UP ALREADY!",
+        )
+    }
+
+    @Test
+    fun `low confidence PP OCR line is ignored`() {
+        mapPaddleOcrBlock(
+            left = 10f,
+            top = 20f,
+            right = 110f,
+            bottom = 60f,
+            text = "eant",
+            confidence = 0.32f,
+            bitmapWidth = 200,
+            bitmapHeight = 100,
+            tile = ReaderLensImageTile(0, 100, 1, 200, 100),
+            imageWidth = 200,
+        ) shouldBe null
+    }
+
+    @Test
+    fun `non Latin PP OCR watermark is ignored`() {
+        mapPaddleOcrBlock(
+            left = 10f,
+            top = 20f,
+            right = 110f,
+            bottom = 60f,
+            text = "腾讯动漫",
+            confidence = 0.99f,
+            bitmapWidth = 200,
+            bitmapHeight = 100,
+            tile = ReaderLensImageTile(0, 100, 1, 200, 100),
+            imageWidth = 200,
+        ) shouldBe null
     }
 
     @Test

@@ -19,9 +19,10 @@ import eu.kanade.tachiyomi.data.connections.ConnectionsManager
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
-import eu.kanade.tachiyomi.data.lens.IndexReaderLensTranslator
+import eu.kanade.tachiyomi.data.lens.HyMtReaderLensTranslator
 import eu.kanade.tachiyomi.data.lens.LlamaReaderLensInferenceRuntime
 import eu.kanade.tachiyomi.data.lens.OnnxProofbirdGectorRuntime
+import eu.kanade.tachiyomi.data.lens.PaddleReaderLensRecognizer
 import eu.kanade.tachiyomi.data.lens.ProofbirdFrenchCorrector
 import eu.kanade.tachiyomi.data.lens.ProofbirdReaderLensModelStore
 import eu.kanade.tachiyomi.data.lens.ReaderLensCache
@@ -190,7 +191,8 @@ class AppModule(val app: Application) : InjektModule {
         addFactory {
             ReaderLensEngine(
                 cache = get(),
-                translator = IndexReaderLensTranslator(
+                latinRecognizer = PaddleReaderLensRecognizer(app),
+                translator = HyMtReaderLensTranslator(
                     modelStore = get(),
                     runtime = LlamaReaderLensInferenceRuntime(
                         totalMemoryBytes = totalDeviceMemoryBytes(app),

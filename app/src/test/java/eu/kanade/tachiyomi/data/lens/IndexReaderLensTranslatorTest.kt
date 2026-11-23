@@ -13,17 +13,35 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
 
-class IndexReaderLensTranslatorTest {
+class HyMtReaderLensTranslatorTest {
 
     @TempDir
     lateinit var temporaryDirectory: Path
 
     @Test
-    fun `translator sends one contextual request for the whole page`() = runTest {
+    fun `output token budget scales with page text and stays bounded`() {
+        readerLensOutputTokenBudget(listOf("Urgh!")) shouldBe 64
+        readerLensOutputTokenBudget(listOf("A".repeat(300))).shouldBeGreaterThan(64)
+        readerLensOutputTokenBudget(listOf("A".repeat(5_000))) shouldBe 1_024
+    }
+
+    @Test
+    fun `prompt follows the native HY MT translation format`() {
+        val prompt = buildHyMtTranslationPrompt("The training room is open.")
+
+        prompt shouldBe """
+            Translate the following segment into French, without additional explanation.
+
+            The training room is open.
+        """.trimIndent()
+    }
+
+    @Test
+    fun `translator maps one native response to each bubble`() = runTest {
         val runtime = FakeReaderLensRuntime(
-            response = """[{"id":"b0","text":"Bonjour"},{"id":"b1","text":"Comment allez-vous ?"}]""",
+            responses = listOf("Bonjour", "Comment allez-vous ?"),
         )
-        val translator = IndexReaderLensTranslator(
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
             runtime = runtime,
         )
@@ -37,9 +55,10 @@ class IndexReaderLensTranslatorTest {
             "b1" to "Comment allez-vous ?",
         )
 
-        runtime.calls shouldBe 1
-        runtime.lastPrompt?.contains("Hello") shouldBe true
-        runtime.lastPrompt?.contains("How are you?") shouldBe true
+        runtime.calls shouldBe 2
+        runtime.prompts[0].endsWith("Hello") shouldBe true
+        runtime.prompts[1].endsWith("How are you?") shouldBe true
+        runtime.maxOutputTokens shouldBe listOf(64, 64)
     }
 
     @Test
@@ -50,10 +69,10 @@ class IndexReaderLensTranslatorTest {
                 "b1" to "Ils sont déjà partis.",
             ),
         )
-        val translator = IndexReaderLensTranslator(
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
             runtime = FakeReaderLensRuntime(
-                response = """[{"id":"b0","text":"Ma soeur sont très content."},{"id":"b1","text":"Ils est déjà parti."}]""",
+                responses = listOf("Ma soeur sont très content.", "Ils est déjà parti."),
             ),
             corrector = corrector,
         )
@@ -72,11 +91,11 @@ class IndexReaderLensTranslatorTest {
     }
 
     @Test
-    fun `translator keeps Index output when French correction fails`() = runTest {
-        val translator = IndexReaderLensTranslator(
+    fun `translator keeps HY MT output when French correction fails`() = runTest {
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
             runtime = FakeReaderLensRuntime(
-                response = """[{"id":"b0","text":"La traduction reste visible."}]""",
+                response = "La traduction reste visible.",
             ),
             corrector = FakeReaderLensFrenchCorrector(error = IllegalStateException("ONNX unavailable")),
         )
@@ -94,13 +113,14 @@ class IndexReaderLensTranslatorTest {
     fun `translator splits oversized pages while preserving global bubble ids`() = runTest {
         val runtime = FakeReaderLensRuntime(
             responseFactory = { prompt ->
-                promptIds(prompt).joinToString(prefix = "[", postfix = "]") { id ->
-                    val translation = mapOf("b0" to "Premier", "b1" to "Deuxième", "b2" to "Troisième").getValue(id)
-                    """{"id":"$id","text":"$translation"}"""
+                when {
+                    prompt.endsWith("A".repeat(800)) -> "Premier"
+                    prompt.endsWith("B".repeat(800)) -> "Deuxième"
+                    else -> "Troisième"
                 }
             },
         )
-        val translator = IndexReaderLensTranslator(
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
             runtime = runtime,
         )
@@ -117,22 +137,17 @@ class IndexReaderLensTranslatorTest {
         )
 
         runtime.calls.shouldBeGreaterThan(1)
-        val combinedPrompts = runtime.prompts.joinToString()
-        combinedPrompts.contains("\"id\":\"b0\"") shouldBe true
-        combinedPrompts.contains("\"id\":\"b1\"") shouldBe true
-        combinedPrompts.contains("\"id\":\"b2\"") shouldBe true
+        runtime.prompts.all { prompt ->
+            prompt.startsWith("Translate the following segment into French, without additional explanation.")
+        } shouldBe true
     }
 
     @Test
     fun `translator splits one oversized OCR bubble within the prompt budget`() = runTest {
         val runtime = FakeReaderLensRuntime(
-            responseFactory = { prompt ->
-                promptIds(prompt).joinToString(prefix = "[", postfix = "]") { id ->
-                    """{"id":"$id","text":"traduit"}"""
-                }
-            },
+            responseFactory = { "traduit" },
         )
-        val translator = IndexReaderLensTranslator(
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
             runtime = runtime,
         )
@@ -195,10 +210,10 @@ class IndexReaderLensTranslatorTest {
     }
 
     @Test
-    fun `malformed model output is rejected`() = runTest {
-        val translator = IndexReaderLensTranslator(
+    fun `empty model output is rejected`() = runTest {
+        val translator = HyMtReaderLensTranslator(
             modelProvider = { modelFile() },
-            runtime = FakeReaderLensRuntime("Voici la traduction : Bonjour"),
+            runtime = FakeReaderLensRuntime("   "),
         )
 
         shouldThrow<ReaderLensTranslationException> {
@@ -214,11 +229,6 @@ class IndexReaderLensTranslatorTest {
     }
 }
 
-private fun promptIds(prompt: String): List<String> = Regex(""""id":"([^"]+)"""")
-    .findAll(prompt)
-    .map { it.groupValues[1] }
-    .toList()
-
 private class FakeReaderLensRuntime(
     response: String? = null,
     responses: List<String> = response?.let(::listOf).orEmpty(),
@@ -228,11 +238,13 @@ private class FakeReaderLensRuntime(
     var calls = 0
     var lastPrompt: String? = null
     val prompts = mutableListOf<String>()
+    val maxOutputTokens = mutableListOf<Int>()
 
-    override suspend fun complete(modelFile: File, prompt: String): String {
+    override suspend fun complete(modelFile: File, prompt: String, maxOutputTokens: Int): String {
         calls++
         lastPrompt = prompt
         prompts += prompt
+        this.maxOutputTokens += maxOutputTokens
         return responseFactory?.invoke(prompt) ?: responses.removeFirst()
     }
 

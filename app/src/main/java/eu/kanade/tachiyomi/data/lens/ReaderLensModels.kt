@@ -77,10 +77,39 @@ internal data class ReaderLensTextBlock(
     val text: String,
 )
 
+internal fun mapPaddleOcrBlock(
+    left: Float,
+    top: Float,
+    right: Float,
+    bottom: Float,
+    text: String,
+    confidence: Float,
+    bitmapWidth: Int,
+    bitmapHeight: Int,
+    tile: ReaderLensImageTile,
+    imageWidth: Int,
+): ReaderLensTextBlock? {
+    if (
+        confidence < MIN_PADDLE_OCR_CONFIDENCE ||
+        text.isBlank() ||
+        text.countMatching(ReaderLensScript.Latin) == 0 ||
+        bitmapWidth <= 0 ||
+        bitmapHeight <= 0
+    ) return null
+    val tileHeight = tile.bottom - tile.top
+    return ReaderLensTextBlock(
+        left = left.coerceIn(0f, bitmapWidth.toFloat()) / bitmapWidth * imageWidth,
+        top = tile.top + top.coerceIn(0f, bitmapHeight.toFloat()) / bitmapHeight * tileHeight,
+        right = right.coerceIn(0f, bitmapWidth.toFloat()) / bitmapWidth * imageWidth,
+        bottom = tile.top + bottom.coerceIn(0f, bitmapHeight.toFloat()) / bitmapHeight * tileHeight,
+        text = text,
+    ).takeIf { it.right > it.left && it.bottom > it.top }
+}
+
 internal fun groupReaderLensTextBlocks(blocks: List<ReaderLensTextBlock>): List<ReaderLensTextBlock> {
     val groups = mutableListOf<ReaderLensTextBlock>()
     blocks
-        .filter { it.text.isNotBlank() }
+        .filter { it.text.isNotBlank() && !it.text.isReaderLensScanCredit() }
         .sortedWith(compareBy<ReaderLensTextBlock> { it.top }.thenBy { it.left })
         .forEach { block ->
             val groupIndex = groups.indexOfLast { group -> group.sharesDialogueBubbleWith(block) }
@@ -93,7 +122,7 @@ internal fun groupReaderLensTextBlocks(blocks: List<ReaderLensTextBlock>): List<
                     top = minOf(group.top, block.top),
                     right = maxOf(group.right, block.right),
                     bottom = maxOf(group.bottom, block.bottom),
-                    text = "${group.text} ${block.text.normalizedLensText()}".normalizedLensText(),
+                    text = joinReaderLensLines(group.text, block.text),
                 )
             }
         }
@@ -193,6 +222,21 @@ private fun ReaderLensTextBlock.sharesDialogueBubbleWith(other: ReaderLensTextBl
 
 private fun String.normalizedLensText(): String = trim().replace(Regex("\\s+"), " ")
 
+private fun String.isReaderLensScanCredit(): Boolean = READER_LENS_SCAN_CREDIT.containsMatchIn(this)
+
+private fun joinReaderLensLines(first: String, second: String): String {
+    val left = first.normalizedLensText()
+    val right = second.normalizedLensText()
+    val wrappedWord = left.endsWith('-') &&
+        left.dropLast(1).lastOrNull()?.isLetter() == true &&
+        right.firstOrNull()?.isLetter() == true
+    return if (wrappedWord) {
+        left.dropLast(1) + right
+    } else {
+        "$left $right".normalizedLensText()
+    }
+}
+
 private fun String.countMatching(script: ReaderLensScript): Int {
     var count = 0
     var offset = 0
@@ -231,3 +275,8 @@ private const val MIN_CJK_CHARACTERS = 3
 private const val MIN_DIALOGUE_LINE_OVERLAP = 0.3f
 private const val MAX_DIALOGUE_CENTER_DISTANCE = 0.45f
 private const val MAX_DIALOGUE_LINE_GAP = 1.15f
+private const val MIN_PADDLE_OCR_CONFIDENCE = 0.55f
+private val READER_LENS_SCAN_CREDIT = Regex(
+    pattern = "(?:https?://|www\\.|\\b[\\p{L}\\p{N}_-]+\\.(?:com|net|org|io|co|fr|to)\\b)",
+    option = RegexOption.IGNORE_CASE,
+)

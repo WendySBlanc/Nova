@@ -40,7 +40,7 @@ internal interface ReaderLensLlamaBackend {
 }
 
 internal interface ReaderLensInferenceRuntime : AutoCloseable {
-    suspend fun complete(modelFile: File, prompt: String): String
+    suspend fun complete(modelFile: File, prompt: String, maxOutputTokens: Int): String
     fun releaseWarmModel() = Unit
 }
 
@@ -123,9 +123,9 @@ internal class LlamaReaderLensInferenceRuntime(
         contextSize = READER_LENS_CONTEXT_SIZE,
         threads = availableProcessors.coerceIn(MIN_READER_LENS_THREADS, MAX_READER_LENS_THREADS),
         gpuLayers = 0,
-        temperature = 0f,
-        topP = 1f,
-        topK = 1,
+        temperature = 0.7f,
+        topP = 0.6f,
+        topK = 20,
         seed = 0,
     )
 
@@ -135,13 +135,17 @@ internal class LlamaReaderLensInferenceRuntime(
     private var closed = false
     private val memoryPressureRegistration = memoryPressureMonitor?.register(::releaseWarmModel)
 
-    override suspend fun complete(modelFile: File, prompt: String): String = inferenceMutex.withLock {
+    override suspend fun complete(
+        modelFile: File,
+        prompt: String,
+        maxOutputTokens: Int,
+    ): String = inferenceMutex.withLock {
         ensureSupported()
         ensureOpen()
         try {
             releaseRequestedModelIfNeeded(dispatchToBackground = true)
             val handle = loadModelIfNeeded(modelFile)
-            backend.complete(handle, prompt, READER_LENS_SYSTEM_PROMPT, READER_LENS_MAX_OUTPUT_TOKENS)
+            backend.complete(handle, prompt, READER_LENS_SYSTEM_PROMPT, maxOutputTokens)
         } catch (error: CancellationException) {
             throw error
         } catch (error: ReaderLensRuntimeException) {
@@ -278,12 +282,9 @@ private class AndroidReaderLensLlamaBackend : ReaderLensLlamaBackend {
 }
 
 private const val READER_LENS_SUPPORTED_ABI = "arm64-v8a"
-internal const val READER_LENS_SYSTEM_PROMPT =
-    "Tu es un traducteur professionnel de manhwa anglais-français. " +
-        "Raisonne très brièvement, puis réponds uniquement avec le JSON demandé, sans commentaire."
+internal const val READER_LENS_SYSTEM_PROMPT = ""
 private const val READER_LENS_MIN_SDK = 28
 private const val READER_LENS_MIN_TOTAL_MEMORY_BYTES = 8L * 1024L * 1024L * 1024L
 private const val READER_LENS_CONTEXT_SIZE = 4096
-private const val READER_LENS_MAX_OUTPUT_TOKENS = 1024
 private const val MIN_READER_LENS_THREADS = 2
 private const val MAX_READER_LENS_THREADS = 6

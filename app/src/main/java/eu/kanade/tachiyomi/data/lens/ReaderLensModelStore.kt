@@ -29,6 +29,7 @@ internal data class ReaderLensModelSpec(
     val url: String,
     val sizeBytes: Long,
     val sha256: String,
+    val obsoleteFileNames: Set<String> = emptySet(),
 )
 
 internal sealed interface ReaderLensModelState {
@@ -58,7 +59,7 @@ internal class ReaderLensModelException(message: String, cause: Throwable? = nul
 internal class ReaderLensModelStore(
     private val rootDirectory: File,
     client: OkHttpClient,
-    internal val spec: ReaderLensModelSpec = INDEX_READER_LENS_MODEL,
+    internal val spec: ReaderLensModelSpec = HY_MT_READER_LENS_MODEL,
     private val usableSpace: () -> Long = { rootDirectory.usableSpace },
     private val safetyReserveBytes: Long = DEFAULT_SAFETY_RESERVE_BYTES,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -80,7 +81,7 @@ internal class ReaderLensModelStore(
 
     init {
         rootDirectory.mkdirs()
-        if (hasVerifiedModel()) {
+        if (hasVerifiedModel() && !hasObsoleteModelFiles()) {
             mutableState.value = ReaderLensModelState.Ready(modelFile)
         }
     }
@@ -124,6 +125,7 @@ internal class ReaderLensModelStore(
             }
             validatePartialFile()
             promotePartialFile()
+            deleteObsoleteModels()
             mutableState.value = ReaderLensModelState.Ready(modelFile)
             modelFile
         } catch (error: CancellationException) {
@@ -144,12 +146,18 @@ internal class ReaderLensModelStore(
 
     private suspend fun validateExistingModel(): File? {
         if (hasVerifiedModel()) {
-            mutableState.value = ReaderLensModelState.Ready(modelFile)
-            return modelFile
+            if (!hasObsoleteModelFiles() || modelFile.sha256() == spec.sha256) {
+                deleteObsoleteModels()
+                mutableState.value = ReaderLensModelState.Ready(modelFile)
+                return modelFile
+            }
+            modelFile.delete()
+            verifiedFile.delete()
         }
         if (!modelFile.isFile) return null
         if (modelFile.length() == spec.sizeBytes && modelFile.sha256() == spec.sha256) {
             writeVerificationMarker()
+            deleteObsoleteModels()
             mutableState.value = ReaderLensModelState.Ready(modelFile)
             return modelFile
         }
@@ -248,6 +256,29 @@ internal class ReaderLensModelStore(
             modelFile.length() == spec.sizeBytes &&
             verifiedFile.isFile &&
             verifiedFile.readText().trim() == spec.sha256
+
+    private fun deleteObsoleteModels() {
+        spec.obsoleteFileNames.forEach { fileName ->
+            if (fileName != File(fileName).name) return@forEach
+            listOf(
+                fileName,
+                "$fileName.part",
+                "$fileName.verified",
+                ".$fileName.verified.part",
+            ).forEach { obsoleteName ->
+                File(rootDirectory, obsoleteName).delete()
+            }
+        }
+    }
+
+    private fun hasObsoleteModelFiles(): Boolean = spec.obsoleteFileNames.any { fileName ->
+        fileName == File(fileName).name && listOf(
+            fileName,
+            "$fileName.part",
+            "$fileName.verified",
+            ".$fileName.verified.part",
+        ).any { obsoleteName -> File(rootDirectory, obsoleteName).exists() }
+    }
 }
 
 private suspend fun File.sha256(): String = withContext(Dispatchers.IO) {
@@ -263,13 +294,14 @@ private suspend fun File.sha256(): String = withContext(Dispatchers.IO) {
     digest.digest().joinToString("") { byte -> "%02x".format(byte) }
 }
 
-internal val INDEX_READER_LENS_MODEL = ReaderLensModelSpec(
-    id = "index-translate-9b-q3-k-m@645939fbab839a656f1bc39975a872bc8ad749f8",
-    fileName = "Index-Translate-9B.Q3_K_M.gguf",
-    url = "https://huggingface.co/IndexTeam/Index-Translate-9B-GGUF/resolve/" +
-        "645939fbab839a656f1bc39975a872bc8ad749f8/Index-Translate-9B.Q3_K_M.gguf?download=true",
-    sizeBytes = 4_737_609_152L,
-    sha256 = "7144b4aeb76febd2d6295bbade0f8fa5eb047bb20c11f94bc03ad5fa9a5071c0",
+internal val HY_MT_READER_LENS_MODEL = ReaderLensModelSpec(
+    id = "hy-mt1.5-1.8b-q4-k-m@265b2e615a7dc9b06c435dc878829ad99a512ba2",
+    fileName = "HY-MT1.5-1.8B-Q4_K_M.gguf",
+    url = "https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/resolve/" +
+        "265b2e615a7dc9b06c435dc878829ad99a512ba2/HY-MT1.5-1.8B-Q4_K_M.gguf?download=true",
+    sizeBytes = 1_133_080_512L,
+    sha256 = "4383ac0c3c8e476de98ff979c2a3f069f8c4fb385e7860cf2d28da896cc477c7",
+    obsoleteFileNames = setOf("Index-Translate-9B.Q3_K_M.gguf"),
 )
 
 internal val PROOFBIRD_READER_LENS_MODEL = ReaderLensModelSpec(
