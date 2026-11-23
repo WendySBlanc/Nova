@@ -1,8 +1,8 @@
 package eu.kanade.presentation.theme
 
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
-import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -131,6 +131,7 @@ class NovaUiComponentPolicyTest {
         val mainActivity = source("app/src/main/java/eu/kanade/tachiyomi/ui/main/MainActivity.kt")
 
         libraryTab.shouldContain("libraryUpdateStatus.isRunning.collectAsStateWithLifecycle()")
+        libraryTab.shouldNotContain("SyncStatus")
         libraryScreen.shouldContain("isRefreshing: Boolean")
         libraryScreen.shouldNotContain("delay(1000)")
         mainActivity.shouldContain("updatingProgress.takeIf { updating && it > 0f }")

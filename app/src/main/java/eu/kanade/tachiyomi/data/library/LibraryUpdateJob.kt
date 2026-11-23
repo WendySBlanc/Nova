@@ -37,7 +37,6 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.util.system.isConnectedToWifi
-import eu.kanade.tachiyomi.util.system.isRunning
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import eu.kanade.tachiyomi.util.system.workManager
 import exh.log.xLogE
@@ -156,7 +155,11 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             }
 
             // Find a running manual worker. If exists, try again later
-            if (context.workManager.isRunning(WORK_NAME_MANUAL)) {
+            val manualWorkStates = context.workManager
+                .getWorkInfosForUniqueWork(WORK_NAME_MANUAL)
+                .get()
+                .map { it.state }
+            if (hasActiveManualLibraryWork(manualWorkStates)) {
                 return Result.retry()
             }
         }
@@ -186,7 +189,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                     addMangaToQueue(categoryId, group, groupExtra, forceUpdate)
 
                     when (target) {
-                        Target.CHAPTERS -> updateChapterList()
+                        Target.CHAPTERS -> updateChapterList(forceUpdate)
                         // SY -->
                         Target.SYNC_FOLLOWS -> syncFollows()
                         Target.PUSH_FAVORITES -> pushFavorites()
@@ -403,7 +406,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      *
      * @return an observable delivering the progress of each update.
      */
-    private suspend fun updateChapterList() {
+    private suspend fun updateChapterList(forceUpdate: Boolean) {
         val semaphore = Semaphore(5)
         val progressCount = AtomicInt(0)
         val currentlyUpdatingManga = CopyOnWriteArrayList<Manga>()
@@ -462,7 +465,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                     manga,
                                 ) {
                                     try {
-                                        val newChapters = updateManga(manga, fetchWindow)
+                                        val newChapters = updateManga(manga, fetchWindow, forceUpdate)
                                             .sortedByDescending { it.sourceOrder }
 
                                         if (newChapters.isNotEmpty()) {
@@ -546,15 +549,19 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      * @param manga the manga to update.
      * @return a pair of the inserted and removed chapters.
      */
-    private suspend fun updateManga(manga: Manga, fetchWindow: Pair<Long, Long>): List<Chapter> {
+    private suspend fun updateManga(
+        manga: Manga,
+        fetchWindow: Pair<Long, Long>,
+        forceUpdate: Boolean,
+    ): List<Chapter> {
         val source = sourceManager.getOrStub(manga.source)
         var currentManga = manga
 
         // Update manga metadata if needed
-        if (libraryPreferences.autoUpdateMetadata().get()) {
+        if (shouldRefreshLibraryMetadata(libraryPreferences.autoUpdateMetadata().get(), forceUpdate)) {
             try {
                 val networkManga = source.getMangaDetails(currentManga.toSManga())
-                updateManga.awaitUpdateFromSource(currentManga, networkManga, manualFetch = false, coverCache)
+                updateManga.awaitUpdateFromSource(currentManga, networkManga, manualFetch = forceUpdate, coverCache)
                 currentManga = getManga.await(manga.id) ?: currentManga
             } catch (e: CancellationException) {
                 throw e
@@ -569,7 +576,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
 
         val result = source.getChapterListWithRecovery(currentManga)
         result.details?.let {
-            updateManga.awaitUpdateFromSource(currentManga, it, manualFetch = false, coverCache)
+            updateManga.awaitUpdateFromSource(currentManga, it, manualFetch = forceUpdate, coverCache)
         }
         result.resolvedUrl
             ?.takeIf { it != currentManga.url }
@@ -848,9 +855,12 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             // KMK <--
         ): Boolean {
             val wm = context.workManager
-            // Check if the LibraryUpdateJob is already running
-            if (wm.isRunning(TAG)) {
-                // Already running either as a scheduled or manual job
+            val manualWorkStates = wm.getWorkInfosForUniqueWork(WORK_NAME_MANUAL).get().map { it.state }
+            val automaticWorkStates = wm.getWorkInfosByTag(WORK_NAME_AUTO).get().map { it.state }
+            if (
+                hasActiveManualLibraryWork(manualWorkStates) ||
+                hasRunningAutomaticLibraryWork(automaticWorkStates)
+            ) {
                 return false
             }
 
@@ -868,41 +878,45 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             )
 
             val syncPreferences: SyncPreferences = Injekt.get()
+            val syncEnabled = syncPreferences.isSyncEnabled()
 
             // Always sync the data before library update if syncing is enabled.
-            if (syncPreferences.isSyncEnabled()) {
-                // Check if SyncDataJob is already running
-                if (SyncDataJob.isRunning(context)) {
-                    // SyncDataJob is already running
-                    return false
-                }
-
-                // Define the SyncDataJob
-                val syncDataJob = OneTimeWorkRequestBuilder<SyncDataJob>()
-                    .addTag(SyncDataJob.TAG_MANUAL)
-                    .build()
-
-                // Chain SyncDataJob to run before LibraryUpdateJob
-                val libraryUpdateJob = OneTimeWorkRequestBuilder<LibraryUpdateJob>()
-                    .addTag(TAG)
-                    .addTag(WORK_NAME_MANUAL)
-                    .setInputData(inputData)
-                    .build()
-
-                wm.beginUniqueWork(WORK_NAME_MANUAL, ExistingWorkPolicy.KEEP, syncDataJob)
-                    .then(libraryUpdateJob)
-                    .enqueue()
-            } else {
-                val request = OneTimeWorkRequestBuilder<LibraryUpdateJob>()
-                    .addTag(TAG)
-                    .addTag(WORK_NAME_MANUAL)
-                    .setInputData(inputData)
-                    .build()
-
-                wm.enqueueUniqueWork(WORK_NAME_MANUAL, ExistingWorkPolicy.KEEP, request)
+            if (syncEnabled && SyncDataJob.isRunning(context)) {
+                return false
             }
 
-            return true
+            val libraryUpdateStatus: LibraryUpdateStatus = Injekt.get()
+            libraryUpdateStatus.start()
+            try {
+                if (syncEnabled) {
+                    val syncDataJob = OneTimeWorkRequestBuilder<SyncDataJob>()
+                        .addTag(SyncDataJob.TAG_MANUAL)
+                        .build()
+
+                    val libraryUpdateJob = OneTimeWorkRequestBuilder<LibraryUpdateJob>()
+                        .addTag(TAG)
+                        .addTag(WORK_NAME_MANUAL)
+                        .setInputData(inputData)
+                        .build()
+
+                    wm.beginUniqueWork(WORK_NAME_MANUAL, ExistingWorkPolicy.KEEP, syncDataJob)
+                        .then(libraryUpdateJob)
+                        .enqueue()
+                } else {
+                    val request = OneTimeWorkRequestBuilder<LibraryUpdateJob>()
+                        .addTag(TAG)
+                        .addTag(WORK_NAME_MANUAL)
+                        .setInputData(inputData)
+                        .build()
+
+                    wm.enqueueUniqueWork(WORK_NAME_MANUAL, ExistingWorkPolicy.KEEP, request)
+                }
+
+                return true
+            } catch (error: Throwable) {
+                libraryUpdateStatus.stop()
+                throw error
+            }
         }
 
         fun stop(context: Context) {
@@ -947,6 +961,22 @@ internal fun shouldSkipLibraryUpdate(
 ): Boolean {
     return !forceUpdate && updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && totalChapters > 0L
 }
+
+internal fun shouldRefreshLibraryMetadata(
+    autoUpdateMetadata: Boolean,
+    forceUpdate: Boolean,
+): Boolean = forceUpdate || autoUpdateMetadata
+
+internal fun isActiveLibraryWorkState(state: WorkInfo.State): Boolean =
+    state == WorkInfo.State.ENQUEUED ||
+        state == WorkInfo.State.RUNNING ||
+        state == WorkInfo.State.BLOCKED
+
+internal fun hasActiveManualLibraryWork(states: Iterable<WorkInfo.State>): Boolean =
+    states.any(::isActiveLibraryWorkState)
+
+internal fun hasRunningAutomaticLibraryWork(states: Iterable<WorkInfo.State>): Boolean =
+    states.any { it == WorkInfo.State.RUNNING }
 
 internal suspend fun <T> runLibraryUpdateLifecycle(
     onStart: suspend () -> Unit,

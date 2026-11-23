@@ -16,12 +16,12 @@ open class BannerProgressStatus {
         .debounce(1000L) // Don't notify if it finishes quickly enough
         .stateIn(scope, SharingStarted.WhileSubscribed(), false)
 
-    suspend fun start() {
-        _isRunning.emit(true)
+    fun start() {
+        _isRunning.value = true
     }
 
-    suspend fun stop() {
-        _isRunning.emit(false)
+    fun stop() {
+        _isRunning.value = false
     }
 
     val progress = MutableStateFlow(0f)
