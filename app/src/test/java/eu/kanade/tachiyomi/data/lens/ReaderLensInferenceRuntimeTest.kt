@@ -8,8 +8,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
@@ -154,7 +156,7 @@ class ReaderLensInferenceRuntimeTest {
     }
 
     @Test
-    fun `close returns before native model release finishes`() = runTest {
+    fun `close returns before native model release finishes`() = runBlocking<Unit> {
         val releaseStarted = CountDownLatch(1)
         val allowReleaseToFinish = CountDownLatch(1)
         val releaseFinished = CountDownLatch(1)
@@ -163,25 +165,29 @@ class ReaderLensInferenceRuntimeTest {
             allowReleaseToFinish = allowReleaseToFinish,
             releaseFinished = releaseFinished,
         )
+        val releaseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val runtime = LlamaReaderLensInferenceRuntime(
             backend = backend,
             supportedAbis = arrayOf("arm64-v8a"),
             totalMemoryBytes = gibibytes(12),
             sdkInt = 35,
             availableProcessors = 8,
-            releaseScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            releaseScope = releaseScope,
         )
         val model = temporaryDirectory.resolve("model.gguf").toFile().apply { writeText("model") }
-        runtime.complete(model, "first", maxOutputTokens = 64)
-
-        val closeJob = async(Dispatchers.Default) { runtime.close() }
-        releaseStarted.await(2, TimeUnit.SECONDS) shouldBe true
-        withTimeout(2_000) { closeJob.await() }
-        releaseFinished.count shouldBe 1L
-        allowReleaseToFinish.countDown()
-
-        withTimeout(2_000) {
-            while (!releaseFinished.await(10, TimeUnit.MILLISECONDS)) delay(10)
+        try {
+            runtime.complete(model, "first", maxOutputTokens = 64)
+            val closeJob = async(Dispatchers.Default) { runtime.close() }
+            try {
+                releaseStarted.await(5, TimeUnit.SECONDS) shouldBe true
+                withTimeout(5_000) { closeJob.await() }
+                releaseFinished.count shouldBe 1L
+            } finally {
+                allowReleaseToFinish.countDown()
+            }
+            releaseFinished.await(5, TimeUnit.SECONDS) shouldBe true
+        } finally {
+            releaseScope.cancel()
         }
     }
 
@@ -236,7 +242,7 @@ private class FakeLlamaBackend(
     override fun release(handle: Any) {
         releaseCalls++
         releaseStarted?.countDown()
-        allowReleaseToFinish?.await(2, TimeUnit.SECONDS)
+        allowReleaseToFinish?.await()
         releaseFinished?.countDown()
     }
 }

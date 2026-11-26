@@ -13,13 +13,6 @@ enum class NovaMeQuickRoute {
     Statistics,
 }
 
-enum class NovaMeCategory(val label: String) {
-    Overview("Aper\u00e7u"),
-    Reading("Lecture"),
-    Library("Biblioth\u00e8que"),
-    Application("Param\u00e8tres"),
-}
-
 enum class NovaMeSettingDestination {
     Appearance,
     Reader,
@@ -36,6 +29,21 @@ enum class NovaMeSettingDestination {
     About,
 }
 
+enum class NovaSettingsGroup(private vararg val routes: NovaMeSettingDestination) {
+    Interface(NovaMeSettingDestination.Appearance),
+    Reading(NovaMeSettingDestination.Reader, NovaMeSettingDestination.Library),
+    Sources(NovaMeSettingDestination.Browse, NovaMeSettingDestination.Tracking, NovaMeSettingDestination.Connections),
+    Storage(NovaMeSettingDestination.Downloads, NovaMeSettingDestination.DataAndStorage, NovaMeSettingDestination.Security),
+    Advanced(NovaMeSettingDestination.Ehentai, NovaMeSettingDestination.Mangadex, NovaMeSettingDestination.Advanced),
+    About(NovaMeSettingDestination.About),
+    ;
+
+    fun destinations(showEh: Boolean, showMangadex: Boolean): List<NovaMeSettingDestination> = routes.filter {
+        (it != NovaMeSettingDestination.Ehentai || showEh) &&
+            (it != NovaMeSettingDestination.Mangadex || showMangadex)
+    }
+}
+
 fun novaDiscoverSections(
     feedEnabled: Boolean,
     feedFirst: Boolean,
@@ -48,7 +56,5 @@ fun novaDiscoverSections(
 }
 
 fun novaMeQuickRoutes(): List<NovaMeQuickRoute> = NovaMeQuickRoute.entries
-
-fun novaMeCategories(): List<NovaMeCategory> = NovaMeCategory.entries
 
 fun novaMeSettingDestinations(): List<NovaMeSettingDestination> = NovaMeSettingDestination.entries

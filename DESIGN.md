@@ -9,16 +9,18 @@ Nova Signal is a native Android interface for reading manhwa, webtoons, and ligh
 - Content leads. Covers, chapter previews, titles, and reading state receive visual priority.
 - Controls stay compact, predictable, and reachable with a minimum 48 dp touch target.
 - Use graphite and paper surfaces with clear depth steps instead of decorative gradients or floating page sections.
-- Mineral teal identifies primary actions. Vermilion, chartreuse, amber, and green are reserved for distinct semantic states.
+- Indigo identifies primary actions in the default theme. Dynamic, preset, custom, and cover colors change accents but share the paper and graphite surfaces.
+- Use red for errors, amber for reading in progress, and green for completed chapters. Keep a text or icon cue alongside each state color.
+- Reuse the same outlined action icons in navigation, toolbars, and the reader. Filled icons are reserved for states such as a selected bookmark.
 - Cards are for repeated content and tools. Screen sections use spacing and dividers instead of nested cards.
-- Library grids use adaptive cells, retaining three compact columns only when covers and labels remain legible.
+- The library offers a compact three-column gallery, a horizontal list, and large cards. The gallery and calendar use the same outlined toolbar buttons.
 - Compact layouts use bottom navigation. Medium and expanded layouts use a navigation rail.
 - Reader controls remain temporary overlays and never reduce the reading viewport while hidden.
 - The reader exposes one horizontal progress control for both image and text chapters.
 
 ## Tokens
 
-- Corners: 4 dp for small details, 6 dp for content cards, 8 dp for controls and sheets.
+- Corners: 5 dp for boxed toolbar icons, 16-18 dp for gallery and calendar cards.
 - Spacing: 4 dp base rhythm, 16 dp compact page padding, 24 dp expanded page padding.
 - Motion: 90 ms feedback, 160 ms controls, 220 ms content transitions.
 - Typography: zero letter spacing, strong titles, restrained labels, 16 sp primary body copy.

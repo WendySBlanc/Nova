@@ -1,5 +1,25 @@
 package eu.kanade.presentation.manga
 
+import java.text.Normalizer
+
+internal class NovaChapterSearch(query: String) {
+    private val text = query.trim().foldChapterText()
+    private val number = text.filterNot(Char::isWhitespace).replace(',', '.').toDoubleOrNull()
+
+    val isActive: Boolean get() = text.isNotEmpty()
+
+    fun matches(title: String, chapterNumber: Double): Boolean = when {
+        !isActive -> true
+        number != null && chapterNumber >= 0.0 -> chapterNumber == number
+        else -> title.foldChapterText().contains(text)
+    }
+}
+
+private val chapterDiacritics = Regex("\\p{M}+")
+
+private fun String.foldChapterText(): String =
+    chapterDiacritics.replace(Normalizer.normalize(this, Normalizer.Form.NFD), "").lowercase()
+
 enum class NovaPrimaryReadAction {
     Read,
     Resume,

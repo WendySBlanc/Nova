@@ -4,10 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -25,6 +21,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.NovaIcons
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.clearFocusOnSoftKeyboardHide
@@ -128,14 +125,14 @@ fun SearchBoxLeadingIcon(
             onClick = onClickCloseSearch,
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                imageVector = NovaIcons.Back,
                 contentDescription = stringResource(MR.strings.action_close),
             )
         }
     } else {
         Icon(
             modifier = modifier,
-            imageVector = Icons.Outlined.Search,
+            imageVector = NovaIcons.Search,
             contentDescription = stringResource(MR.strings.action_search),
         )
     }
@@ -153,7 +150,7 @@ fun SearchBoxTrailingIcon(
             onClick = onClickClearSearch,
         ) {
             Icon(
-                imageVector = Icons.Outlined.Close,
+                imageVector = NovaIcons.Close,
                 contentDescription = stringResource(MR.strings.action_reset),
             )
         }

@@ -6,12 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bookmark
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
-import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.DropdownMenu
+import eu.kanade.presentation.theme.NovaIcons
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.tachiyomi.R
@@ -87,7 +83,7 @@ fun ReaderTopBar(
         actions = {
             IconButton(onClick = onToggleBookmarked) {
                 Icon(
-                    imageVector = if (bookmarked) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,
+                    imageVector = if (bookmarked) NovaIcons.Bookmarked else NovaIcons.Bookmark,
                     contentDescription = stringResource(
                         if (bookmarked) {
                             MR.strings.action_remove_bookmark
@@ -107,7 +103,7 @@ fun ReaderTopBar(
                 Box {
                     IconButton(onClick = { moreExpanded = true }) {
                         Icon(
-                            imageVector = Icons.Outlined.MoreVert,
+                            imageVector = NovaIcons.More,
                             contentDescription = "Plus d'actions",
                         )
                     }
@@ -119,7 +115,7 @@ fun ReaderTopBar(
                             DropdownMenuItem(
                                 text = { Text("Ouvrir le site") },
                                 leadingIcon = {
-                                    Icon(Icons.Outlined.Public, contentDescription = null)
+                                    Icon(NovaIcons.Web, contentDescription = null)
                                 },
                                 onClick = {
                                     moreExpanded = false
@@ -143,7 +139,7 @@ fun ReaderTopBar(
                             DropdownMenuItem(
                                 text = { Text("Partager") },
                                 leadingIcon = {
-                                    Icon(Icons.Outlined.Share, contentDescription = null)
+                                    Icon(NovaIcons.Share, contentDescription = null)
                                 },
                                 onClick = {
                                     moreExpanded = false

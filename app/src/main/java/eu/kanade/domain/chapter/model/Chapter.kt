@@ -2,6 +2,9 @@ package eu.kanade.domain.chapter.model
 
 import eu.kanade.tachiyomi.data.database.models.ChapterImpl
 import eu.kanade.tachiyomi.source.model.SChapter
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import tachiyomi.domain.chapter.model.Chapter
 import eu.kanade.tachiyomi.data.database.models.Chapter as DbChapter
 
@@ -13,9 +16,23 @@ fun Chapter.toSChapter(): SChapter {
         it.date_upload = dateUpload
         it.chapter_number = chapterNumber.toFloat()
         it.scanlator = scanlator
-        it.memo = memo
+        it.memo = memo.withoutNovaSourceReleaseTime()
     }
 }
+
+private const val NOVA_SOURCE_RELEASE_KEY = "com.nova.manhwa.sourceReleaseTime"
+
+internal fun JsonObject.novaSourceReleaseTime(): Long? =
+    (get(NOVA_SOURCE_RELEASE_KEY) as? JsonPrimitive)?.longOrNull
+
+internal fun JsonObject.withNovaSourceReleaseTime(time: Long): JsonObject {
+    val timestamp = time.coerceAtLeast(0L)
+    return if (novaSourceReleaseTime() == timestamp) this else
+        JsonObject(this + (NOVA_SOURCE_RELEASE_KEY to JsonPrimitive(timestamp)))
+}
+
+internal fun JsonObject.withoutNovaSourceReleaseTime(): JsonObject =
+    if (NOVA_SOURCE_RELEASE_KEY in this) JsonObject(this - NOVA_SOURCE_RELEASE_KEY) else this
 
 fun Chapter.copyFromSChapter(sChapter: SChapter): Chapter {
     return this.copy(
@@ -41,6 +58,6 @@ fun Chapter.toDbChapter(): DbChapter = ChapterImpl().also {
     it.date_upload = dateUpload
     it.chapter_number = chapterNumber.toFloat()
     it.source_order = sourceOrder.toInt()
-    it.memo = memo
+    it.memo = memo.withoutNovaSourceReleaseTime()
     it.last_modified = lastModifiedAt
 }

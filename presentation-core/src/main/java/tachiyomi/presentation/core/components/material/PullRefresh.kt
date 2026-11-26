@@ -45,7 +45,7 @@ fun PullRefresh(
         modifier = modifier,
         state = state,
         indicator = {
-            PullToRefreshDefaults.Indicator(
+            PullToRefreshDefaults.LoadingIndicator(
                 state = state,
                 isRefreshing = refreshing,
                 modifier = Modifier

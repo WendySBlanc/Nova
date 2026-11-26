@@ -6,6 +6,22 @@ import org.junit.jupiter.api.Test
 class NovaMangaModelsTest {
 
     @Test
+    fun `chapter search finds a formatted number without matching longer numbers`() {
+        val search = NovaChapterSearch("3\u202F254")
+        search.matches("Les tentacules de la guerre", 3254.0) shouldBe true
+        search.matches("Chapitre 32540", 32540.0) shouldBe false
+        NovaChapterSearch("12,5").matches("Interlude", 12.5) shouldBe true
+    }
+
+    @Test
+    fun `chapter search ignores French accents and leading spaces`() {
+        val search = NovaChapterSearch("  tenebres ")
+        search.matches("Ténèbres vides", 3218.0) shouldBe true
+        search.matches("D'autres chemins", 50.0) shouldBe false
+        NovaChapterSearch(" ").matches("Chapitre sans numéro", -1.0) shouldBe true
+    }
+
+    @Test
     fun `primary action follows actual reading progress`() {
         resolvePrimaryReadAction(
             totalChapterCount = 12,

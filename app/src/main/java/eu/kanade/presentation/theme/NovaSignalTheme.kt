@@ -9,6 +9,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -132,79 +134,144 @@ val NovaSignalTypography = Typography(
 )
 
 fun novaSignalDarkColorScheme(isAmoled: Boolean = false): ColorScheme {
-    val background = if (isAmoled) Color.Black else Color(0xFF050607)
-    val lowestSurface = Color.Black
-    val surface = if (isAmoled) Color(0xFF030404) else Color(0xFF080A0C)
+    val background = if (isAmoled) Color.Black else Color(0xFF141416)
+    val surface = if (isAmoled) Color(0xFF101012) else Color(0xFF1C1C1F)
 
     return darkColorScheme(
-        primary = Color(0xFFD9FF52),
-        onPrimary = Color(0xFF172000),
-        primaryContainer = Color(0xFF26330A),
-        onPrimaryContainer = Color(0xFFE8FF9A),
-        inversePrimary = Color(0xFF526900),
-        secondary = Color(0xFF62D8FF),
-        onSecondary = Color(0xFF003544),
-        secondaryContainer = Color(0xFF073F50),
-        onSecondaryContainer = Color(0xFFB9EAFF),
-        tertiary = Color(0xFFAE8BFF),
-        onTertiary = Color(0xFF2B0D63),
-        tertiaryContainer = Color(0xFF3F2375),
-        onTertiaryContainer = Color(0xFFE8DDFF),
+        primary = Color(0xFFC7C2FF),
+        onPrimary = Color(0xFF251D78),
+        primaryContainer = Color(0xFF383060),
+        onPrimaryContainer = Color(0xFFEAE8FF),
+        inversePrimary = Color(0xFF4C42C5),
+        secondary = Color(0xFF9DD5E3),
+        onSecondary = Color(0xFF103640),
+        secondaryContainer = Color(0xFF214853),
+        onSecondaryContainer = Color(0xFFBDEAF5),
+        tertiary = Color(0xFFF4B5C7),
+        onTertiary = Color(0xFF512432),
+        tertiaryContainer = Color(0xFF633642),
+        onTertiaryContainer = Color(0xFFFFD9E2),
         background = background,
-        onBackground = Color(0xFFF3F5F7),
+        onBackground = Color(0xFFF2F1F4),
         surface = surface,
-        onSurface = Color(0xFFF3F5F7),
-        surfaceVariant = Color(0xFF262A31),
-        onSurfaceVariant = Color(0xFFB8C0CA),
-        surfaceTint = Color(0xFFD9FF52),
-        inverseSurface = Color(0xFFF3F5F7),
-        inverseOnSurface = Color(0xFF202328),
+        onSurface = Color(0xFFF2F1F4),
+        surfaceVariant = Color(0xFF303035),
+        onSurfaceVariant = Color(0xFFC5C3CB),
+        surfaceTint = Color(0xFFF2F1F4),
+        inverseSurface = Color(0xFFF2F1F4),
+        inverseOnSurface = Color(0xFF26262A),
         error = Color(0xFFFFB4AB),
         onError = Color(0xFF690005),
         errorContainer = Color(0xFF93000A),
         onErrorContainer = Color(0xFFFFDAD6),
-        outline = Color(0xFF747D89),
-        outlineVariant = Color(0xFF282D35),
-        surfaceContainerLowest = lowestSurface,
-        surfaceContainerLow = if (isAmoled) Color(0xFF050606) else Color(0xFF0C0F12),
-        surfaceContainer = if (isAmoled) Color(0xFF090A0B) else Color(0xFF111419),
-        surfaceContainerHigh = if (isAmoled) Color(0xFF0E1012) else Color(0xFF171B21),
-        surfaceContainerHighest = if (isAmoled) Color(0xFF15181B) else Color(0xFF20252C),
+        outline = Color(0xFF93919B),
+        outlineVariant = Color(0xFF3A3940),
+        surfaceDim = background,
+        surfaceBright = Color(0xFF38383D),
+        surfaceContainerLowest = if (isAmoled) Color.Black else Color(0xFF101012),
+        surfaceContainerLow = if (isAmoled) Color(0xFF0C0C0E) else Color(0xFF19191C),
+        surfaceContainer = if (isAmoled) Color(0xFF161618) else Color(0xFF222225),
+        surfaceContainerHigh = if (isAmoled) Color(0xFF1D1D20) else Color(0xFF29292D),
+        surfaceContainerHighest = if (isAmoled) Color(0xFF27272B) else Color(0xFF323237),
     )
 }
 
 fun novaSignalLightColorScheme(): ColorScheme = lightColorScheme(
-    primary = Color(0xFF4D6500),
+    primary = Color(0xFF4C42C5),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCF58B),
-    onPrimaryContainer = Color(0xFF161F00),
-    inversePrimary = Color(0xFFD9FF52),
-    secondary = Color(0xFF006784),
+    primaryContainer = Color(0xFFEAE8FF),
+    onPrimaryContainer = Color(0xFF201A72),
+    inversePrimary = Color(0xFFC7C2FF),
+    secondary = Color(0xFF245E6B),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFBCE9FA),
-    onSecondaryContainer = Color(0xFF001F29),
-    tertiary = Color(0xFF6845A8),
+    secondaryContainer = Color(0xFFD5EDF2),
+    onSecondaryContainer = Color(0xFF143C46),
+    tertiary = Color(0xFF895267),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFE9DDFF),
-    onTertiaryContainer = Color(0xFF23005B),
-    background = Color(0xFFF4F5F2),
-    onBackground = Color(0xFF17191C),
-    surface = Color(0xFFF4F5F2),
-    onSurface = Color(0xFF17191C),
-    surfaceVariant = Color(0xFFDFE2E5),
-    onSurfaceVariant = Color(0xFF454A51),
-    surfaceTint = Color(0xFF4D6500),
-    inverseSurface = Color(0xFF2C3035),
-    inverseOnSurface = Color(0xFFF1F2F4),
+    tertiaryContainer = Color(0xFFF9DEE6),
+    onTertiaryContainer = Color(0xFF53293A),
+    background = Color(0xFFF7F7F7),
+    onBackground = Color(0xFF171719),
+    surface = Color(0xFFFEFEFE),
+    onSurface = Color(0xFF202124),
+    surfaceVariant = Color(0xFFE9E9EB),
+    onSurfaceVariant = Color(0xFF54555A),
+    surfaceTint = Color(0xFF202124),
+    inverseSurface = Color(0xFF2C2C30),
+    inverseOnSurface = Color(0xFFF2F1F4),
     error = Color(0xFFBA1A1A),
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    outline = Color(0xFF737980),
-    outlineVariant = Color(0xFFC4C8CD),
+    outline = Color(0xFF6B6B73),
+    outlineVariant = Color(0xFFDCDCDD),
+    surfaceDim = Color(0xFFE0E0E2),
+    surfaceBright = Color(0xFFFEFEFE),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF0F1EE),
-    surfaceContainer = Color(0xFFE9EBE8),
-    surfaceContainerHigh = Color(0xFFE3E5E2),
-    surfaceContainerHighest = Color(0xFFDDE0DD),
+    surfaceContainerLow = Color(0xFFFAFAFA),
+    surfaceContainer = Color(0xFFF5F5F5),
+    surfaceContainerHigh = Color(0xFFEFEFF0),
+    surfaceContainerHighest = Color(0xFFE9E9EB),
 )
+
+internal fun ColorScheme.withNovaAccentColors(accent: ColorScheme): ColorScheme {
+    val primary = accent.primary.contrastingAccent(this.primary, background, surfaceContainerHighest)
+    val secondary = accent.secondary.contrastingAccent(this.secondary, background, surfaceContainerHighest)
+    val tertiary = accent.tertiary.contrastingAccent(this.tertiary, background, surfaceContainerHighest)
+    val primaryContainer = accent.primaryContainer.opaqueOr(this.primaryContainer)
+    val secondaryContainer = accent.secondaryContainer.opaqueOr(this.secondaryContainer)
+    val tertiaryContainer = accent.tertiaryContainer.opaqueOr(this.tertiaryContainer)
+    return copy(
+        primary = primary,
+        onPrimary = primary.readableForeground(accent.onPrimary.opaqueOr(onPrimary)),
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = primaryContainer.readableForeground(
+            if (accent.primaryContainer.alpha == 1f) accent.onPrimaryContainer else onPrimaryContainer,
+        ),
+        inversePrimary = accent.inversePrimary.contrastingAccent(inversePrimary, inverseSurface, inverseSurface),
+        secondary = secondary,
+        onSecondary = secondary.readableForeground(accent.onSecondary.opaqueOr(onSecondary)),
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = secondaryContainer.readableForeground(
+            if (accent.secondaryContainer.alpha == 1f) accent.onSecondaryContainer else onSecondaryContainer,
+        ),
+        tertiary = tertiary,
+        onTertiary = tertiary.readableForeground(accent.onTertiary.opaqueOr(onTertiary)),
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = tertiaryContainer.readableForeground(
+            if (accent.tertiaryContainer.alpha == 1f) accent.onTertiaryContainer else onTertiaryContainer,
+        ),
+    )
+}
+
+private fun Color.opaqueOr(fallback: Color): Color = if (alpha == 1f) this else fallback
+
+private fun Color.readableForeground(preferred: Color): Color = when {
+    hasTextContrast(preferred) -> preferred
+    hasTextContrast(Color.Black) -> Color.Black
+    else -> Color.White
+}
+
+private fun Color.contrastingAccent(fallback: Color, first: Color, second: Color): Color {
+    if (alpha != 1f) return fallback
+    fun readable(value: Color) = value.hasTextContrast(first) && value.hasTextContrast(second)
+    if (readable(this)) return this
+    val target = first.readableForeground(Color.Unspecified)
+    if (!readable(target)) return fallback
+
+    // Use the smallest tone adjustment that passes on both Nova surfaces.
+    var low = 0f
+    var high = 1f
+    repeat(12) {
+        val amount = (low + high) / 2f
+        if (readable(lerp(this, target, amount))) high = amount else low = amount
+    }
+    return lerp(this, target, high)
+}
+
+private fun Color.hasTextContrast(other: Color): Boolean {
+    if (alpha != 1f || other.alpha != 1f) return false
+    val first = luminance()
+    val second = other.luminance()
+    return (maxOf(first, second) + 0.05f) / (minOf(first, second) + 0.05f) >= 4.5f
+}

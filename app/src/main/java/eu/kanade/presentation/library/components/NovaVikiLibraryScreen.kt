@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,36 +27,44 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.BookmarkRemove
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.SortByAlpha
+import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,15 +74,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,28 +90,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.domain.ui.model.NovaLibraryPresentation
 import eu.kanade.presentation.components.NovaCountBadge
+import eu.kanade.presentation.components.NovaToolbarIconButton
+import eu.kanade.presentation.home.LocalNovaDockBottomInset
 import eu.kanade.presentation.library.NovaLibraryShelf
 import eu.kanade.presentation.library.coverSaturation
 import eu.kanade.presentation.library.filterNovaLibraryShelf
 import eu.kanade.presentation.library.findNovaArchiveCategory
+import eu.kanade.presentation.library.novaCatalogMetrics
 import eu.kanade.presentation.library.novaCollectionCategories
 import eu.kanade.presentation.library.novaLibraryShelfOptions
-import eu.kanade.presentation.theme.NovaSpatialLibraryLayout
+import eu.kanade.presentation.theme.NovaIcons
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.theme.novaGlassSurface
-import eu.kanade.presentation.theme.novaNeonProgress
-import eu.kanade.presentation.theme.novaSpatialBackdrop
-import eu.kanade.presentation.theme.novaSpatialLibraryColumns
-import eu.kanade.presentation.theme.novaSpatialLibraryLayout
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
+import eu.kanade.presentation.util.LocalNovaTransitionScreenKey
 import eu.kanade.presentation.util.novaMangaSharedArtwork
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.i18n.stringResource
-import kotlin.math.roundToInt
+import tachiyomi.presentation.core.util.collectAsState
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 @Immutable
 data class NovaLibraryCategory(
@@ -119,35 +132,35 @@ fun NovaVikiLibraryScreen(
     isRefreshing: Boolean,
     onPlay: (Long?) -> Unit,
     onSearch: () -> Unit,
+    onCalendar: () -> Unit,
     onOpenManga: (Long) -> Unit,
     onSetArchived: (Long, Boolean) -> Unit,
     onRefresh: () -> Boolean,
     resetToTopKey: Int,
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var showGalleryOptions by rememberSaveable { mutableStateOf(false) }
+    val displayPreference = remember { Injekt.get<UiPreferences>().novaLibraryPresentation() }
+    val display by displayPreference.collectAsState()
     var selectedShelfIndex by rememberSaveable { mutableIntStateOf(NovaLibraryShelf.Current.ordinal) }
     val selectedShelf = NovaLibraryShelf.entries[selectedShelfIndex]
     var sortOption by rememberSaveable { mutableStateOf(NovaLibrarySortOption.LastRead) }
     var sortDescending by rememberSaveable { mutableStateOf(true) }
     var selectedCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     val sharedTransitionState = LocalNovaSharedTransitionState.current
+    val sourceScreenKey = LocalNovaTransitionScreenKey.current
     val transitionItemsById = remember(libraryItems, lightNovelItems) {
         (libraryItems + lightNovelItems).associateBy { it.id }
     }
     val selectedTransitionMangaId = sharedTransitionState?.selectedMangaId
     val openMangaWithTransition: (Long) -> Unit = { mangaId ->
         transitionItemsById[mangaId]?.let { item ->
-            sharedTransitionState?.selectManga(item.id, item.coverData, item.title)
+            sharedTransitionState?.selectManga(item.id, item.coverData, item.title, sourceScreenKey)
         }
         onOpenManga(mangaId)
     }
     val playManga: (Long?) -> Unit = onPlay
     val gridState = rememberLazyGridState()
-    val hasScrolled by remember {
-        derivedStateOf {
-            gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > 0
-        }
-    }
     val tabItems = remember(selectedTab, libraryItems, lightNovelItems) {
         if (selectedTab == 0) libraryItems else lightNovelItems
     }
@@ -179,6 +192,14 @@ fun NovaVikiLibraryScreen(
     val sortedVisibleItems = remember(visibleItems, sortOption, sortDescending) {
         visibleItems.sortedForLibrary(sortOption, sortDescending)
     }
+    val activeFilter = listOfNotNull(
+        "Light Novel".takeIf { selectedTab == 1 },
+        when (selectedShelf) {
+            NovaLibraryShelf.Current -> null
+            NovaLibraryShelf.Archive -> stringResource(MR.strings.nova_library_archive_section)
+            NovaLibraryShelf.Collections -> collectionCategories.firstOrNull { it.id == selectedCategoryId }?.name
+        },
+    ).joinToString(" · ").ifBlank { null }
     val unreadChapterCount = remember(libraryItems) {
         libraryItems.sumOf { it.remainingChapters.coerceAtLeast(0L) }
     }
@@ -214,130 +235,165 @@ fun NovaVikiLibraryScreen(
         }
     }
 
-    PullRefresh(
-        refreshing = isRefreshing,
-        enabled = true,
-        onRefresh = { onRefresh() },
-        modifier = Modifier
-            .fillMaxSize()
-            .novaSpatialBackdrop(
-                background = NovaVikiColors.Background,
-                primary = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                tertiary = NovaVikiColors.AccentGold,
-                wireColor = NovaVikiColors.OutlineStrong,
-                wireAlpha = 0.055f,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        NovaLibraryGalleryHeader(
+            onSearch = onSearch,
+            onCalendar = onCalendar,
+            onOptions = { showGalleryOptions = true },
+            activeFilter = activeFilter,
+        )
+        PullRefresh(
+            refreshing = isRefreshing,
+            enabled = isLibraryReady,
+            onRefresh = { onRefresh() },
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
-            NovaVikiSearchHeader(
-                title = stringResource(MR.strings.label_library),
-                subtitle = librarySummary,
+            NovaLibraryGrid(
+                items = sortedVisibleItems,
+                display = display,
+                isLibraryReady = isLibraryReady,
+                selectedTab = selectedTab,
+                selectedCategoryId = selectedCategoryId,
+                isFiltered = selectedShelf != NovaLibraryShelf.Current,
+                archiveCategoryId = archiveCategory?.id,
+                selectedTransitionMangaId = selectedTransitionMangaId,
+                gridState = gridState,
                 onSearch = onSearch,
+                onOpenManga = openMangaWithTransition,
+                onPlay = playManga,
+                onSetArchived = onSetArchived,
+                modifier = Modifier.fillMaxSize(),
             )
-            BoxWithConstraints(
-                modifier = Modifier
+        }
+    }
+    if (showGalleryOptions) {
+        ModalBottomSheet(
+            onDismissRequest = { showGalleryOptions = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.background,
+        ) {
+            Column(
+                Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 12.dp),
             ) {
-                val splitLayout = novaSpatialLibraryLayout(maxWidth.value.toInt()) == NovaSpatialLibraryLayout.Split
-                val dividerColor by animateColorAsState(
-                    targetValue = if (hasScrolled || splitLayout) NovaVikiColors.Outline else Color.Transparent,
-                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-                    label = "library_controls_divider",
+                NovaCatalogDisplayPicker(
+                    selected = display,
+                    onSelect = {
+                        displayPreference.set(it)
+                        showGalleryOptions = false
+                    },
                 )
-                val selectShelf: (NovaLibraryShelf) -> Unit = { shelf ->
-                    selectedShelfIndex = shelf.ordinal
-                    selectedCategoryId = null
-                }
+                Text(
+                    text = librarySummary,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 6.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = NovaVikiColors.TextSecondary,
+                )
+                NovaLibraryControlBand(
+                    selectedShelf = selectedShelf,
+                    currentCount = currentItems.size,
+                    archiveCount = archivedItems.size,
+                    selectedTab = selectedTab,
+                    allSeriesCount = libraryItems.size,
+                    lightNovelCount = lightNovelItems.size,
+                    categories = collectionCategories,
+                    categoryCounts = categoryCounts,
+                    selectedCategoryId = selectedCategoryId,
+                    sortOption = sortOption,
+                    sortDescending = sortDescending,
+                    elevated = false,
+                    onSelectShelf = { shelf ->
+                        selectedShelfIndex = shelf.ordinal
+                        selectedCategoryId = null
+                    },
+                    onSelectTab = { selectedTab = it },
+                    onSelectCategory = { selectedCategoryId = it },
+                    onSortOptionSelected = { sortOption = it },
+                    onToggleDirection = { sortDescending = !sortDescending },
+                )
+            }
+        }
+    }
+}
 
-                if (splitLayout) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        NovaLibraryControlBand(
-                            selectedShelf = selectedShelf,
-                            currentCount = currentItems.size,
-                            archiveCount = archivedItems.size,
-                            selectedTab = selectedTab,
-                            allSeriesCount = libraryItems.size,
-                            lightNovelCount = lightNovelItems.size,
-                            categories = collectionCategories,
-                            categoryCounts = categoryCounts,
-                            selectedCategoryId = selectedCategoryId,
-                            sortOption = sortOption,
-                            sortDescending = sortDescending,
-                            elevated = hasScrolled,
-                            onSelectShelf = selectShelf,
-                            onSelectTab = { selectedTab = it },
-                            onSelectCategory = { selectedCategoryId = it },
-                            onSortOptionSelected = { sortOption = it },
-                            onToggleDirection = { sortDescending = !sortDescending },
-                            verticalLayout = true,
-                            modifier = Modifier
-                                .width(304.dp)
-                                .fillMaxHeight()
-                                .padding(12.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(1.dp)
-                                .background(dividerColor),
-                        )
-                        NovaLibraryGrid(
-                            items = sortedVisibleItems,
-                            isLibraryReady = isLibraryReady,
-                            selectedTab = selectedTab,
-                            selectedCategoryId = selectedCategoryId,
-                            archiveCategoryId = archiveCategory?.id,
-                            selectedTransitionMangaId = selectedTransitionMangaId,
-                            gridState = gridState,
-                            onSearch = onSearch,
-                            onOpenManga = openMangaWithTransition,
-                            onPlay = playManga,
-                            onSetArchived = onSetArchived,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        NovaLibraryControlBand(
-                            selectedShelf = selectedShelf,
-                            currentCount = currentItems.size,
-                            archiveCount = archivedItems.size,
-                            selectedTab = selectedTab,
-                            allSeriesCount = libraryItems.size,
-                            lightNovelCount = lightNovelItems.size,
-                            categories = collectionCategories,
-                            categoryCounts = categoryCounts,
-                            selectedCategoryId = selectedCategoryId,
-                            sortOption = sortOption,
-                            sortDescending = sortDescending,
-                            elevated = hasScrolled,
-                            onSelectShelf = selectShelf,
-                            onSelectTab = { selectedTab = it },
-                            onSelectCategory = { selectedCategoryId = it },
-                            onSortOptionSelected = { sortOption = it },
-                            onToggleDirection = { sortDescending = !sortDescending },
-                        )
-                        HorizontalDivider(color = dividerColor)
-                        NovaLibraryGrid(
-                            items = sortedVisibleItems,
-                            isLibraryReady = isLibraryReady,
-                            selectedTab = selectedTab,
-                            selectedCategoryId = selectedCategoryId,
-                            archiveCategoryId = archiveCategory?.id,
-                            selectedTransitionMangaId = selectedTransitionMangaId,
-                            gridState = gridState,
-                            onSearch = onSearch,
-                            onOpenManga = openMangaWithTransition,
-                            onPlay = playManga,
-                            onSetArchived = onSetArchived,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+@Composable
+private fun NovaLibraryGalleryHeader(
+    onSearch: () -> Unit,
+    onCalendar: () -> Unit,
+    onOptions: () -> Unit,
+    activeFilter: String?,
+) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(TopAppBarDefaults.windowInsets),
+        contentAlignment = Alignment.Center,
+    ) {
+        val gutter = novaCatalogMetrics(maxWidth.value.toInt(), NovaLibraryPresentation.Grid).sidePadding.dp
+        val showLibraryIcon = maxWidth >= 370.dp
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = gutter, end = (gutter - 6.dp).coerceAtLeast(6.dp))
+                .heightIn(min = 58.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showLibraryIcon) {
+                Icon(
+                    NovaIcons.Library,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(MR.strings.label_library),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 0.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                activeFilter?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
+            }
+            NovaToolbarIconButton(NovaIcons.Calendar, stringResource(MR.strings.nova_release_calendar), onCalendar)
+            NovaToolbarIconButton(NovaIcons.Search, stringResource(MR.strings.action_search), onSearch)
+            NovaToolbarIconButton(NovaIcons.Filter, stringResource(MR.strings.action_filter), onOptions)
+        }
+    }
+}
+
+@Composable
+private fun NovaCatalogDisplayPicker(
+    selected: NovaLibraryPresentation,
+    onSelect: (NovaLibraryPresentation) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Text(stringResource(MR.strings.pref_category_display), style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NovaLibraryPresentation.entries.forEach { option ->
+                val (icon, label) = when (option) {
+                    NovaLibraryPresentation.Grid -> Icons.Outlined.GridView to MR.strings.nova_library_view_grid
+                    NovaLibraryPresentation.List -> Icons.Outlined.ViewList to MR.strings.action_display_list
+                    NovaLibraryPresentation.Cards -> Icons.Outlined.ViewAgenda to MR.strings.nova_library_view_cards
+                }
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelect(option) },
+                    label = { Text(stringResource(label)) },
+                    leadingIcon = { Icon(icon, null, modifier = Modifier.size(18.dp)) },
+                )
             }
         }
     }
@@ -346,9 +402,11 @@ fun NovaVikiLibraryScreen(
 @Composable
 private fun NovaLibraryGrid(
     items: List<NovaVikiManga>,
+    display: NovaLibraryPresentation,
     isLibraryReady: Boolean,
     selectedTab: Int,
     selectedCategoryId: Long?,
+    isFiltered: Boolean,
     archiveCategoryId: Long?,
     selectedTransitionMangaId: Long?,
     gridState: LazyGridState,
@@ -364,46 +422,42 @@ private fun NovaLibraryGrid(
     ) {
         BoxWithConstraints(
             modifier = Modifier
-                .widthIn(max = NovaVikiDimensions.GridContentMaxWidth)
+                .widthIn(
+                    max = when (display) {
+                        NovaLibraryPresentation.Grid -> 600.dp
+                        NovaLibraryPresentation.List -> 720.dp
+                        NovaLibraryPresentation.Cards -> 1120.dp
+                    },
+                )
                 .fillMaxSize(),
         ) {
-            val columnCount = novaSpatialLibraryColumns(maxWidth.value.toInt())
-            val horizontalPadding = when {
-                maxWidth < 360.dp -> 8.dp
-                maxWidth < 600.dp -> 12.dp
-                else -> 18.dp
-            }
-            val horizontalGap = when {
-                maxWidth < 360.dp -> 6.dp
-                maxWidth < 600.dp -> 8.dp
-                else -> 12.dp
-            }
-            val verticalGap = when {
-                maxWidth < 360.dp -> 14.dp
-                maxWidth < 600.dp -> 18.dp
-                else -> 22.dp
-            }
+            val metrics = novaCatalogMetrics(maxWidth.value.toInt(), display)
+            val horizontalPadding = metrics.sidePadding.dp
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(columnCount),
+                columns = GridCells.Fixed(metrics.columns),
                 state = gridState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = horizontalPadding,
-                    top = 10.dp,
+                    top = when (display) {
+                        NovaLibraryPresentation.Grid -> 12.dp
+                        NovaLibraryPresentation.List -> 18.dp
+                        NovaLibraryPresentation.Cards -> 26.dp
+                    },
                     end = horizontalPadding,
-                    bottom = 24.dp,
+                    bottom = 18.dp + LocalNovaDockBottomInset.current,
                 ),
-                horizontalArrangement = Arrangement.spacedBy(horizontalGap),
-                verticalArrangement = Arrangement.spacedBy(verticalGap),
+                horizontalArrangement = Arrangement.spacedBy(metrics.columnGap.dp),
+                verticalArrangement = Arrangement.spacedBy(metrics.rowGap.dp),
             ) {
                 if (!isLibraryReady) {
                     items(
-                        count = columnCount * 2,
+                        count = metrics.columns * if (display == NovaLibraryPresentation.Grid) 3 else 2,
                         key = { index -> "library_loading_$index" },
                         contentType = { "library_loading_card" },
                     ) {
-                        NovaLibraryLoadingCard(widthFraction = 1f)
+                        NovaLibraryLoadingCard(display)
                     }
                 } else if (items.isEmpty()) {
                     item(
@@ -412,7 +466,9 @@ private fun NovaLibraryGrid(
                         span = { GridItemSpan(maxLineSpan) },
                     ) {
                         NovaLibraryEmptyState(
-                            title = if (selectedTab == 0) {
+                            title = if (isFiltered) {
+                                stringResource(MR.strings.nova_library_empty_selection)
+                            } else if (selectedTab == 0) {
                                 if (selectedCategoryId != null) {
                                     "Aucun manhwa dans cette catégorie"
                                 } else {
@@ -435,9 +491,14 @@ private fun NovaLibraryGrid(
                         val archived = archiveCategoryId?.let(item.categoryIds::contains) == true
                         NovaLibraryGridCard(
                             item = item,
+                            display = display,
                             archived = archived,
-                            widthFraction = 1f,
                             sharedTransitionActive = selectedTransitionMangaId == item.id,
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = null,
+                                placementSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                                fadeOutSpec = null,
+                            ),
                             onClick = {
                                 if (item.id >= 0L) {
                                     onOpenManga(item.id)
@@ -798,211 +859,222 @@ private fun NovaLibrarySortActions(
 @Composable
 private fun NovaLibraryGridCard(
     item: NovaVikiManga,
+    display: NovaLibraryPresentation,
     archived: Boolean,
-    widthFraction: Float,
     sharedTransitionActive: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onArchive: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val coverRequest = rememberHighQualityImageRequest(
-        data = item.coverData,
-        widthPx = NOVA_LIBRARY_COVER_WIDTH_PX,
-        heightPx = NOVA_LIBRARY_COVER_HEIGHT_PX,
-        exactSize = true,
-    )
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.985f else 1f,
+        targetValue = if (pressed) 0.988f else 1f,
         animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "library_card_scale",
+        label = "catalog-card-press",
     )
-    val progressPercent = item.progress
-        ?.coerceIn(0f, 1f)
-        ?.let { (it * 100f).roundToInt() }
-    val saturation = coverSaturation(
-        progress = item.progress,
-        remainingChapters = item.remainingChapters,
-    )
-    val coverColorFilter = remember(saturation) {
-        ColorFilter.colorMatrix(
-            ColorMatrix().apply { setToSaturation(saturation) },
-        )
-    }
-    val readingState = when {
-        item.remainingChapters > 1L -> "${item.remainingChapters} chapitres à lire"
-        item.remainingChapters == 1L -> "1 chapitre à lire"
-        progressPercent != null -> "progression $progressPercent pour cent"
-        else -> "à jour"
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(widthFraction)
-            .semantics(mergeDescendants = true) {
-                contentDescription = listOf(item.title, item.subtitle, readingState)
-                    .filter { it.isNotBlank() }
-                    .joinToString()
-            }
+    var showActions by remember { mutableStateOf(false) }
+    val archiveLabel = stringResource(if (archived) MR.strings.nova_library_unarchive else MR.strings.nova_library_archive)
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .fillMaxWidth()
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .novaCatalogCard()
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 role = Role.Button,
                 onClick = onClick,
-                onLongClick = onLongClick,
+                onLongClickLabel = archiveLabel,
+                onLongClick = { showActions = true },
             ),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.72f)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+        when (display) {
+            NovaLibraryPresentation.Grid -> {
+                Column(
+                    Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    NovaCatalogCover(item, sharedTransitionActive, Modifier.fillMaxWidth().aspectRatio(1f))
+                    NovaCatalogTitle(item.title, compact = true, align = TextAlign.Center, maxLines = 1)
+                    NovaCatalogSource(item.tag, Modifier.align(Alignment.CenterHorizontally))
+                    NovaCatalogStatus(item.subtitle, compact = true, align = TextAlign.Center)
                 }
-                .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                .background(Brush.linearGradient(item.colors))
-                .border(
-                    width = 1.dp,
-                    color = NovaVikiColors.Outline.copy(alpha = 0.72f),
-                    shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
-                )
-                .novaNeonProgress(
-                    progress = item.progress ?: 0f,
-                    trackColor = if (item.progress != null) {
-                        Color.White.copy(alpha = 0.2f)
-                    } else {
-                        Color.Transparent
-                    },
-                    progressColor = NovaVikiColors.Accent,
-                    thickness = 4.dp,
-                ),
-        ) {
-            if (item.coverData != null) {
-                AsyncImage(
-                    model = coverRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    filterQuality = FilterQuality.High,
-                    colorFilter = coverColorFilter,
-                    modifier = Modifier
-                        .novaMangaSharedArtwork(item.id, enabled = sharedTransitionActive)
-                        .fillMaxSize(),
-                )
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.72f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.58f),
-                        ),
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color.Black.copy(alpha = 0.68f))
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = item.tag,
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            NovaLibraryPresentation.List -> {
+                BoxWithConstraints(Modifier.fillMaxWidth().padding(16.dp)) {
+                    val coverWidth = (maxWidth * 0.38f).coerceAtMost(120.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        NovaCatalogCover(
+                            item,
+                            sharedTransitionActive,
+                            Modifier.width(coverWidth).aspectRatio(1f),
+                        )
+                        Column(
+                            Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            NovaCatalogSource(
+                                item.tag,
+                                Modifier.clip(RoundedCornerShape(4.dp))
+                                    .background(colors.surfaceContainer)
+                                    .border(1.dp, colors.outlineVariant, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 3.dp),
+                            )
+                            NovaCatalogTitle(item.title, compact = false, align = TextAlign.Start, maxLines = 2)
+                            NovaCatalogStatus(item.subtitle, compact = true, align = TextAlign.Start)
+                        }
+                    }
+                }
             }
-            NovaChapterBadges(
-                item = item,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp),
-            )
-            if (progressPercent != null && progressPercent > 0 && item.totalChapters > 0L) {
-                Text(
-                    text = "$progressPercent%",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 6.dp, bottom = 7.dp),
-                )
-            }
-            IconButton(
-                onClick = onArchive,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .size(NovaVikiDimensions.MinimumTouchTarget)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.64f)),
-            ) {
-                Icon(
-                    imageVector = if (archived) Icons.Outlined.BookmarkRemove else Icons.Outlined.BookmarkAdd,
-                    contentDescription = if (archived) "Retirer des archives" else "Archiver",
-                    tint = Color.White,
-                )
+            NovaLibraryPresentation.Cards -> {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(colors.surfaceContainer)
+                            .border(1.dp, colors.outlineVariant, RoundedCornerShape(7.dp))
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        NovaCatalogSource(item.tag)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    NovaCatalogCover(
+                        item,
+                        sharedTransitionActive,
+                        Modifier.fillMaxWidth(0.54f).widthIn(max = 170.dp).aspectRatio(1f),
+                    )
+                    Spacer(Modifier.height(17.dp))
+                    NovaCatalogTitle(item.title, compact = false, align = TextAlign.Center, maxLines = 2)
+                    Spacer(Modifier.height(8.dp))
+                    NovaCatalogStatus(item.subtitle, compact = false, align = TextAlign.Center)
+                    Spacer(Modifier.height(9.dp))
+                }
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = item.title,
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.labelLarge,
-            lineHeight = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+        DropdownMenu(expanded = showActions, onDismissRequest = { showActions = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(MR.strings.action_show_manga)) },
+                onClick = { showActions = false; onLongClick() },
+            )
+            DropdownMenuItem(
+                text = { Text(archiveLabel) },
+                leadingIcon = { Icon(if (archived) Icons.Outlined.BookmarkRemove else Icons.Outlined.BookmarkAdd, null) },
+                onClick = { showActions = false; onArchive() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun Modifier.novaCatalogCard(): Modifier {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(18.dp)
+    return shadow(3.dp, shape, clip = false, ambientColor = Color(0x250F1628), spotColor = Color(0x250F1628))
+        .clip(shape)
+        .background(colors.surface)
+        .border(1.dp, colors.outlineVariant, shape)
+}
+
+@Composable
+private fun NovaCatalogCover(item: NovaVikiManga, shared: Boolean, modifier: Modifier = Modifier) {
+    val saturation = coverSaturation(item.progress, item.remainingChapters)
+    val filter = remember(saturation) { ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) }) }
+    val request = rememberHighQualityImageRequest(item.coverData, widthPx = 512, heightPx = 512, exactSize = true)
+    Box(modifier.clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+        AsyncImage(
+            model = request,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            colorFilter = filter,
+            modifier = Modifier.novaMangaSharedArtwork(item.id, enabled = shared).fillMaxSize(),
         )
+    }
+}
+
+@Composable
+private fun NovaCatalogTitle(title: String, compact: Boolean, align: TextAlign, maxLines: Int) {
+    Text(
+        text = title,
+        modifier = Modifier.fillMaxWidth(),
+        fontSize = if (compact) 15.sp else 19.sp,
+        lineHeight = if (compact) 19.sp else 24.sp,
+        letterSpacing = 0.sp,
+        fontWeight = FontWeight.Bold,
+        textAlign = align,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun NovaCatalogSource(source: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.LocalOffer, null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
-            text = item.subtitle,
-            color = NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelSmall,
+            text = source,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp,
+            letterSpacing = 0.sp,
+            lineHeight = 14.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-private const val NOVA_LIBRARY_COVER_WIDTH_PX = 480
-private const val NOVA_LIBRARY_COVER_HEIGHT_PX = 667
+@Composable
+private fun NovaCatalogStatus(status: String, compact: Boolean, align: TextAlign) {
+    Text(
+        text = status,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = align,
+        fontSize = if (compact) 12.sp else 16.sp,
+        letterSpacing = 0.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        lineHeight = if (compact) 16.sp else 21.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
 
 @Composable
-private fun NovaLibraryLoadingCard(
-    widthFraction: Float,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(widthFraction),
+private fun NovaLibraryLoadingCard(display: NovaLibraryPresentation) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(
+                when (display) {
+                    NovaLibraryPresentation.Grid -> 0.73f
+                    NovaLibraryPresentation.List -> 2.36f
+                    NovaLibraryPresentation.Cards -> 0.94f
+                },
+            )
+            .novaCatalogCard()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(0.72f)
-                .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                .background(NovaVikiColors.SurfaceRaised),
-        )
-        Spacer(Modifier.height(7.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .height(13.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(NovaVikiColors.SurfaceStrong),
-        )
-        Spacer(Modifier.height(5.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.62f)
-                .height(10.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(NovaVikiColors.SurfaceRaised),
+            Modifier.fillMaxWidth(if (display == NovaLibraryPresentation.Cards) 0.48f else 0.75f)
+                .fillMaxHeight(if (display == NovaLibraryPresentation.List) 0.75f else 0.62f)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         )
     }
 }
@@ -1060,7 +1132,7 @@ private fun NovaLibraryEmptyState(
             shape = RoundedCornerShape(NovaVikiDimensions.ControlCorner),
         ) {
             Icon(
-                imageVector = Icons.Outlined.Search,
+                imageVector = NovaIcons.Search,
                 contentDescription = null,
             )
             Spacer(Modifier.width(8.dp))

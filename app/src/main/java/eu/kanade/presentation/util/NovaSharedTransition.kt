@@ -16,7 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 
-interface NovaTitleDetailScreen
+interface NovaTitleDetailScreen {
+    val artworkMangaId: Long
+}
 
 @Stable
 class NovaSharedTransitionState {
@@ -29,14 +31,28 @@ class NovaSharedTransitionState {
     var selectedTitle by mutableStateOf<String?>(null)
         private set
 
+    private var selectedSourceKey by mutableStateOf<String?>(null)
+
     fun selectManga(
         mangaId: Long,
         coverData: Any?,
         title: String,
+        sourceKey: String?,
     ) {
         selectedMangaId = mangaId
         selectedCoverData = coverData
         selectedTitle = title
+        selectedSourceKey = sourceKey
+    }
+
+    internal fun hasArtworkFor(mangaId: Long, sourceKey: String): Boolean =
+        selectedMangaId == mangaId && selectedSourceKey == sourceKey && selectedCoverData != null
+
+    fun clearSelection() {
+        selectedMangaId = null
+        selectedCoverData = null
+        selectedTitle = null
+        selectedSourceKey = null
     }
 }
 
@@ -44,6 +60,7 @@ val LocalNovaSharedTransitionState = compositionLocalOf<NovaSharedTransitionStat
 
 internal val LocalNovaSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 internal val LocalNovaAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
+internal val LocalNovaTransitionScreenKey = compositionLocalOf<String?> { null }
 
 private data class NovaMangaArtworkKey(val mangaId: Long)
 
@@ -57,7 +74,7 @@ fun Modifier.novaMangaSharedArtwork(
     val visibilityScope = LocalNovaAnimatedVisibilityScope.current ?: return this
     val motionScheme = MaterialTheme.motionScheme
     val artworkBoundsTransform = remember(motionScheme) {
-        BoundsTransform { _, _ -> motionScheme.slowSpatialSpec() }
+        BoundsTransform { _, _ -> motionScheme.defaultSpatialSpec() }
     }
 
     return with(sharedScope) {
@@ -67,6 +84,7 @@ fun Modifier.novaMangaSharedArtwork(
             ),
             animatedVisibilityScope = visibilityScope,
             boundsTransform = artworkBoundsTransform,
+            resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(),
         )
     }
 }

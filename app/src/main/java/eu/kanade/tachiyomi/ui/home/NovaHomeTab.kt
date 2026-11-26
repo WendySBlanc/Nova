@@ -5,7 +5,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -15,23 +17,37 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.home.deriveNovaHomeSections
+import eu.kanade.presentation.home.selectNovaResumeChapter
 import eu.kanade.presentation.library.components.NovaVikiHomeScreen
 import eu.kanade.presentation.library.components.NovaVikiManga
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.LibraryUpdateStatus
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.library.LibraryItem
 import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
+import logcat.LogPriority
+import tachiyomi.core.common.util.lang.withIOContext
+import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.chapter.model.Chapter
+import tachiyomi.domain.history.interactor.GetHistory
+import tachiyomi.domain.history.interactor.GetNextChapters
 import tachiyomi.domain.manga.model.asMangaCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.collectAsState
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 data object NovaHomeTab : Tab {
     private val reselectEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -58,6 +74,17 @@ data object NovaHomeTab : Tab {
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val libraryScreenModel = rememberScreenModel { LibraryScreenModel() }
+        val getHistory = remember { Injekt.get<GetHistory>() }
+        val getNextChapters = remember { Injekt.get<GetNextChapters>() }
+        val uiPreferences = remember { Injekt.get<UiPreferences>() }
+        val autoAdvance by uiPreferences.homeAutoAdvance().collectAsState()
+        val showUpdates by uiPreferences.homeShowUpdates().collectAsState()
+        val showRecent by uiPreferences.homeShowRecent().collectAsState()
+        val recentFirst by uiPreferences.homeRecentFirst().collectAsState()
+        val updateStatus = remember { Injekt.get<LibraryUpdateStatus>() }
+        val isRefreshing by updateStatus.isRunning.collectAsStateWithLifecycle()
+        val scope = rememberCoroutineScope()
+        var openingChapter by remember { mutableStateOf(false) }
         var resetToTopKey by remember { mutableIntStateOf(0) }
         val libraryState by libraryScreenModel.state.collectAsStateWithLifecycle()
         val libraryData = libraryState.libraryData
@@ -68,20 +95,34 @@ data object NovaHomeTab : Tab {
         }
         val startedFavoriteItems = remember(favoriteItems) {
             favoriteItems
-                .filter { item -> item.libraryManga.hasStarted }
+                .filter { item -> item.libraryManga.lastRead > 0L && item.libraryManga.unreadCount > 0L }
                 .sortedByDescending { item -> item.libraryManga.lastRead }
         }
         val nextChapterLookupItems = remember(startedFavoriteItems) {
             startedFavoriteItems.take(NEXT_CHAPTER_LOOKUP_LIMIT)
         }
         val nextChapterLabels = remember { mutableStateMapOf<Long, String>() }
-        val nextChapterKey = remember(nextChapterLookupItems) {
-            nextChapterLookupItems.joinToString("|") { item ->
-                "${item.id}:${item.libraryManga.readCount}:${item.libraryManga.unreadCount}:${item.libraryManga.lastRead}"
+        suspend fun findNextChapter(item: LibraryItem): Chapter? = try {
+            withIOContext {
+                val lastRead = getHistory.await(item.id)
+                    .maxByOrNull { it.readAt?.time ?: 0L }
+                    ?.takeIf { (it.readAt?.time ?: 0L) > 0L }
+                val fromHistory = lastRead?.let {
+                    selectNovaResumeChapter(
+                        getNextChapters.await(item.id, onlyUnread = false),
+                        lastReadChapterId = it.chapterId,
+                    )
+                }
+                fromHistory ?: libraryScreenModel.getNextUnreadChapter(item)
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Unable to resolve the next chapter from Home" }
+            null
         }
 
-        LaunchedEffect(libraryData.isInitialized, nextChapterKey) {
+        LaunchedEffect(libraryData.isInitialized, nextChapterLookupItems) {
             if (!libraryData.isInitialized) {
                 nextChapterLabels.clear()
                 return@LaunchedEffect
@@ -95,10 +136,9 @@ data object NovaHomeTab : Tab {
 
             nextChapterLookupItems.forEach { item ->
                 launch {
-                    val nextChapter = runCatching {
-                        libraryScreenModel.getNextUnreadChapter(item)
-                    }.getOrNull()
-                    nextChapterLabels[item.id] = nextChapter?.name ?: "Tous les chapitres lus"
+                    val nextChapter = findNextChapter(item)
+                    if (nextChapter != null) nextChapterLabels[item.id] = nextChapter.name
+                    else nextChapterLabels.remove(item.id)
                 }
             }
         }
@@ -110,28 +150,14 @@ data object NovaHomeTab : Tab {
             }
         }
 
-        fun nextChapterSubtitle(item: LibraryItem): String {
-            return when {
-                !item.libraryManga.hasStarted -> "Prêt à lire"
-                item.libraryManga.unreadCount <= 0L -> "Tous les chapitres lus"
-                else -> nextChapterLabelsSnapshot[item.id]?.let { chapter -> "À suivre : $chapter" }
-                    ?: "Prochain chapitre"
-            }
-        }
-
         fun toNovaManga(item: LibraryItem, index: Int): NovaVikiManga {
             val manga = item.libraryManga.manga
             val unreadCount = item.libraryManga.unreadCount.coerceAtLeast(0L)
             return NovaVikiManga(
                 id = manga.id,
                 title = manga.title,
-                subtitle = when {
-                    item.libraryManga.hasStarted -> nextChapterSubtitle(item)
-                    unreadCount > 1 -> "$unreadCount chapitres à lire"
-                    unreadCount == 1L -> "1 chapitre à lire"
-                    else -> "Prêt à lire"
-                },
-                tag = item.source?.name?.take(12) ?: if (item.isLocal) "Local" else "NOVA",
+                subtitle = nextChapterLabelsSnapshot[item.id].orEmpty(),
+                tag = item.source?.name.orEmpty(),
                 coverData = manga.asMangaCover(),
                 colors = novaPalette(index),
                 progress = item.libraryManga.totalChapters
@@ -159,16 +185,39 @@ data object NovaHomeTab : Tab {
         val homeSections = remember(libraryItems) {
             deriveNovaHomeSections(libraryItems)
         }
-        fun refreshLibrary(): Boolean {
+        val entriesById = remember(favoriteItems) { favoriteItems.associateBy { it.id } }
+        fun refreshLibrary() {
             val started = LibraryUpdateJob.startNow(context, forceUpdate = true)
             context.toast(if (started) MR.strings.updating_library else MR.strings.update_already_running)
-            return started
         }
 
         NovaVikiHomeScreen(
             sections = homeSections,
+            autoAdvance = autoAdvance,
+            showUpdates = showUpdates,
+            showRecent = showRecent,
+            recentFirst = recentFirst,
+            libraryReady = libraryData.isInitialized,
+            isRefreshing = isRefreshing,
             onSearch = { navigator.push(GlobalSearchScreen("")) },
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
+            onResumeManga = { mangaId ->
+                if (!openingChapter) {
+                    openingChapter = true
+                    scope.launch {
+                        try {
+                            val chapter = entriesById[mangaId]?.let { findNextChapter(it) }
+                            if (chapter != null) {
+                                context.startActivity(ReaderActivity.newIntent(context, mangaId, chapter.id))
+                            } else {
+                                navigator.push(MangaScreen(mangaId))
+                            }
+                        } finally {
+                            openingChapter = false
+                        }
+                    }
+                }
+            },
             onRefresh = ::refreshLibrary,
             resetToTopKey = resetToTopKey,
         )
@@ -178,7 +227,7 @@ data object NovaHomeTab : Tab {
         }
     }
 
-    private const val NEXT_CHAPTER_LOOKUP_LIMIT = 8
+    private const val NEXT_CHAPTER_LOOKUP_LIMIT = 5
 
     private fun novaPalette(index: Int) = when (index % 6) {
         0 -> listOf(androidx.compose.ui.graphics.Color(0xFF111B33), androidx.compose.ui.graphics.Color(0xFF235BB9), androidx.compose.ui.graphics.Color(0xFF58E3D2))

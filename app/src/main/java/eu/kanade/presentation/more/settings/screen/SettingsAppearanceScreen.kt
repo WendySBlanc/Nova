@@ -55,10 +55,39 @@ object SettingsAppearanceScreen : SearchableSettings {
             getMangaInfoThemeGroup(uiPreferences = uiPreferences),
             // KMK <--
             getDisplayGroup(uiPreferences = uiPreferences),
+            getHomeGroup(uiPreferences),
             // SY -->
             getNavbarGroup(uiPreferences = uiPreferences),
             getForkGroup(uiPreferences = uiPreferences),
             // SY <--
+        )
+    }
+
+    @Composable
+    private fun getHomeGroup(uiPreferences: UiPreferences): Preference.PreferenceGroup {
+        val showUpdates by uiPreferences.homeShowUpdates().collectAsState()
+        val showRecent by uiPreferences.homeShowRecent().collectAsState()
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.label_home_nova),
+            preferenceItems = persistentListOf(
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.homeAutoAdvance(),
+                    title = stringResource(MR.strings.nova_home_auto_advance),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.homeShowUpdates(),
+                    title = stringResource(MR.strings.nova_home_new_chapters),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.homeShowRecent(),
+                    title = stringResource(MR.strings.nova_home_recently_added),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = uiPreferences.homeRecentFirst(),
+                    title = stringResource(MR.strings.nova_home_recent_first),
+                    enabled = showUpdates && showRecent,
+                ),
+            ),
         )
     }
 

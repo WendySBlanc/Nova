@@ -41,12 +41,15 @@ class NovaDestinationContentTest {
     }
 
     @Test
-    fun `me settings are grouped into four stable categories`() {
-        novaMeCategories() shouldContainExactly listOf(
-            NovaMeCategory.Overview,
-            NovaMeCategory.Reading,
-            NovaMeCategory.Library,
-            NovaMeCategory.Application,
+    fun `settings sections contain every destination exactly once`() {
+        val visible = NovaSettingsGroup.entries.flatMap { it.destinations(showEh = true, showMangadex = true) }
+        visible.sortedBy { it.name } shouldContainExactly NovaMeSettingDestination.entries.sortedBy { it.name }
+        NovaSettingsGroup.Advanced.destinations(showEh = false, showMangadex = false) shouldContainExactly listOf(
+            NovaMeSettingDestination.Advanced,
+        )
+        NovaSettingsGroup.Advanced.destinations(showEh = false, showMangadex = true) shouldContainExactly listOf(
+            NovaMeSettingDestination.Mangadex,
+            NovaMeSettingDestination.Advanced,
         )
     }
 

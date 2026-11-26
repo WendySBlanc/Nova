@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 object NovaVikiColors {
     val Background: Color
@@ -49,10 +50,10 @@ object NovaVikiColors {
         get() = MaterialTheme.colorScheme.secondary
     val AccentGold: Color
         @Composable @ReadOnlyComposable
-        get() = MaterialTheme.colorScheme.tertiary
+        get() = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFFFFCA82) else Color(0xFF855112)
     val Success: Color
         @Composable @ReadOnlyComposable
-        get() = MaterialTheme.colorScheme.tertiary
+        get() = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFF87D9AE) else Color(0xFF286846)
     val Danger: Color
         @Composable @ReadOnlyComposable
         get() = MaterialTheme.colorScheme.error

@@ -157,6 +157,7 @@ fun MangaScreen(
     onTagSearch: (String) -> Unit,
 
     onFilterButtonClicked: () -> Unit,
+    onReverseChapterOrder: () -> Unit,
     onRefresh: () -> Unit,
     onContinueReading: () -> Unit,
     onSearch: (query: String, global: Boolean) -> Unit,
@@ -226,6 +227,7 @@ fun MangaScreen(
         onAddToLibraryClicked = onAddToLibraryClicked,
         onRefresh = onRefresh,
         onFilterClicked = onFilterButtonClicked,
+        onReverseChapterOrder = onReverseChapterOrder,
         onWebViewClicked = onWebViewClicked,
         onShareClicked = onShareClicked,
         onTrackingClicked = onTrackingClicked,
@@ -237,6 +239,7 @@ fun MangaScreen(
         onDownloadChapter = onDownloadChapter,
         onTitleSearch = { query -> onSearch(query, true) },
         onSourceSearch = { query -> onSearch(query, true) },
+        onTagSearch = onTagSearch,
         onMarkChaptersRead = onMultiMarkAsReadClicked,
         onMarkPreviousChaptersRead = onMarkPreviousAsReadClicked,
         chapterSwipeStartAction = chapterSwipeStartAction,

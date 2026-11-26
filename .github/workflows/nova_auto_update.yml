@@ -39,7 +39,8 @@ jobs:
         id: version
         shell: bash
         run: |
-          revision=$((100000 + GITHUB_RUN_NUMBER))
+          # Releases must supersede preview version 100050 already installed on phones.
+          revision=$((100005 + GITHUB_RUN_NUMBER))
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
           echo "tag=r$revision" >> "$GITHUB_OUTPUT"
 

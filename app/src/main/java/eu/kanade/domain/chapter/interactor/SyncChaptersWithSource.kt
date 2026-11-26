@@ -2,6 +2,7 @@ package eu.kanade.domain.chapter.interactor
 
 import eu.kanade.domain.chapter.model.copyFromSChapter
 import eu.kanade.domain.chapter.model.toSChapter
+import eu.kanade.domain.chapter.model.withNovaSourceReleaseTime
 import eu.kanade.domain.manga.interactor.GetExcludedScanlators
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.toSManga
@@ -103,6 +104,8 @@ class SyncChaptersWithSource(
             chapter = chapter.copy(chapterNumber = chapterNumber)
 
             val dbChapter = dbChapters.find { it.url == chapter.url }
+            val sourceTime = if (source.isLocal()) 0L else chapter.dateUpload
+            chapter = chapter.copy(memo = chapter.memo.withNovaSourceReleaseTime(sourceTime))
 
             if (dbChapter == null) {
                 val toAddChapter = if (chapter.dateUpload == 0L) {

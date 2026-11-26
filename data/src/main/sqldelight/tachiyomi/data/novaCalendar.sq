@@ -1,0 +1,29 @@
+selectLibraryReleases:
+SELECT
+    manga._id AS mangaId,
+    manga.title AS mangaTitle,
+    manga.source AS sourceId,
+    chapter._id AS chapterId,
+    chapter.name AS chapterName,
+    chapter.date_upload AS publishedAt,
+    chapter.memo AS releaseMetadata
+FROM mangas AS manga
+JOIN chapters AS chapter ON chapter.manga_id = manga._id
+WHERE manga.favorite = 1 AND manga.source <> 6969
+    AND chapter.date_upload >= :fromInclusive AND chapter.date_upload < :untilExclusive
+UNION
+SELECT
+    parent._id AS mangaId,
+    parent.title AS mangaTitle,
+    child.source AS sourceId,
+    chapter._id AS chapterId,
+    chapter.name AS chapterName,
+    chapter.date_upload AS publishedAt,
+    chapter.memo AS releaseMetadata
+FROM mangas AS parent
+JOIN merged ON merged.merge_id = parent._id
+JOIN mangas AS child ON child._id = merged.manga_id
+JOIN chapters AS chapter ON chapter.manga_id = child._id
+WHERE parent.favorite = 1 AND parent.source = 6969
+    AND chapter.date_upload >= :fromInclusive AND chapter.date_upload < :untilExclusive
+ORDER BY publishedAt, mangaId, chapterId;

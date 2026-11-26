@@ -3,6 +3,7 @@ package eu.kanade.domain.ui
 import androidx.compose.material3.FabPosition
 import com.materialkolor.PaletteStyle
 import eu.kanade.domain.ui.model.AppTheme
+import eu.kanade.domain.ui.model.NovaLibraryPresentation
 import eu.kanade.domain.ui.model.TabletUiMode
 import eu.kanade.domain.ui.model.ThemeMode
 import tachiyomi.core.common.preference.PreferenceStore
@@ -19,7 +20,7 @@ class UiPreferences(
 
     fun appTheme() = preferenceStore.getEnum(
         "pref_app_theme",
-        AppTheme.MONET,
+        AppTheme.DEFAULT,
     )
 
     fun themeDarkAmoled() = preferenceStore.getBoolean("pref_theme_dark_amoled_key", false)
@@ -78,11 +79,21 @@ class UiPreferences(
 
     fun useNewSourceNavigation() = preferenceStore.getBoolean("use_new_source_navigation", true)
 
-    fun bottomBarLabels() = preferenceStore.getBoolean("pref_show_bottom_bar_labels", true)
+    fun bottomBarLabels() = preferenceStore.getBoolean("pref_show_bottom_bar_labels", false)
 
     fun showNavUpdates() = preferenceStore.getBoolean("pref_show_updates_button", true)
 
     fun showNavHistory() = preferenceStore.getBoolean("pref_show_history_button", true)
+
+    fun homeAutoAdvance() = preferenceStore.getBoolean("nova_home_auto_advance", true)
+
+    fun homeShowUpdates() = preferenceStore.getBoolean("nova_home_show_updates", true)
+
+    fun homeShowRecent() = preferenceStore.getBoolean("nova_home_show_recent", true)
+
+    fun homeRecentFirst() = preferenceStore.getBoolean("nova_home_recent_first", false)
+
+    fun novaLibraryPresentation() = preferenceStore.getEnum("nova_library_presentation", NovaLibraryPresentation.Grid)
 
     // SY <--
 

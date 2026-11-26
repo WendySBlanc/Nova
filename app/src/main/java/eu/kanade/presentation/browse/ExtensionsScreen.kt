@@ -17,11 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.GetApp
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -55,6 +51,7 @@ import eu.kanade.presentation.browse.components.NovaBrowseHudHeader
 import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.presentation.manga.components.DotSeparatorNoSpaceText
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionReposScreen
+import eu.kanade.presentation.theme.NovaIcons
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.util.animateItemFastScroll
 import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
@@ -122,7 +119,7 @@ fun ExtensionScreen(
                     actions = persistentListOf(
                         EmptyScreenAction(
                             stringRes = MR.strings.label_extension_repos,
-                            icon = Icons.Outlined.Settings,
+                            icon = NovaIcons.Settings,
                             onClick = { navigator.push(ExtensionReposScreen()) },
                         ),
                     ),
@@ -521,7 +518,7 @@ private fun ExtensionItemActions(
             !isIdle -> {
                 IconButton(onClick = { onClickItemCancel(extension) }) {
                     Icon(
-                        imageVector = Icons.Outlined.Close,
+                        imageVector = NovaIcons.Close,
                         contentDescription = stringResource(MR.strings.action_cancel),
                     )
                 }
@@ -539,7 +536,7 @@ private fun ExtensionItemActions(
                     is Extension.Installed -> {
                         IconButton(onClick = { onClickItemSecondaryAction(extension) }) {
                             Icon(
-                                imageVector = Icons.Outlined.Settings,
+                                imageVector = NovaIcons.Settings,
                                 contentDescription = stringResource(MR.strings.action_settings),
                             )
                         }
@@ -547,7 +544,7 @@ private fun ExtensionItemActions(
                         if (extension.hasUpdate) {
                             IconButton(onClick = { onClickItemAction(extension) }) {
                                 Icon(
-                                    imageVector = Icons.Outlined.GetApp,
+                                    imageVector = NovaIcons.Download,
                                     contentDescription = stringResource(MR.strings.ext_update),
                                 )
                             }
@@ -567,7 +564,7 @@ private fun ExtensionItemActions(
                                 onClick = { onClickItemSecondaryAction(extension) },
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Public,
+                                    imageVector = NovaIcons.Web,
                                     contentDescription = stringResource(MR.strings.action_open_in_web_view),
                                 )
                             }
@@ -575,7 +572,7 @@ private fun ExtensionItemActions(
 
                         IconButton(onClick = { onClickItemAction(extension) }) {
                             Icon(
-                                imageVector = Icons.Outlined.GetApp,
+                                imageVector = NovaIcons.Download,
                                 contentDescription = stringResource(MR.strings.ext_install),
                             )
                         }

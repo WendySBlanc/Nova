@@ -21,8 +21,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.home.novaInkEntrance
+import eu.kanade.presentation.theme.novaReducedMotion
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
@@ -102,21 +107,25 @@ fun ReaderAppBars(
 ) {
     val backgroundColor = NovaVikiColors.Surface.copy(alpha = 0.97f)
     val motionScheme = MaterialTheme.motionScheme
+    val travelPx = with(LocalDensity.current) { 20.dp.roundToPx() }
+    val reducedMotion = novaReducedMotion()
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxHeight()) {
             AnimatedVisibility(
                 visible = visible,
                 enter = slideInVertically(
-                    initialOffsetY = { -it },
+                    initialOffsetY = { -minOf(it, travelPx) },
                     animationSpec = motionScheme.fastSpatialSpec(),
                 ) + fadeIn(animationSpec = motionScheme.fastEffectsSpec()),
                 exit = slideOutVertically(
-                    targetOffsetY = { -it },
+                    targetOffsetY = { -minOf(it, travelPx) },
                     animationSpec = motionScheme.fastSpatialSpec(),
                 ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
             ) {
-                Column {
+                val reveal = if (reducedMotion) Modifier else Modifier.novaInkEntrance(this, !rtl, withSurface = false)
+                Column(modifier = reveal) {
                     ReaderTopBar(
                         mangaTitle = mangaTitle,
                         chapterTitle = chapterTitle,
@@ -154,19 +163,21 @@ fun ReaderAppBars(
             AnimatedVisibility(
                 visible = visible,
                 enter = slideInVertically(
-                    initialOffsetY = { it },
+                    initialOffsetY = { minOf(it, travelPx) },
                     animationSpec = motionScheme.fastSpatialSpec(),
                 ) + fadeIn(animationSpec = motionScheme.fastEffectsSpec()),
                 exit = slideOutVertically(
-                    targetOffsetY = { it },
+                    targetOffsetY = { minOf(it, travelPx) },
                     animationSpec = motionScheme.fastSpatialSpec(),
                 ) + fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
             ) {
+                val reveal = if (reducedMotion) Modifier else Modifier.novaInkEntrance(this, rtl, withSurface = false)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 8.dp)
-                        .windowInsetsPadding(WindowInsets.navigationBars),
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .then(reveal),
                     contentAlignment = Alignment.Center,
                 ) {
                     ReaderBottomBar(

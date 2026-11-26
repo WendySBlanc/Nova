@@ -1,249 +1,334 @@
 package eu.kanade.presentation.library.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import eu.kanade.presentation.theme.NovaVikiColors
-import eu.kanade.presentation.theme.novaSpatialCarouselHeightDp
-import eu.kanade.presentation.theme.novaSpatialCarouselPreferredWidthDp
-import eu.kanade.presentation.util.rememberHighQualityImageRequest
+import androidx.compose.ui.unit.sp
+import eu.kanade.presentation.home.nextNovaCarouselPage
+import eu.kanade.presentation.home.novaPagerMotionOffset
+import eu.kanade.presentation.theme.novaReducedMotion
+import eu.kanade.presentation.util.LocalNovaSharedTransitionState
 import kotlinx.coroutines.delay
+import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.i18n.stringResource
+import kotlin.math.abs
+import kotlin.math.round
 
 @Composable
 internal fun NovaRevResumeCarousel(
     items: List<NovaVikiManga>,
+    autoAdvanceEnabled: Boolean,
     onOpenManga: (Long) -> Unit,
+    onResumeManga: (Long) -> Unit,
     onSearch: () -> Unit,
 ) {
     if (items.isEmpty()) {
-        NovaEmptyResumeCard(onSearch = onSearch)
+        Column(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
+        ) {
+            Text(
+                text = stringResource(MR.strings.nova_home_empty),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Button(onClick = onSearch) {
+                Icon(Icons.Outlined.Search, contentDescription = null)
+                Text(stringResource(MR.strings.browse), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
         return
     }
 
-    val carouselState = rememberCarouselState { items.size }
-    val autoAdvanceSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-    LaunchedEffect(carouselState, items.size, autoAdvanceSpec) {
-        if (items.size <= 1) return@LaunchedEffect
+    val pagerState = rememberPagerState { items.size }
+    val interactions = remember { MutableInteractionSource() }
+    val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+    val isPressed by interactions.collectIsPressedAsState()
+    val reducedMotion = novaReducedMotion()
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val autoAdvanceSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val sharedTransition = LocalNovaSharedTransitionState.current
+    val minimumTimeout = LocalAccessibilityManager.current?.calculateRecommendedTimeoutMillis(
+        originalTimeoutMillis = AUTO_ADVANCE_DELAY_MILLIS,
+        containsText = true,
+        containsControls = true,
+    ) ?: AUTO_ADVANCE_DELAY_MILLIS
+    val autoAdvance = autoAdvanceEnabled && !reducedMotion && items.size > 1 && !isDragged && !isPressed
+    LaunchedEffect(pagerState, items.size, autoAdvance, minimumTimeout, autoAdvanceSpec) {
+        if (!autoAdvance) return@LaunchedEffect
+        var direction = 1
         while (true) {
-            delay(AUTO_ADVANCE_DELAY_MILLIS)
-            if (carouselState.isScrollInProgress) continue
-
-            val nextItem = (carouselState.currentItem + 1) % items.size
-            if (nextItem == 0) {
-                carouselState.scrollToItem(nextItem)
-            } else {
-                carouselState.animateScrollToItem(nextItem, autoAdvanceSpec)
-            }
+            delay(minimumTimeout)
+            if (pagerState.isScrollInProgress) continue
+            val settled = pagerState.settledPage
+            val next = nextNovaCarouselPage(settled, items.size, direction)
+            direction = next.compareTo(settled)
+            pagerState.animateScrollToPage(next, animationSpec = autoAdvanceSpec)
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val availableWidthDp = maxWidth.value.toInt()
-        val carouselHeight = novaSpatialCarouselHeightDp(availableWidthDp).dp
-        val preferredItemWidth = novaSpatialCarouselPreferredWidthDp(
-            availableWidthDp = availableWidthDp,
-            itemCount = items.size,
-        ).dp
-        val horizontalPadding = if (maxWidth < 600.dp) 12.dp else 16.dp
-
-        HorizontalMultiBrowseCarousel(
-            state = carouselState,
-            preferredItemWidth = preferredItemWidth,
-            itemSpacing = 10.dp,
-            contentPadding = PaddingValues(horizontal = horizontalPadding),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(carouselHeight),
-        ) { index ->
-            val item = items[index]
-            NovaResumeCard(
-                item = item,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .maskClip(RoundedCornerShape(20.dp))
-                    .clickable(
-                        enabled = item.id >= 0L,
-                        role = Role.Button,
-                        onClick = { onOpenManga(item.id) },
-                    ),
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val imageHeight = (maxWidth * 0.96f).coerceIn(264.dp, 466.dp)
+            val type = MaterialTheme.typography
+            val captionHeight = with(LocalDensity.current) {
+                val label = type.labelLarge.lineHeight.toDp()
+                val title = type.headlineMedium.lineHeight.toDp() * 2
+                val metadata = type.bodyMedium.lineHeight.toDp()
+                val button = (label * 2 + 16.dp).coerceAtLeast(48.dp)
+                label + title + metadata + button + 26.dp
+            }
+            val captionTop = imageHeight * 0.58f
+            val stageHeight = imageHeight.coerceAtLeast(captionTop + captionHeight)
+            NovaCarouselPanels(
+                items = items,
+                pager = pagerState,
+                height = imageHeight,
+                reducedMotion = reducedMotion,
+                isRtl = isRtl,
+                selectedMangaId = sharedTransition?.selectedMangaId,
+            )
+            HorizontalPager(
+                state = pagerState,
+                key = { items[it].id },
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth().height(stageHeight).clipToBounds(),
+            ) { index ->
+                val item = items[index]
+                val canResume = item.lastRead > 0L && item.remainingChapters > 0L
+                NovaFeaturedStory(
+                    item = item,
+                    captionTop = captionTop,
+                    canResume = canResume,
+                    pageOffset = {
+                        novaPagerMotionOffset(
+                            page = index,
+                            currentPage = pagerState.currentPage,
+                            currentPageOffset = pagerState.currentPageOffsetFraction,
+                            isRtl = isRtl,
+                            reducedMotion = reducedMotion,
+                        )
+                    },
+                    interactions = interactions,
+                    onOpenManga = { onOpenManga(item.id) },
+                    onResumeManga = { onResumeManga(item.id) },
+                )
+            }
+        }
+        if (items.size > 1) {
+            val current = pagerState.settledPage.coerceIn(items.indices)
+            val position = stringResource(MR.strings.nova_home_feature_position, current + 1, items.size)
+            NovaCarouselIndicator(
+                count = items.size,
+                label = position,
+                isRtl = isRtl,
+                pagePosition = {
+                    if (reducedMotion) pagerState.settledPage.toFloat()
+                    else pagerState.currentPage + pagerState.currentPageOffsetFraction
+                },
             )
         }
     }
 }
 
 @Composable
-private fun NovaResumeCard(
-    item: NovaVikiManga,
-    modifier: Modifier = Modifier,
-) {
-    val coverRequest = rememberHighQualityImageRequest(item.coverData)
-    val fallbackAccent = NovaVikiColors.Accent
-    val fallbackSurface = NovaVikiColors.Surface
-    val palette = remember(item.colors, fallbackAccent, fallbackSurface) {
-        when {
-            item.colors.size >= 2 -> item.colors
-            item.colors.size == 1 -> listOf(item.colors.first(), fallbackSurface)
-            else -> listOf(fallbackAccent, fallbackSurface)
-        }
-    }
-    Box(
-        modifier = modifier.background(Brush.linearGradient(palette)),
+private fun NovaCarouselIndicator(count: Int, label: String, isRtl: Boolean, pagePosition: () -> Float) {
+    val activeColor = MaterialTheme.colorScheme.primary
+    val inactiveColor = MaterialTheme.colorScheme.outlineVariant
+    Canvas(
+        Modifier.padding(top = 8.dp, bottom = 4.dp)
+            .size((count * 16).dp, 6.dp)
+            .semantics { contentDescription = label },
     ) {
-        if (item.coverData != null) {
-            AsyncImage(
-                model = coverRequest,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                filterQuality = FilterQuality.High,
-                modifier = Modifier.fillMaxSize(),
-            )
+        val step = 16.dp.toPx()
+        val radius = 2.5.dp.toPx()
+        val last = count - 1f
+        fun centerAt(page: Float): Float = step * (0.5f + if (isRtl) last - page else page)
+        repeat(count) { index ->
+            drawCircle(inactiveColor, radius, Offset(centerAt(index.toFloat()), center.y))
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        0f to Color.Black.copy(alpha = 0.78f),
-                        0.6f to Color.Black.copy(alpha = 0.2f),
-                        1f to Color.Transparent,
-                    ),
-                )
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.55f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.72f),
-                    ),
-                ),
+        val position = pagePosition().coerceIn(0f, last)
+        val halfWidth = (6.dp.toPx() + abs(position - round(position)) * 3.dp.toPx())
+        drawRoundRect(
+            color = activeColor,
+            topLeft = Offset(centerAt(position) - halfWidth, center.y - radius),
+            size = Size(halfWidth * 2f, radius * 2f),
+            cornerRadius = CornerRadius(radius),
         )
+    }
+}
+
+@Composable
+private fun NovaFeaturedStory(
+    item: NovaVikiManga,
+    captionTop: Dp,
+    canResume: Boolean,
+    pageOffset: () -> Float,
+    interactions: MutableInteractionSource,
+    onOpenManga: () -> Unit,
+    onResumeManga: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(18.dp),
+                .align(Alignment.BottomStart)
+                .padding(top = captionTop)
+                .widthIn(max = 650.dp)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, bottom = 6.dp)
+                .graphicsLayer {
+                    val offset = pageOffset()
+                    translationX = -offset * 20.dp.toPx()
+                    alpha = 1f - abs(offset) * 0.40f
+                },
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = if (item.downloadedChapters > 0L) "HORS LIGNE" else "À CONTINUER",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                )
-                NovaChapterBadges(item = item)
-            }
-            Spacer(Modifier.weight(1f))
+            Text(
+                text = stringResource(
+                    if (canResume) MR.strings.nova_home_continue_reading else MR.strings.nova_home_featured,
+                ),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+            )
             Text(
                 text = item.title,
-                color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() },
             )
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = item.subtitle,
-                color = Color.White.copy(alpha = 0.86f),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color.White, RoundedCornerShape(50)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Spacer(Modifier.width(9.dp))
+            val metadata = item.subtitle.ifBlank { item.tag }
+            if (metadata.isNotBlank()) {
                 Text(
-                    text = item.progress
-                        ?.let { progress -> "Reprendre - ${(progress.coerceIn(0f, 1f) * 100).toInt()} %" }
-                        ?: "Lire",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
+                    text = metadata,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            Row(
+                modifier = Modifier.padding(top = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = if (canResume) onResumeManga else onOpenManga,
+                    modifier = Modifier.weight(1f, fill = false).heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    interactionSource = interactions,
+                ) {
+                    Icon(
+                        if (canResume) Icons.Filled.PlayArrow else Icons.Outlined.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = stringResource(if (canResume) MR.strings.action_resume else MR.strings.nova_home_details),
+                        modifier = Modifier.padding(start = 8.dp),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (canResume) {
+                    OutlinedIconButton(
+                        onClick = onOpenManga,
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        interactionSource = interactions,
+                    ) {
+                        Icon(Icons.Outlined.Info, stringResource(MR.strings.nova_home_details))
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun NovaEmptyResumeCard(onSearch: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = "Votre prochaine lecture commence ici",
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black,
-        )
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onSearch) {
-            Icon(Icons.Outlined.Search, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Découvrir")
+internal fun NovaEditorialCardHeading(
+    label: String,
+    title: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        if (label.isNotBlank()) {
+            Text(
+                text = label.uppercase(),
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                fontSize = if (compact) 11.sp else 13.sp,
+                letterSpacing = 0.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+        Text(
+            text = title,
+            color = Color.White,
+            style = MaterialTheme.typography.headlineMedium,
+            fontSize = if (compact) 20.sp else 30.sp,
+            lineHeight = if (compact) 22.sp else 32.sp,
+            letterSpacing = 0.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

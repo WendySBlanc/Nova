@@ -1,5 +1,7 @@
 package eu.kanade.tachiyomi.data.backup.restore.restorers
 
+import eu.kanade.domain.chapter.model.novaSourceReleaseTime
+import eu.kanade.domain.chapter.model.withNovaSourceReleaseTime
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.chapter.model.Chapter
@@ -68,6 +70,19 @@ class RestoredChapterMergeTest {
         merged.lastPageRead shouldBe 5L
         merged.sourceOrder shouldBe 8L
         merged.dateUpload shouldBe 1_000L
+    }
+
+    @Test
+    fun `restore keeps the confirmed source hour and calendar index together`() {
+        val backup = chapter(dateUpload = 8_000L)
+        val local = chapter(dateUpload = 2_000L)
+        val confirmed = backup.copy(memo = backup.memo.withNovaSourceReleaseTime(8_000L))
+
+        for (isSync in listOf(true, false)) {
+            val merged = mergeRestoredChapter(confirmed, local, isSync)
+            merged.dateUpload shouldBe 8_000L
+            merged.memo.novaSourceReleaseTime() shouldBe 8_000L
+        }
     }
 
     private fun chapter(

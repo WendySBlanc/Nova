@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
@@ -67,6 +68,10 @@ fun TachiyomiTheme(
     } else {
         val uiPreferences = Injekt.get<UiPreferences>()
         val isAmoled = amoled ?: uiPreferences.themeDarkAmoled().get()
+        val isDark = isSystemInDarkTheme()
+        val base = remember(isDark, isAmoled) {
+            if (isDark) novaSignalDarkColorScheme(isAmoled) else novaSignalLightColorScheme()
+        }
         DynamicMaterialExpressiveTheme(
             seedColor = seedColor,
             isAmoled = isAmoled,
@@ -74,8 +79,16 @@ fun TachiyomiTheme(
             shapes = NovaSignalShapes,
             typography = typography,
             animate = true,
-            content = content,
-        )
+        ) {
+            val accent = MaterialTheme.colorScheme
+            MaterialExpressiveTheme(
+                colorScheme = remember(base, accent) { base.withNovaAccentColors(accent) },
+                motionScheme = MaterialTheme.motionScheme,
+                shapes = NovaSignalShapes,
+                typography = typography,
+                content = content,
+            )
+        }
     }
 }
 // KMK <--
@@ -117,13 +130,8 @@ private fun getThemeColorScheme(
     isDark: Boolean,
     isAmoled: Boolean,
 ): ColorScheme {
-    if (appTheme == AppTheme.DEFAULT) {
-        return if (isDark) {
-            novaSignalDarkColorScheme(isAmoled)
-        } else {
-            novaSignalLightColorScheme()
-        }
-    }
+    val base = if (isDark) novaSignalDarkColorScheme(isAmoled) else novaSignalLightColorScheme()
+    if (appTheme == AppTheme.DEFAULT) return base
     val colorScheme = when (appTheme) {
         AppTheme.MONET -> {
             MonetColorScheme(context)
@@ -141,11 +149,7 @@ private fun getThemeColorScheme(
             colorSchemes.getOrDefault(appTheme, TachiyomiColorScheme)
         }
     }
-    return colorScheme.getColorScheme(
-        isDark = isDark,
-        isAmoled = isAmoled,
-        overrideDarkSurfaceContainers = appTheme != AppTheme.MONET,
-    )
+    return base.withNovaAccentColors(if (isDark) colorScheme.darkScheme else colorScheme.lightScheme)
 }
 
 private val colorSchemes: Map<AppTheme, BaseColorScheme> = mapOf(

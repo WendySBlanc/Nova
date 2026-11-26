@@ -1,5 +1,7 @@
 package eu.kanade.tachiyomi.data.backup.restore.restorers
 
+import eu.kanade.domain.chapter.model.novaSourceReleaseTime
+import eu.kanade.domain.chapter.model.withNovaSourceReleaseTime
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupChapter
@@ -40,12 +42,16 @@ internal fun mergeRestoredChapter(
     dbChapter: Chapter,
     isSync: Boolean,
 ): Chapter {
+    val sourceRelease = chapter.memo.novaSourceReleaseTime() ?: dbChapter.memo.novaSourceReleaseTime()
+    val releaseTime = sourceRelease?.takeIf { it > 0L } ?: min(chapter.dateUpload, dbChapter.dateUpload)
+    val memo = sourceRelease?.let { chapter.memo.withNovaSourceReleaseTime(it) } ?: chapter.memo
     if (isSync) {
         return chapter.copy(
             id = dbChapter.id,
             bookmark = chapter.bookmark || dbChapter.bookmark,
             sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
-            dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
+            dateUpload = releaseTime,
+            memo = memo,
         )
     }
 
@@ -55,7 +61,8 @@ internal fun mergeRestoredChapter(
         read = chapter.read || dbChapter.read,
         lastPageRead = max(chapter.lastPageRead, dbChapter.lastPageRead),
         sourceOrder = max(chapter.sourceOrder, dbChapter.sourceOrder),
-        dateUpload = min(chapter.dateUpload, dbChapter.dateUpload),
+        dateUpload = releaseTime,
+        memo = memo,
     )
 }
 
@@ -214,7 +221,9 @@ class MangaRestorer(
 
         val (existingChapters, newChapters) = backupChapters
             .mapNotNull { backupChapter ->
-                val chapter = backupChapter.toChapterImpl().copy(mangaId = manga.id)
+                val restored = backupChapter.toChapterImpl()
+                val publishedAt = restored.memo.novaSourceReleaseTime()?.takeIf { it > 0L } ?: restored.dateUpload
+                val chapter = restored.copy(mangaId = manga.id, dateUpload = publishedAt)
                 val dbChapter = dbChaptersByUrl[chapter.url]
 
                 when {

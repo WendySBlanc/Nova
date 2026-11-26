@@ -133,6 +133,9 @@ class MangaScreen(
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
 ) : Screen(), AssistContentScreen, NovaTitleDetailScreen {
 
+    override val artworkMangaId: Long
+        get() = mangaId
+
     private var assistUrl: String? = null
 
     override fun onProvideAssistUrl() = assistUrl
@@ -332,6 +335,7 @@ class MangaScreen(
             },
             onTagSearch = { scope.launch { performGenreSearch(navigator, it, screenModel.source!!) } },
             onFilterButtonClicked = screenModel::showSettingsDialog,
+            onReverseChapterOrder = { screenModel.setSorting(successState.manga.sorting) },
             onRefresh = screenModel::fetchAllFromSource,
             onContinueReading = {
                 scope.launch {

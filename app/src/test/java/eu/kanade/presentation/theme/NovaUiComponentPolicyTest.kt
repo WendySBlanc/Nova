@@ -110,10 +110,13 @@ class NovaUiComponentPolicyTest {
         val moreScreen = source("app/src/main/java/eu/kanade/presentation/more/MoreScreen.kt")
         val moreTab = source("app/src/main/java/eu/kanade/tachiyomi/ui/more/MoreTab.kt")
 
-        moreScreen.shouldContain("text = \"Param\\u00e8tres\"")
+        val frenchStrings = source("i18n/src/commonMain/moko-resources/fr/strings.xml")
+
+        moreScreen.shouldContain("text = stringResource(MR.strings.label_settings)")
         moreScreen.shouldNotContain("text = \"Moi\"")
-        moreTab.shouldContain("title = \"Param\\u00e8tres\"")
+        moreTab.shouldContain("title = stringResource(MR.strings.label_settings)")
         moreTab.shouldNotContain("title = \"Moi\"")
+        frenchStrings.shouldContain("<string name=\"label_settings\">Param\u00e8tres</string>")
     }
 
     @Test

@@ -3,7 +3,14 @@ package eu.kanade.tachiyomi.data.library
 import androidx.work.WorkInfo
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
 
 class LibraryUpdatePolicyTest {
@@ -76,5 +83,72 @@ class LibraryUpdatePolicyTest {
         }
 
         events shouldBe listOf("start", "prepare", "finish")
+    }
+
+    @Test
+    fun `an unresponsive source is reported and does not stop the next title from updating`() = runTest {
+        val failure = runCatching { withLibrarySourceDeadline(100) { awaitCancellation() } }.exceptionOrNull()
+
+        (failure is LibrarySourceTimeoutException) shouldBe true
+        withLibrarySourceDeadline(100) { listOf("chapter") } shouldBe listOf("chapter")
+    }
+
+    @Test
+    fun `an extension inner timeout is a title error but a parent timeout is cancellation`() = runTest {
+        val innerFailure = runCatching {
+            withLibrarySourceDeadline(100) { withTimeout(10) { awaitCancellation() } }
+        }.exceptionOrNull()
+        val parentFailure = runCatching {
+            withTimeout(10) { withLibrarySourceDeadline(100) { awaitCancellation() } }
+        }.exceptionOrNull()
+
+        (innerFailure is LibrarySourceTimeoutException) shouldBe true
+        (parentFailure is TimeoutCancellationException) shouldBe true
+    }
+
+    @Test
+    fun `cancelling a refresh does not report a source timeout`() = runTest {
+        val started = CompletableDeferred<Unit>()
+        var failure: Throwable? = null
+        val job = launch {
+            failure = runCatching {
+                withLibrarySourceDeadline(100) {
+                    started.complete(Unit)
+                    awaitCancellation()
+                }
+            }.exceptionOrNull()
+        }
+        started.await()
+        job.cancelAndJoin()
+
+        (failure is kotlinx.coroutines.CancellationException) shouldBe true
+    }
+
+    @Test
+    fun `concurrent progress counts each processed title once and ends at the real total`() = runTest {
+        val events = mutableListOf<Pair<List<String>, Int>>()
+        val progress = LibraryRefreshProgress<String>(2) { active, completed, total ->
+            total shouldBe 2
+            events += active to completed
+        }
+        val started = CompletableDeferred<Unit>()
+        val proceed = CompletableDeferred<Unit>()
+        val first = async {
+            progress.track("first") {
+                started.complete(Unit)
+                proceed.await()
+            }
+        }
+        started.await()
+        progress.track("removed from library") {}
+        proceed.complete(Unit)
+        first.await()
+
+        events shouldBe listOf(
+            listOf("first") to 0,
+            listOf("first", "removed from library") to 0,
+            listOf("first") to 1,
+            emptyList<String>() to 2,
+        )
     }
 }

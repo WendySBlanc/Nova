@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DoneAll
-import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.theme.NovaIcons
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.MR
@@ -134,7 +134,7 @@ fun GlobalSearchToolbar(
                 onClick = { onToggleResults() },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.FilterList,
+                        imageVector = NovaIcons.Filter,
                         contentDescription = null,
                         modifier = Modifier
                             .size(FilterChipDefaults.IconSize),

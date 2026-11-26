@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.activity
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,15 +23,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import eu.kanade.presentation.components.NovaLiquidTabLabel
 import eu.kanade.presentation.components.novaHollowPacket
+import eu.kanade.presentation.home.novaInkEntrance
+import eu.kanade.presentation.home.novaInkHold
 import eu.kanade.presentation.theme.NovaVikiColors
+import eu.kanade.presentation.theme.novaReducedMotion
 import eu.kanade.presentation.theme.novaSpatialBackdrop
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
@@ -130,24 +136,33 @@ data object NovaActivityTab : Tab {
             }
             HorizontalDivider(color = NovaVikiColors.Outline)
 
-            AnimatedContent(
-                targetState = section,
+            val reducedMotion = novaReducedMotion()
+            val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+            val sections = updateTransition(section, label = "activitySection")
+            sections.AnimatedContent(
                 transitionSpec = {
-                    materialFadeThroughIn(initialScale = 1f) togetherWith materialFadeThroughOut()
+                    if (reducedMotion) {
+                        materialFadeThroughIn(initialScale = 1f) togetherWith materialFadeThroughOut()
+                    } else {
+                        novaInkHold()
+                    }
                 },
-                label = "activitySection",
             ) { selected ->
-                when (selected) {
-                    NovaActivitySection.Updates -> UpdatesTab.Content()
-                    NovaActivitySection.Downloads -> DownloadQueueScreen.Content()
-                    NovaActivitySection.History -> HistoryTab.Content()
-                    NovaActivitySection.Problems -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Button(onClick = { navigator.push(LibraryUpdateErrorScreen()) }) {
-                                Text("Voir les problèmes de mise à jour")
+                val fromLeft = (sections.targetState.ordinal < sections.currentState.ordinal) != rtl
+                val reveal = if (reducedMotion) Modifier else Modifier.novaInkEntrance(this, fromLeft)
+                Box(Modifier.fillMaxSize().then(reveal)) {
+                    when (selected) {
+                        NovaActivitySection.Updates -> UpdatesTab.Content()
+                        NovaActivitySection.Downloads -> DownloadQueueScreen.Content()
+                        NovaActivitySection.History -> HistoryTab.Content()
+                        NovaActivitySection.Problems -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Button(onClick = { navigator.push(LibraryUpdateErrorScreen()) }) {
+                                    Text("Voir les problèmes de mise à jour")
+                                }
                             }
                         }
                     }

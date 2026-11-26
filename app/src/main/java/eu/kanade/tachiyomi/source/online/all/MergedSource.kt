@@ -4,6 +4,7 @@ import eu.kanade.domain.chapter.interactor.SyncChaptersWithSource
 import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.library.withLibrarySourceDeadline
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
@@ -29,6 +30,7 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MergedMangaReference
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.injectLazy
+import java.util.concurrent.atomic.AtomicReference
 
 class MergedSource : HttpSource() {
     private val getManga: GetManga by injectLazy()
@@ -110,14 +112,22 @@ class MergedSource : HttpSource() {
         fetchChaptersAndSync(manga, downloadChapters)
     }
 
-    suspend fun fetchChaptersAndSync(manga: Manga, downloadChapters: Boolean = true): List<Chapter> {
+    suspend fun fetchChaptersAndSync(manga: Manga, downloadChapters: Boolean = true): List<Chapter> =
+        fetchChaptersAndSync(manga, downloadChapters, timeoutMillis = null) { throw it }
+
+    internal suspend fun fetchChaptersAndSync(
+        manga: Manga,
+        downloadChapters: Boolean,
+        timeoutMillis: Long?,
+        onFailure: (Exception) -> Unit,
+    ): List<Chapter> {
         val mangaReferences = getMergedReferencesById.await(manga.id)
         require(mangaReferences.isNotEmpty()) {
             "Manga references are empty, chapters unavailable, merge is likely corrupted"
         }
 
         val semaphore = Semaphore(5)
-        var exception: Exception? = null
+        val firstFailure = AtomicReference<Exception?>()
         return supervisorScope {
             mangaReferences
                 .groupBy(MergedMangaReference::mangaSourceId)
@@ -127,9 +137,19 @@ class MergedSource : HttpSource() {
                         semaphore.withPermit {
                             values.flatMap {
                                 try {
-                                    val (source, loadedManga, reference) = it.load()
-                                    if (loadedManga != null && reference.getChapterUpdates) {
-                                        val chapterList = source.getChapterList(loadedManga.toSManga())
+                                    val fetch = suspend {
+                                        val loaded = it.load()
+                                        val chapters = loaded.manga?.takeIf { loaded.reference.getChapterUpdates }
+                                            ?.let { title -> loaded.source.getChapterList(title.toSManga()) }
+                                        loaded to chapters
+                                    }
+                                    val (loaded, chapterList) = if (timeoutMillis != null) {
+                                        withLibrarySourceDeadline(timeoutMillis, fetch)
+                                    } else {
+                                        fetch()
+                                    }
+                                    val (source, loadedManga, reference) = loaded
+                                    if (loadedManga != null && chapterList != null) {
                                         val results =
                                             syncChaptersWithSource.await(chapterList, loadedManga, source)
 
@@ -148,7 +168,7 @@ class MergedSource : HttpSource() {
                                     }
                                 } catch (e: Exception) {
                                     if (e is CancellationException) throw e
-                                    exception = e
+                                    firstFailure.compareAndSet(null, e)
                                     emptyList()
                                 }
                             }
@@ -158,7 +178,7 @@ class MergedSource : HttpSource() {
                 .awaitAll()
                 .flatten()
         }.also {
-            exception?.let { throw it }
+            firstFailure.get()?.let(onFailure)
         }
     }
 

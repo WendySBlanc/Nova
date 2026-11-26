@@ -1,10 +1,14 @@
 package eu.kanade.presentation.library.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -21,66 +25,77 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.components.NovaFluidFixedTabRow
+import eu.kanade.presentation.components.NovaToolbarIconButton
+import eu.kanade.presentation.home.LocalNovaDockBottomInset
+import eu.kanade.presentation.home.NovaHomeRow
 import eu.kanade.presentation.home.NovaHomeSections
+import eu.kanade.presentation.home.novaInkEntrance
+import eu.kanade.presentation.home.novaInkHold
 import eu.kanade.presentation.library.NovaLibraryEntry
+import eu.kanade.presentation.theme.NovaIcons
 import eu.kanade.presentation.theme.NovaVikiColors
 import eu.kanade.presentation.theme.NovaVikiDimensions
 import eu.kanade.presentation.theme.novaGlassSurface
 import eu.kanade.presentation.theme.novaNeonProgress
-import eu.kanade.presentation.theme.novaSpatialBackdrop
-import eu.kanade.presentation.theme.novaSpatialHomeColumns
+import eu.kanade.presentation.theme.novaReducedMotion
+import eu.kanade.presentation.util.LocalNovaAnimatedVisibilityScope
 import eu.kanade.presentation.util.LocalNovaSharedTransitionState
+import eu.kanade.presentation.util.LocalNovaTransitionScreenKey
 import eu.kanade.presentation.util.novaMangaSharedArtwork
 import eu.kanade.presentation.util.rememberHighQualityImageRequest
 import kotlinx.coroutines.delay
@@ -88,151 +103,162 @@ import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.i18n.stringResource
-import androidx.compose.foundation.lazy.grid.items as gridItems
 
 typealias NovaVikiManga = NovaLibraryEntry
 
 @Composable
 fun NovaVikiHomeScreen(
     sections: NovaHomeSections,
+    autoAdvance: Boolean,
+    showUpdates: Boolean,
+    showRecent: Boolean,
+    recentFirst: Boolean,
+    libraryReady: Boolean,
+    isRefreshing: Boolean,
     onSearch: () -> Unit,
     onOpenManga: (Long) -> Unit,
-    onRefresh: () -> Boolean,
+    onResumeManga: (Long) -> Unit,
+    onRefresh: () -> Unit,
     resetToTopKey: Int,
 ) {
-    val scope = rememberCoroutineScope()
-    val gridState = rememberLazyGridState()
-    var isRefreshing by remember { mutableStateOf(false) }
-    val heroItemsToShow = remember(sections) {
-        sections.resume
-            .ifEmpty { sections.newChapters }
-            .ifEmpty { sections.recentlyAdded }
-            .take(8)
-    }
-    var selectedRail by remember { mutableStateOf<NovaRail?>(null) }
-    val rails = remember(sections) {
-        if (sections.newChapters.isNotEmpty() || sections.recentlyAdded.isNotEmpty()) {
-            listOf(
-                NovaRail(
-                    title = "Nouveaux chapitres",
-                    items = sections.newChapters,
-                ),
-                NovaRail(
-                    title = "Ajoutés récemment",
-                    items = sections.recentlyAdded,
-                ),
-            ).filter { rail -> rail.items.isNotEmpty() }
-        } else {
-            fallbackSections
-        }
+    val listState = rememberLazyListState()
+    val dockInset = LocalNovaDockBottomInset.current
+    val heroItems = remember(sections) { sections.featuredItems() }
+    var selectedRow by remember { mutableStateOf<NovaHomeRow?>(null) }
+    val visibleRows = remember(sections, showUpdates, showRecent, recentFirst) {
+        sections.visibleRows(showUpdates, showRecent, recentFirst)
     }
 
     LaunchedEffect(resetToTopKey) {
         if (resetToTopKey > 0) {
-            selectedRail = null
-            gridState.scrollToItem(0)
+            selectedRow = null
+            listState.scrollToItem(0)
         }
     }
 
-    BackHandler(enabled = selectedRail != null) {
-        selectedRail = null
+    val sharedTransition = LocalNovaSharedTransitionState.current
+    val sourceScreenKey = LocalNovaTransitionScreenKey.current
+    val screenVisible = LocalNovaAnimatedVisibilityScope.current?.transition?.targetState != EnterExitState.PostExit
+    val activeRail = selectedRow?.takeIf { row -> visibleRows.any { it.first == row } }
+    val motionScheme = MaterialTheme.motionScheme
+    val reducedMotion = novaReducedMotion()
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+
+    fun openWithoutHero(mangaId: Long) {
+        sharedTransition?.clearSelection()
+        onOpenManga(mangaId)
     }
 
-    selectedRail?.let { section ->
-        NovaRailListScreen(
-            section = section,
-            onBack = { selectedRail = null },
-            onOpenManga = onOpenManga,
-        )
-        return
-    }
+    BackHandler(enabled = activeRail != null) { selectedRow = null }
 
-    PullRefresh(
-        refreshing = isRefreshing,
-        enabled = selectedRail == null,
-        onRefresh = {
-            val started = onRefresh()
-            if (!started) return@PullRefresh
-            scope.launch {
-                isRefreshing = true
-                delay(1000)
-                isRefreshing = false
+    val collections = updateTransition(activeRail, label = "home-collection")
+    collections.AnimatedContent(
+        modifier = Modifier.fillMaxSize().clipToBounds(),
+        transitionSpec = {
+            val effects = motionScheme.fastEffectsSpec<Float>()
+            if (reducedMotion) {
+                fadeIn(effects) togetherWith fadeOut(effects)
+            } else {
+                novaInkHold()
             }
         },
-        modifier = Modifier
-            .fillMaxSize()
-            .novaSpatialBackdrop(
-                background = NovaVikiColors.Background,
-                primary = NovaVikiColors.Accent,
-                secondary = NovaVikiColors.AccentWarm,
-                tertiary = NovaVikiColors.AccentGold,
-                wireColor = NovaVikiColors.OutlineStrong,
-                wireAlpha = 0.07f,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            NovaVikiSearchHeader(
-                title = stringResource(MR.strings.label_home_nova),
-                onSearch = onSearch,
+    ) { rail ->
+        val fromLeft = (collections.targetState == null) != rtl
+        val reveal = if (reducedMotion) Modifier else Modifier.novaInkEntrance(this, fromLeft)
+        if (rail != null) {
+            val entries = visibleRows.firstOrNull { it.first == rail }?.second
+            val lastEntries = remember(rail) { mutableStateOf(entries.orEmpty()) }
+            SideEffect {
+                if (entries != null) lastEntries.value = entries
+            }
+            NovaRailListScreen(
+                section = NovaRail(title = stringResource(rail.titleRes), items = entries ?: lastEntries.value),
+                onBack = { selectedRow = null },
+                onOpenManga = ::openWithoutHero,
+                modifier = reveal,
             )
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+            return@AnimatedContent
+        }
+        Column(
+            modifier = reveal.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        ) {
+            NovaEditorialHomeHeader(onSearch = onSearch)
+            if (!libraryReady) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    LoadingIndicator()
+                }
+                return@Column
+            }
+            PullRefresh(
+                refreshing = isRefreshing,
+                enabled = true,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxWidth().weight(1f),
             ) {
-                val columnCount = novaSpatialHomeColumns(maxWidth.value.toInt())
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columnCount),
-                    state = gridState,
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp + dockInset),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    item(
-                        key = "home_resume_stage",
-                        contentType = "resume_stage",
-                        span = { GridItemSpan(maxLineSpan) },
-                    ) {
+                    item(key = "home_resume_stage", contentType = "resume_stage") {
                         NovaRevResumeCarousel(
-                            items = heroItemsToShow,
-                            onOpenManga = onOpenManga,
+                            items = heroItems,
+                            autoAdvanceEnabled = autoAdvance && activeRail == null && screenVisible,
+                            onOpenManga = { mangaId ->
+                                heroItems.firstOrNull { it.id == mangaId }?.let { entry ->
+                                    sharedTransition?.selectManga(entry.id, entry.coverData, entry.title, sourceScreenKey)
+                                }
+                                onOpenManga(mangaId)
+                            },
+                            onResumeManga = onResumeManga,
                             onSearch = onSearch,
                         )
                     }
-                    rails.forEach { section ->
-                        item(
-                            key = "home_section_${section.title}",
-                            contentType = "section_header",
-                            span = { GridItemSpan(maxLineSpan) },
-                        ) {
-                            NovaSpatialSectionHeader(
-                                section = section,
-                                onClick = { selectedRail = section },
-                            )
-                        }
-                        gridItems(
-                            items = section.items.take(columnCount * 2),
-                            key = { item -> "${section.title}_${item.id}" },
-                            contentType = { "spatial_poster" },
-                        ) { item ->
-                            NovaSpatialPosterCard(
-                                item = item,
-                                onClick = {
-                                    if (item.id >= 0L) {
-                                        onOpenManga(item.id)
-                                    }
-                                },
-                            )
-                        }
+                    items(
+                        items = visibleRows,
+                        key = { (row, _) -> row.name },
+                        contentType = { "home_row" },
+                    ) { (row, entries) ->
+                        NovaRailSection(
+                            section = NovaRail(title = stringResource(row.titleRes), items = entries),
+                            onOpenManga = ::openWithoutHero,
+                            onOpenSection = { selectedRow = row },
+                        )
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun NovaEditorialHomeHeader(
+    onSearch: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+            .padding(start = 16.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(MR.strings.label_home_nova),
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+        NovaToolbarIconButton(NovaIcons.Search, stringResource(MR.strings.action_search), onSearch)
+    }
+}
+
+private val NovaHomeRow.titleRes
+    get() = when (this) {
+        NovaHomeRow.NewChapters -> MR.strings.nova_home_new_chapters
+        NovaHomeRow.RecentlyAdded -> MR.strings.nova_home_recently_added
+    }
 
 @Composable
 internal fun NovaVikiSearchHeader(
@@ -264,7 +290,7 @@ internal fun NovaVikiSearchHeader(
         actions = {
             IconButton(onClick = onSearch) {
                 Icon(
-                    imageVector = Icons.Outlined.Search,
+                    imageVector = NovaIcons.Search,
                     contentDescription = stringResource(MR.strings.action_search),
                 )
             }
@@ -705,262 +731,45 @@ private fun PosterFace(title: String, modifier: Modifier) {
 }
 
 @Composable
-private fun NovaSpatialSectionHeader(
-    section: NovaRail,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(NovaVikiDimensions.MinimumTouchTarget)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(start = 2.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(24.dp)
-                .background(NovaVikiColors.Accent),
-        )
-        Spacer(Modifier.width(9.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "// ${section.title.uppercase()}",
-                color = NovaVikiColors.TextPrimary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${section.items.size} titres",
-                color = NovaVikiColors.TextSecondary,
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-            )
-        }
-        Icon(
-            imageVector = Icons.Outlined.ChevronRight,
-            contentDescription = "Afficher ${section.title}",
-            tint = NovaVikiColors.TextSecondary,
-        )
-    }
-}
-
-@Composable
-private fun NovaSpatialPosterCard(
-    item: NovaVikiManga,
-    onClick: () -> Unit,
-) {
-    val coverRequest = rememberHighQualityImageRequest(item.coverData)
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val cardScale by animateFloatAsState(
-        targetValue = if (pressed) 0.975f else 1f,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "home_spatial_card_scale",
-    )
-    val readingState = when {
-        item.remainingChapters > 1L -> "${item.remainingChapters} chapitres à lire"
-        item.remainingChapters == 1L -> "1 chapitre à lire"
-        item.progress != null -> "Lecture en cours"
-        else -> "À jour"
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) {
-                contentDescription = "${item.title}, $readingState"
-            }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                role = Role.Button,
-                onClick = onClick,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.58f)
-                .graphicsLayer {
-                    scaleX = cardScale
-                    scaleY = cardScale
-                }
-                .clip(RoundedCornerShape(NovaVikiDimensions.CardCorner))
-                .background(Brush.linearGradient(item.colors))
-                .border(
-                    width = 1.dp,
-                    color = NovaVikiColors.Outline.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(NovaVikiDimensions.CardCorner),
-                )
-                .novaNeonProgress(
-                    progress = item.progress ?: 0f,
-                    trackColor = Color.White.copy(alpha = 0.16f),
-                    progressColor = NovaVikiColors.Accent,
-                ),
-        ) {
-            if (item.coverData != null) {
-                AsyncImage(
-                    model = coverRequest,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    filterQuality = FilterQuality.High,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.04f),
-                            1f to Color.Black.copy(alpha = 0.68f),
-                        ),
-                    ),
-            )
-            Text(
-                text = item.tag,
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(7.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
-                    .padding(horizontal = 6.dp, vertical = 3.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            NovaChapterBadges(
-                item = item,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(7.dp),
-            )
-            Text(
-                text = readingState,
-                color = Color.White,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.height(7.dp))
-        Text(
-            text = item.title,
-            color = NovaVikiColors.TextPrimary,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = item.subtitle,
-            color = NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
 private fun NovaRailSection(
     section: NovaRail,
     onOpenManga: (Long) -> Unit,
     onOpenSection: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .background(NovaVikiColors.Background)
-            .padding(top = 16.dp),
-    ) {
-        Text(
-            text = "${section.title} >",
-            color = Color.White,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black,
+    Column {
+        Row(
             modifier = Modifier
-                .clickable(onClick = onOpenSection)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(9.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(
-                items = section.railItems,
-                key = { item -> item.id },
-                contentType = { "poster" },
-            ) { item ->
-                NovaPosterCard(
-                    item = item,
-                    onClick = {
-                        if (item.id >= 0L) {
-                            onOpenManga(item.id)
-                        }
-                    },
+                .fillMaxWidth()
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(MR.strings.nova_home_see_all, section.title),
+                    onClick = onOpenSection,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NovaInlineGridSection(
-    section: NovaRail,
-    onOpenManga: (Long) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .background(NovaVikiColors.Background)
-            .padding(top = 18.dp),
-    ) {
-        Text(
-            text = section.title,
-            color = Color.White,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(10.dp))
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            section.items.chunked(2).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    rowItems.forEach { item ->
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            NovaPosterCard(
-                                item = item,
-                                onClick = {
-                                    if (item.id >= 0L) {
-                                        onOpenManga(item.id)
-                                    }
-                                },
-                            )
-                        }
-                    }
-                    if (rowItems.size == 1) {
-                        Spacer(Modifier.weight(1f))
-                    }
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+            Icon(NovaIcons.Next, contentDescription = null)
+        }
+        BoxWithConstraints {
+            val posterWidth = (maxWidth / 3.3f).coerceIn(88.dp, 154.dp)
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(section.items, key = { it.id }, contentType = { "poster" }) { item ->
+                    NovaHomePoster(
+                        item = item,
+                        modifier = Modifier.width(posterWidth),
+                        onClick = { onOpenManga(item.id) },
+                    )
                 }
             }
         }
@@ -972,174 +781,73 @@ private fun NovaRailListScreen(
     section: NovaRail,
     onBack: () -> Unit,
     onOpenManga: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(NovaVikiColors.Background),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(NovaVikiDimensions.MinimumTouchTarget),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Retour",
-                    tint = NovaVikiColors.TextPrimary,
-                )
-            }
-            Spacer(Modifier.width(4.dp))
-            Column {
-                Text(
-                    text = section.title,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                )
-                Text(
-                    text = "${section.items.size} titles",
-                    color = NovaVikiColors.TextSecondary,
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                )
-            }
-        }
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        TopAppBar(
+            title = { Text(section.title, modifier = Modifier.semantics { heading() }) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(NovaIcons.Back, stringResource(MR.strings.nova_home_back))
+                }
+            },
+        )
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(123.dp),
+            columns = GridCells.Adaptive(112.dp),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 20.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 20.dp + LocalNovaDockBottomInset.current,
+            ),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            gridItems(
-                items = section.items,
-                key = { item -> item.id },
-                contentType = { "poster_grid" },
-            ) { item ->
-                Box(contentAlignment = Alignment.TopCenter) {
-                    NovaPosterCard(
-                        item = item,
-                        onClick = {
-                            if (item.id >= 0L) {
-                                onOpenManga(item.id)
-                            }
-                        },
-                    )
-                }
+            gridItems(section.items, key = { it.id }, contentType = { "poster_grid" }) { item ->
+                NovaHomePoster(
+                    item = item,
+                    onClick = { onOpenManga(item.id) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun NovaPosterCard(
+private fun NovaHomePoster(
     item: NovaVikiManga,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val coverRequest = rememberHighQualityImageRequest(item.coverData)
     Column(
-        modifier = Modifier
-            .width(123.dp)
-            .clickable(onClick = onClick),
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(role = Role.Button, onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(70.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(Brush.linearGradient(item.colors)),
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer),
         ) {
-            if (item.coverData != null) {
-                AsyncImage(
-                    model = coverRequest,
-                    contentDescription = item.title,
-                    contentScale = ContentScale.Crop,
-                    filterQuality = FilterQuality.High,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.22f)),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(7.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color.Black.copy(alpha = 0.42f))
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = item.tag,
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                )
-            }
+            AsyncImage(
+                model = coverRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
             NovaChapterBadges(
                 item = item,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(7.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(5.dp),
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.42f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            val progress = item.progress
-            if (progress != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(Color.White.copy(alpha = 0.22f)),
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(progress)
-                        .height(3.dp)
-                        .background(NovaVikiColors.Accent),
-                )
-            }
         }
-        Spacer(Modifier.height(7.dp))
-        Text(
-            text = item.subtitle,
-            color = NovaVikiColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
         Text(
             text = item.title,
-            color = Color.White,
-            style = MaterialTheme.typography.bodyLarge,
-            lineHeight = 19.sp,
+            style = MaterialTheme.typography.titleSmall,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -1168,15 +876,4 @@ private fun RatingBadge(text: String) {
 private data class NovaRail(
     val title: String,
     val items: List<NovaVikiManga>,
-    val railItems: List<NovaVikiManga> = items.take(12),
-    val inlineGrid: Boolean = false,
-)
-
-private val fallbackSections = listOf(
-    NovaRail(
-        title = "Continue Reading",
-        items = listOf(
-            NovaVikiManga(-1, "Your first manhwa", "Library empty", "NOVA", colors = listOf(Color(0xFF111B33), Color(0xFF235BB9), Color(0xFF58E3D2))),
-        ),
-    ),
 )

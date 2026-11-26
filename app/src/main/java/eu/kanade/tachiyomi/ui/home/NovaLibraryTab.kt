@@ -31,6 +31,7 @@ import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.library.LibraryItem
 import eu.kanade.tachiyomi.ui.library.LibraryScreenModel
+import eu.kanade.tachiyomi.ui.library.ReleaseCalendarScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
@@ -134,6 +135,7 @@ data object NovaLibraryTab : Tab {
                 }
             },
             onSearch = { navigator.push(GlobalSearchScreen("")) },
+            onCalendar = { navigator.push(ReleaseCalendarScreen()) },
             onOpenManga = { mangaId -> navigator.push(MangaScreen(mangaId)) },
             onSetArchived = libraryScreenModel::setNovaArchived,
             onRefresh = ::refreshLibrary,
@@ -161,7 +163,7 @@ data object NovaLibraryTab : Tab {
                 libraryManga.hasStarted -> "À jour"
                 else -> "Prêt à lire"
             },
-            tag = source?.name?.take(12) ?: if (isLocal) "Local" else "NOVA",
+            tag = source?.name ?: if (isLocal) "Local" else "NOVA",
             coverData = manga.asMangaCover(),
             colors = novaPalette(index),
             progress = libraryManga.totalChapters

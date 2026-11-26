@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import tachiyomi.core.common.i18n.stringResource
@@ -103,9 +104,7 @@ import java.time.ZonedDateTime
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.incrementAndFetch
 
 @OptIn(ExperimentalAtomicApi::class)
 class LibraryUpdateJob(private val context: Context, workerParams: WorkerParameters) :
@@ -165,7 +164,10 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         }
 
         return runLibraryUpdateLifecycle(
-            onStart = { libraryUpdateStatus.start() },
+            onStart = {
+                libraryUpdateStatus.updateProgress(0f)
+                libraryUpdateStatus.start()
+            },
             onFinish = {
                 notifier.cancelProgressNotification()
                 libraryUpdateStatus.stop()
@@ -408,8 +410,14 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
      */
     private suspend fun updateChapterList(forceUpdate: Boolean) {
         val semaphore = Semaphore(5)
-        val progressCount = AtomicInt(0)
-        val currentlyUpdatingManga = CopyOnWriteArrayList<Manga>()
+        val sourceGroups = mangaToUpdate
+            .groupBy { it.manga.source }
+            .filterNot { it.key in LIBRARY_UPDATE_EXCLUDED_SOURCES }
+            .values
+        val progress = LibraryRefreshProgress<Manga>(
+            total = sourceGroups.sumOf { it.size },
+            publish = notifier::showProgressNotification,
+        )
         val newUpdates = CopyOnWriteArrayList<Pair<Manga, Array<Chapter>>>()
         val failedUpdates = CopyOnWriteArrayList<Pair<Manga, String?>>()
         val hasDownloads = AtomicBoolean(false)
@@ -420,11 +428,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         val fetchWindow = fetchInterval.getWindow(ZonedDateTime.now())
 
         coroutineScope {
-            mangaToUpdate.groupBy { it.manga.source }
-                // SY -->
-                .filterNot { it.key in LIBRARY_UPDATE_EXCLUDED_SOURCES }
-                // SY <--
-                .values
+            sourceGroups
                 .map { mangaInSource ->
                     async {
                         semaphore.withPermit {
@@ -434,18 +438,23 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                     ?.let { it.manga.source in mangaDexSourceIds } == true
                             ) {
                                 launch {
-                                    mangaInSource.forEach { (manga) ->
-                                        try {
-                                            val tracks = getTracks.await(manga.id)
-                                            if (tracks.isEmpty() ||
-                                                tracks.none { it.trackerId == TrackerManager.MDLIST }
-                                            ) {
-                                                val track = mdList.createInitialTracker(manga)
-                                                insertTrack.await(mdList.refresh(track).toDomainTrack(false)!!)
+                                    withTimeoutOrNull(TRACKING_TIMEOUT_MS) {
+                                        mangaInSource.forEach { (manga) ->
+                                            try {
+                                                val tracks = getTracks.await(manga.id)
+                                                if (tracks.isEmpty() ||
+                                                    tracks.none { it.trackerId == TrackerManager.MDLIST }
+                                                ) {
+                                                    val track = mdList.createInitialTracker(manga)
+                                                    val refreshed = withLibrarySourceDeadline(TRACKING_REQUEST_TIMEOUT_MS) {
+                                                        mdList.refresh(track)
+                                                    }
+                                                    insertTrack.await(refreshed.toDomainTrack(false)!!)
+                                                }
+                                            } catch (e: Exception) {
+                                                if (e is CancellationException) throw e
+                                                xLogE("Error adding initial track for ${manga.title}", e)
                                             }
-                                        } catch (e: Exception) {
-                                            if (e is CancellationException) throw e
-                                            xLogE("Error adding initial track for ${manga.title}", e)
                                         }
                                     }
                                 }
@@ -454,18 +463,12 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                 val manga = libraryManga.manga
                                 ensureActive()
 
-                                // Don't continue to update if manga is not in library
-                                if (getManga.await(manga.id)?.favorite != true) {
-                                    return@forEach
-                                }
-
-                                withUpdateNotification(
-                                    currentlyUpdatingManga,
-                                    progressCount,
-                                    manga,
-                                ) {
+                                progress.track(manga) {
+                                    // Removed titles still count as processed.
+                                    if (getManga.await(manga.id)?.favorite != true) return@track
                                     try {
-                                        val newChapters = updateManga(manga, fetchWindow, forceUpdate)
+                                        var partialFailure: Exception? = null
+                                        val newChapters = updateManga(manga, fetchWindow, forceUpdate) { partialFailure = it }
                                             .sortedByDescending { it.sourceOrder }
 
                                         if (newChapters.isNotEmpty()) {
@@ -481,9 +484,15 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                                             // Convert to the manga that contains new chapters
                                             newUpdates.add(manga to newChapters.toTypedArray())
                                         }
+                                        partialFailure?.let { throw it }
                                         clearErrorFromDB(mangaId = manga.id)
+                                    } catch (e: CancellationException) {
+                                        throw e
                                     } catch (e: Throwable) {
                                         val errorMessage = when (e) {
+                                            is LibrarySourceTimeoutException ->
+                                                context.stringResource(MR.strings.nova_library_update_source_timeout)
+
                                             is NoChaptersException ->
                                                 context.stringResource(MR.strings.no_chapters_error)
                                             // failedUpdates will already have the source,
@@ -553,6 +562,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         manga: Manga,
         fetchWindow: Pair<Long, Long>,
         forceUpdate: Boolean,
+        onPartialFailure: (Exception) -> Unit,
     ): List<Chapter> {
         val source = sourceManager.getOrStub(manga.source)
         var currentManga = manga
@@ -560,7 +570,9 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         // Update manga metadata if needed
         if (shouldRefreshLibraryMetadata(libraryPreferences.autoUpdateMetadata().get(), forceUpdate)) {
             try {
-                val networkManga = source.getMangaDetails(currentManga.toSManga())
+                val networkManga = withLibrarySourceDeadline(METADATA_TIMEOUT_MS) {
+                    source.getMangaDetails(currentManga.toSManga())
+                }
                 updateManga.awaitUpdateFromSource(currentManga, networkManga, manualFetch = forceUpdate, coverCache)
                 currentManga = getManga.await(manga.id) ?: currentManga
             } catch (e: CancellationException) {
@@ -571,10 +583,15 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
         }
 
         if (source is MergedSource) {
-            return source.fetchChaptersAndSync(currentManga, false)
+            return source.fetchChaptersAndSync(
+                manga = currentManga,
+                downloadChapters = false,
+                timeoutMillis = CHAPTERS_TIMEOUT_MS,
+                onFailure = onPartialFailure,
+            )
         }
 
-        val result = source.getChapterListWithRecovery(currentManga)
+        val result = withLibrarySourceDeadline(CHAPTERS_TIMEOUT_MS) { source.getChapterListWithRecovery(currentManga) }
         result.details?.let {
             updateManga.awaitUpdateFromSource(currentManga, it, manualFetch = forceUpdate, coverCache)
         }
@@ -676,34 +693,6 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     }
     // SY <--
 
-    private suspend fun withUpdateNotification(
-        updatingManga: CopyOnWriteArrayList<Manga>,
-        completed: AtomicInt,
-        manga: Manga,
-        block: suspend () -> Unit,
-    ) = coroutineScope {
-        ensureActive()
-
-        updatingManga.add(manga)
-        notifier.showProgressNotification(
-            updatingManga,
-            completed.load(),
-            mangaToUpdate.size,
-        )
-
-        block()
-
-        ensureActive()
-
-        updatingManga.remove(manga)
-        completed.incrementAndFetch()
-        notifier.showProgressNotification(
-            updatingManga,
-            completed.load(),
-            mangaToUpdate.size,
-        )
-    }
-
     // KMK -->
     private suspend fun clearErrorFromDB(mangaId: Long) {
         deleteLibraryUpdateErrors.deleteMangaError(mangaIds = listOf(mangaId))
@@ -752,6 +741,10 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
 
     companion object {
         private const val TAG = "LibraryUpdate"
+        private const val METADATA_TIMEOUT_MS = 12_000L
+        private const val CHAPTERS_TIMEOUT_MS = 45_000L
+        private const val TRACKING_TIMEOUT_MS = 30_000L
+        private const val TRACKING_REQUEST_TIMEOUT_MS = 8_000L
         private const val WORK_NAME_AUTO = "LibraryUpdate-auto"
         private const val WORK_NAME_MANUAL = "LibraryUpdate-manual"
 
